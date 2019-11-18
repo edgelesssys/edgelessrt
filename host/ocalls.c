@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <openenclave/internal/calls.h>
 #include <openenclave/internal/raise.h>
@@ -41,4 +42,9 @@ void oe_write_ocall(int device, const char* str, size_t maxlen)
         fprintf(stream, "%.*s", (int)len, str);
         fflush(stream);
     }
+}
+
+int oe_clock_gettime_ocall(clockid_t clk_id, struct oe_timespec* tp)
+{
+    return clock_gettime(clk_id, (struct timespec*)tp);
 }

@@ -48,6 +48,10 @@ static long _syscall_clock_gettime(long n, long x1, long x2)
     if (!tp)
         goto done;
 
+    // EDG: injected code to support CLOCK_MONOTONIC
+    if (clk_id == CLOCK_MONOTONIC)
+        return oe_clock_gettime(clk_id, (struct oe_timespec*)tp);
+
     if (clk_id != CLOCK_REALTIME)
     {
         /* Only supporting CLOCK_REALTIME */

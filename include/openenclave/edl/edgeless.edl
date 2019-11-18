@@ -1,0 +1,7 @@
+enclave {
+    untrusted {
+        int oe_clock_gettime_ocall(
+            int clk_id,
+            [out] struct oe_timespec* tp);
+    };
+};
