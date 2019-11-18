@@ -14,7 +14,7 @@ build:
 		--search-path $(INCDIR)/openenclave/edl/sgx
 	$(CC) -g -c $(CFLAGS) host.c
 	$(CC) -g -c $(CFLAGS) helloworld_u.c
-	$(CC) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
+	$(CXX) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
 
 clean:
 	rm -f helloworldhost host.o helloworld_u.o helloworld_u.c helloworld_u.h helloworld_args.h

@@ -123,7 +123,7 @@ endif ()
 
 if (UNIX)
   if (OE_SGX)
-    add_subdirectory(child_process)
+    #add_subdirectory(child_process)
     add_subdirectory(cmake_name_conflict)
   endif ()
   add_subdirectory(libc)

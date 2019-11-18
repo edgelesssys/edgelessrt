@@ -18,10 +18,10 @@ endif ()
 
 set(CMAKE_C_STANDARD 11)
 
-# Set the default standard to C++14 for all targets.
-set(CMAKE_CXX_STANDARD 14)
+# Set the default standard to C++17 for all targets.
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# Do not use, for example, `-std=gnu++14`.
+# Do not use, for example, `-std=gnu++17`.
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set default build type and sanitize.

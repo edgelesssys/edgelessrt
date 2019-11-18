@@ -538,7 +538,8 @@ endif ()
 if (UNIX)
   target_compile_options(
     oehost
-    PRIVATE -Wno-attributes -Wmissing-prototypes -fPIC ${PLATFORM_FLAGS}
+    PRIVATE -Wno-attributes $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes> -fPIC
+            ${PLATFORM_FLAGS}
     PUBLIC -fstack-protector-strong)
   target_compile_definitions(
     oehost
@@ -547,7 +548,8 @@ if (UNIX)
 endif ()
 
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
-  target_compile_options(oehost PRIVATE -Wjump-misses-init)
+  target_compile_options(oehost
+                         PRIVATE $<$<COMPILE_LANGUAGE:C>:-Wjump-misses-init>)
 endif ()
 
 # Use the same the compile options and definitions from oehost.

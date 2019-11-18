@@ -14,7 +14,7 @@ build:
 		--search-path $(INCDIR)/openenclave/edl/sgx
 	$(CC) -g -c $(CFLAGS) host.c
 	$(CC) -g -c $(CFLAGS) switchless_sample_u.c
-	$(CC) -o switchlesshost switchless_sample_u.o host.o $(LDFLAGS)
+	$(CXX) -o switchlesshost switchless_sample_u.o host.o $(LDFLAGS)
 
 clean:
 	rm -f switchlesshost host.o switchless_sample_u.o \
