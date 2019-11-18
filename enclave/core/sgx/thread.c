@@ -133,6 +133,11 @@ bool oe_thread_equal(oe_thread_t thread1, oe_thread_t thread2)
     return thread1 == thread2;
 }
 
+oe_result_t oe_sgx_create_thread_ecall(void)
+{
+    return OE_OK;
+}
+
 /*
 **==============================================================================
 **

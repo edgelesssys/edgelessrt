@@ -17,11 +17,19 @@ enclave
     // intentionally kept in host memory.
     include "openenclave/bits/types.h"
 
+    trusted
+    {
+        public oe_result_t oe_sgx_create_thread_ecall();
+    };
+
     untrusted
     {
         void oe_sgx_thread_wake_wait_ocall(
             [user_check] oe_enclave_t* oe_enclave,
             uint64_t waiter_tcs,
             uint64_t self_tcs);
+
+        oe_result_t oe_sgx_create_thread_ocall(
+            [user_check] oe_enclave_t* oe_enclave);
     };
 };
