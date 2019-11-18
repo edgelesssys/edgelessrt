@@ -3,12 +3,14 @@
 
 #include "thread.h"
 #include <openenclave/bits/sgx/sgxtypes.h>
+#include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/calls.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
 #include <openenclave/internal/thread.h>
+#include "new_thread.h"
 #include "platform_t.h"
 #include "td.h"
 
@@ -133,8 +135,85 @@ bool oe_thread_equal(oe_thread_t thread1, oe_thread_t thread2)
     return thread1 == thread2;
 }
 
+oe_result_t oe_thread_create(
+    oe_thread_t* thread,
+    void* (*func)(void*),
+    void* arg)
+{
+    if (!thread || !func)
+        return OE_INVALID_PARAMETER;
+
+    oe_new_thread_t* const new_thread = oe_malloc(sizeof *new_thread);
+    if (!new_thread)
+        return OE_OUT_OF_MEMORY;
+
+    oe_new_thread_init(new_thread, func, arg);
+    oe_new_thread_queue_push_back(new_thread);
+
+    // oe_create_thread_ocall() will create a new thread that calls
+    // oe_create_thread_ecall()
+    oe_result_t retval = OE_FAILURE;
+    oe_result_t result = oe_sgx_create_thread_ocall(&retval, oe_get_enclave());
+    if (result == OE_OK)
+        result = retval;
+
+    if (result != OE_OK)
+    {
+        oe_new_thread_queue_remove(new_thread);
+        oe_free(new_thread);
+        return result;
+    }
+
+    // wait until a thread enters and executes the queued new_thread
+    oe_new_thread_state_wait_exit(new_thread, OE_NEWTHREADSTATE_QUEUED);
+
+    oe_assert(new_thread->self);
+    *thread = new_thread->self;
+
+    return result;
+}
+
+oe_result_t oe_thread_join(oe_thread_t thread, void** retval)
+{
+    if (!thread)
+        return OE_INVALID_PARAMETER;
+
+    oe_new_thread_t* const new_thread = ((oe_sgx_td_t*)thread)->new_thread;
+    oe_assert(new_thread);
+
+    // wait until the thread has finished executing
+    oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_DONE);
+
+    if (retval)
+        *retval = new_thread->return_value;
+
+    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_JOINED);
+
+    return OE_OK;
+}
+
 oe_result_t oe_sgx_create_thread_ecall(void)
 {
+    oe_new_thread_t* const new_thread = oe_new_thread_queue_pop_front();
+    if (!new_thread)
+    {
+        // oe_create_thread_ecall() called without prior oe_thread_create()
+        oe_abort();
+    }
+
+    oe_sgx_get_td()->new_thread = new_thread;
+    new_thread->self = oe_thread_self();
+
+    // run the thread function
+    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_RUNNING);
+    new_thread->return_value = new_thread->func(new_thread->arg);
+    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_DONE);
+
+    // wait for join before releasing the thread
+    oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_JOINED);
+
+    oe_free(new_thread);
+
     return OE_OK;
 }
 

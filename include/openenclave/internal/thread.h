@@ -52,6 +52,36 @@ oe_thread_t oe_thread_self(void);
  */
 bool oe_thread_equal(oe_thread_t thread1, oe_thread_t thread2);
 
+/**
+ * Create a thread.
+ *
+ * @param thread Receives the thread identifier of the created thread.
+ * @param func The pointer to the start routine.
+ * @param arg The argument to the start routine.
+ *
+ * @return OE_OK the operation was successful
+ * @return OE_INVALID_PARAMETER one or more parameters is invalid
+ * @return OE_OUT_OF_MEMORY insufficient memory exists to allocate thread
+ * metadata
+ *
+ */
+oe_result_t oe_thread_create(
+    oe_thread_t* thread,
+    void* (*func)(void*),
+    void* arg);
+
+/**
+ * Join a thread.
+ *
+ * @param thread The thread to be joined.
+ * @param retval Receives the return value of the thread. Can be NULL.
+ *
+ * @return OE_OK the operation was successful
+ * @return OE_INVALID_PARAMETER one or more parameters is invalid
+ *
+ */
+oe_result_t oe_thread_join(oe_thread_t thread, void** retval);
+
 typedef uint32_t oe_once_t;
 
 /**
