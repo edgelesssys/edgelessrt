@@ -35,10 +35,13 @@ typedef pthread_spinlock_t oe_spinlock_t;
 #define oe_spin_unlock pthread_spin_unlock
 
 typedef pthread_cond_t oe_cond_t;
+typedef timespec test_timespec;
 #define OE_COND_INITIALIZER PTHREAD_COND_INITIALIZER
 #define oe_cond_wait pthread_cond_wait
+#define oe_cond_timedwait pthread_cond_timedwait
 #define oe_cond_signal pthread_cond_signal
 #define oe_cond_broadcast pthread_cond_broadcast
+#define TEST_TIMEDOUT ETIMEDOUT
 
 typedef pthread_rwlock_t oe_rwlock_t;
 #define OE_RWLOCK_INITIALIZER PTHREAD_RWLOCK_INITIALIZER

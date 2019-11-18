@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #if defined(__linux__)
+#include <errno.h>
 #include <linux/futex.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
@@ -96,6 +97,43 @@ void oe_sgx_thread_wake_wait_ocall(
 
     HandleThreadWake(enclave, waiter_tcs);
     HandleThreadWait(enclave, self_tcs);
+}
+
+int oe_sgx_thread_timedwait_ocall(
+    oe_enclave_t* enclave,
+    uint64_t tcs,
+    const struct oe_timespec* abstime)
+{
+    EnclaveEvent* event = GetEnclaveEvent(enclave, tcs);
+    assert(event);
+
+    if (__sync_fetch_and_add(&event->value, (uint32_t)-1) == 0)
+    {
+        do
+        {
+            const long res = syscall(
+                __NR_futex,
+                &event->value,
+                FUTEX_WAIT_BITSET_PRIVATE | FUTEX_CLOCK_REALTIME,
+                -1,
+                abstime,
+                NULL,
+                FUTEX_BITSET_MATCH_ANY);
+
+            if (res == -1 && errno == ETIMEDOUT)
+            {
+                __sync_fetch_and_add(&event->value, 1);
+                return ETIMEDOUT;
+            }
+
+            // If event->value is still -1, then this is a spurious-wake.
+            // Spurious-wakes are ignored by going back to FUTEX_WAIT.
+            // Since FUTEX_WAIT uses atomic instructions to load event->value,
+            // it is safe to use a non-atomic operation here.
+        } while (event->value == (uint32_t)-1);
+    }
+
+    return 0;
 }
 
 oe_result_t oe_get_quote_ocall(

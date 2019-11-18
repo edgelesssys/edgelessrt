@@ -180,4 +180,10 @@ typedef struct _oe_datetime
     uint32_t seconds; /* range: 0-59 */
 } oe_datetime_t;
 
+struct oe_timespec
+{
+    time_t tv_sec;
+    long tv_nsec;
+};
+
 #endif /* _OE_BITS_TYPES_H */

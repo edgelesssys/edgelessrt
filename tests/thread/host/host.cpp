@@ -48,9 +48,13 @@ void test_mutex(oe_enclave_t* enclave)
     OE_TEST(count2 == NUM_THREADS);
 }
 
-void* waiter_thread(oe_enclave_t* enclave)
+void* waiter_thread(
+    oe_enclave_t* enclave,
+    const timespec* abstime,
+    bool expect_timeout)
 {
-    oe_result_t result = enc_wait(enclave, NUM_THREADS);
+    oe_result_t result =
+        enc_wait(enclave, NUM_THREADS, abstime, expect_timeout);
     OE_TEST(result == OE_OK);
 
     return NULL;
@@ -62,10 +66,62 @@ void test_cond(oe_enclave_t* enclave)
 
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        threads[i] = std::thread(waiter_thread, enclave);
+        threads[i] = std::thread(waiter_thread, enclave, nullptr, false);
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        OE_TEST(enc_signal(enclave) == OE_OK);
+    }
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        threads[i].join();
+    }
+}
+
+void test_cond_timed(oe_enclave_t* enclave)
+{
+    timespec abstime{};
+    OE_TEST(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+    abstime.tv_sec += 2;
+
+    std::thread threads[NUM_THREADS];
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        threads[i] = std::thread(waiter_thread, enclave, &abstime, false);
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        OE_TEST(enc_signal(enclave) == OE_OK);
+    }
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        threads[i].join();
+    }
+}
+
+void test_cond_timeout(oe_enclave_t* enclave)
+{
+    timespec abstime{};
+    OE_TEST(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+    ++abstime.tv_sec;
+
+    std::thread threads[NUM_THREADS];
+
+    for (size_t i = 0; i < NUM_THREADS; i++)
+    {
+        threads[i] = std::thread(waiter_thread, enclave, &abstime, true);
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
@@ -328,6 +384,8 @@ int main(int argc, const char* argv[])
     test_mutex(enclave);
 
     test_cond(enclave);
+    test_cond_timed(enclave);
+    test_cond_timeout(enclave);
 
     test_cond_broadcast(enclave);
 

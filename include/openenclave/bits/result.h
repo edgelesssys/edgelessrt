@@ -355,6 +355,11 @@ typedef enum _oe_result
      */
     OE_QUOTE_HASH_MISMATCH,
 
+    /**
+     * A timeout occurred.
+     */
+    OE_TIMEDOUT,
+
     __OE_RESULT_MAX = OE_ENUM_MAX,
 } oe_result_t;
 /**< typedef enum _oe_result oe_result_t*/

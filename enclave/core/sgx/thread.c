@@ -3,6 +3,7 @@
 
 #include "thread.h"
 #include <openenclave/bits/sgx/sgxtypes.h>
+#include <openenclave/corelibc/errno.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
@@ -55,6 +56,20 @@ static int _thread_wake_wait(oe_sgx_td_t* waiter, oe_sgx_td_t* self)
     ret = 0;
 
 done:
+    return ret;
+}
+
+static int _thread_timedwait(
+    oe_sgx_td_t* self,
+    const struct oe_timespec* abstime)
+{
+    int ret = -1;
+    const uint64_t tcs = (uint64_t)td_to_tcs((oe_sgx_td_t*)self);
+
+    if (oe_sgx_thread_timedwait_ocall(&ret, oe_get_enclave(), tcs, abstime) !=
+        OE_OK)
+        ret = -1;
+
     return ret;
 }
 
@@ -115,6 +130,30 @@ static bool _queue_contains(Queue* queue, oe_sgx_td_t* thread)
 static __inline__ bool _queue_empty(Queue* queue)
 {
     return queue->front ? false : true;
+}
+
+static void _queue_remove(Queue* queue, const oe_sgx_td_t* thread)
+{
+    oe_assert(queue);
+    oe_assert(thread);
+
+    oe_sgx_td_t* prev = NULL;
+
+    for (oe_sgx_td_t* p = queue->front; p; p = p->next)
+    {
+        if (p == thread)
+        {
+            if (p == queue->front)
+                queue->front = p->next;
+            if (p == queue->back)
+                queue->back = prev;
+            if (prev)
+                prev->next = p->next;
+            p->next = NULL;
+            return;
+        }
+        prev = p;
+    }
 }
 
 /*
@@ -534,6 +573,67 @@ oe_result_t oe_cond_wait(oe_cond_t* condition, oe_mutex_t* mutex)
     oe_mutex_lock(mutex);
 
     return OE_OK;
+}
+
+oe_result_t oe_cond_timedwait(
+    oe_cond_t* condition,
+    oe_mutex_t* mutex,
+    const struct oe_timespec* abstime)
+{
+    oe_cond_impl_t* cond = (oe_cond_impl_t*)condition;
+    oe_sgx_td_t* self = oe_sgx_get_td();
+
+    if (!cond || !mutex || !abstime)
+        return OE_INVALID_PARAMETER;
+
+    oe_result_t result = OE_OK;
+
+    oe_spin_lock(&cond->lock);
+    {
+        oe_sgx_td_t* waiter = NULL;
+
+        /* Add the self thread to the end of the wait queue */
+        _queue_push_back((Queue*)&cond->queue, self);
+
+        /* Unlock this mutex and get the waiter at the front of the queue */
+        if (_mutex_unlock(mutex, &waiter) != 0)
+        {
+            oe_spin_unlock(&cond->lock);
+            return OE_BUSY;
+        }
+
+        for (;;)
+        {
+            int res = 0;
+
+            oe_spin_unlock(&cond->lock);
+            {
+                if (waiter)
+                {
+                    _thread_wake(waiter);
+                    waiter = NULL;
+                }
+
+                res = _thread_timedwait(self, abstime);
+            }
+            oe_spin_lock(&cond->lock);
+
+            if (res == OE_ETIMEDOUT)
+            {
+                result = OE_TIMEDOUT;
+                _queue_remove((Queue*)&cond->queue, self);
+                break;
+            }
+
+            /* If self is no longer in the queue, then it was selected */
+            if (!_queue_contains((Queue*)&cond->queue, self))
+                break;
+        }
+    }
+    oe_spin_unlock(&cond->lock);
+    oe_mutex_lock(mutex);
+
+    return result;
 }
 
 oe_result_t oe_cond_signal(oe_cond_t* condition)

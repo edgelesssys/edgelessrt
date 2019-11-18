@@ -7,6 +7,7 @@
 #include <openenclave/bits/defs.h>
 #include <openenclave/bits/result.h>
 #include <openenclave/bits/types.h>
+#include <openenclave/corelibc/time.h>
 
 typedef uint64_t oe_thread_t;
 
@@ -351,6 +352,24 @@ oe_result_t oe_cond_init(oe_cond_t* cond);
  *
  */
 oe_result_t oe_cond_wait(oe_cond_t* cond, oe_mutex_t* mutex);
+
+/**
+ * Wait on a condition variable until signaled or timeout.
+ *
+ * @param cond Wait on this condition variable.
+ * @param mutex This mutex must be locked by the caller.
+ * @param abstime Wait until this absolute time passes.
+ *
+ * @return OE_OK the operation was successful
+ * @return OE_INVALID_PARAMETER one or more parameters is invalid
+ * @return OE_BUSY the mutex is not locked by the calling thread.
+ * @return OE_TIMEDOUT abstime has passed.
+ *
+ */
+oe_result_t oe_cond_timedwait(
+    oe_cond_t* cond,
+    oe_mutex_t* mutex,
+    const struct oe_timespec* abstime);
 
 /**
  * Signal a thread waiting on a condition variable.

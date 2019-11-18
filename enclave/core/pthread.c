@@ -29,6 +29,8 @@ OE_INLINE int _to_errno(oe_result_t result)
             return OE_EPERM;
         case OE_OUT_OF_MEMORY:
             return OE_ENOMEM;
+        case OE_TIMEDOUT:
+            return OE_ETIMEDOUT;
         default:
             return OE_EINVAL; /* unreachable */
     }
@@ -238,11 +240,8 @@ int oe_pthread_cond_timedwait(
     oe_pthread_mutex_t* mutex,
     const struct oe_timespec* ts)
 {
-    OE_UNUSED(cond);
-    OE_UNUSED(mutex);
-    OE_UNUSED(ts);
-    oe_assert("oe_pthread_cond_timedwait(): panic" == NULL);
-    return -1;
+    return _to_errno(
+        oe_cond_timedwait((oe_cond_t*)cond, (oe_mutex_t*)mutex, ts));
 }
 
 int oe_pthread_cond_signal(oe_pthread_cond_t* cond)
