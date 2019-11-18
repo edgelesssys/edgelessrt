@@ -45,16 +45,6 @@ OE_LIBC_EXTERN_C_BEGIN
 */
 
 OE_LIBC_DEPRECATED(OE_UNSUPPORTED_ENCLAVE_FUNCTION)
-int pthread_create(
-    pthread_t* thread,
-    const pthread_attr_t* attr,
-    void* (*start_routine)(void*),
-    void* arg);
-
-OE_LIBC_DEPRECATED(OE_UNSUPPORTED_ENCLAVE_FUNCTION)
-int pthread_join(pthread_t thread, void** retval);
-
-OE_LIBC_DEPRECATED(OE_UNSUPPORTED_ENCLAVE_FUNCTION)
 int pthread_detach(pthread_t thread);
 
 OE_LIBC_EXTERN_C_END

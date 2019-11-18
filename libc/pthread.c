@@ -74,8 +74,11 @@ int pthread_create(
 {
     if (!_pthread_hooks || !_pthread_hooks->create)
     {
-        oe_assert("pthread_create(): panic" == NULL);
-        return -1;
+        return oe_pthread_create(
+            (oe_pthread_t*)thread,
+            (const oe_pthread_attr_t*)attr,
+            start_routine,
+            arg);
     }
 
     return _pthread_hooks->create(thread, attr, start_routine, arg);
@@ -85,8 +88,7 @@ int pthread_join(pthread_t thread, void** retval)
 {
     if (!_pthread_hooks || !_pthread_hooks->join)
     {
-        oe_assert("pthread_join(): panic" == NULL);
-        return -1;
+        return oe_pthread_join((oe_pthread_t)thread, retval);
     }
 
     return _pthread_hooks->join(thread, retval);

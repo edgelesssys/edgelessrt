@@ -6,6 +6,7 @@
 #include <openenclave/enclave.h>
 #include <openenclave/internal/defs.h>
 #include <openenclave/internal/thread.h>
+#include <openenclave/internal/trace.h>
 
 OE_STATIC_ASSERT(sizeof(oe_pthread_once_t) == sizeof(oe_once_t));
 OE_STATIC_ASSERT(sizeof(oe_pthread_spinlock_t) == sizeof(oe_spinlock_t));
@@ -61,20 +62,14 @@ int oe_pthread_create(
     void* (*start_routine)(void*),
     void* arg)
 {
-    OE_UNUSED(thread);
-    OE_UNUSED(attr);
-    OE_UNUSED(start_routine);
-    OE_UNUSED(arg);
-    oe_assert("oe_pthread_create(): panic" == NULL);
-    return -1;
+    if (attr)
+        OE_TRACE_WARNING("oe_pthread_create(): attr not implemented");
+    return _to_errno(oe_thread_create(thread, start_routine, arg));
 }
 
 int oe_pthread_join(oe_pthread_t thread, void** retval)
 {
-    OE_UNUSED(thread);
-    OE_UNUSED(retval);
-    oe_assert("oe_pthread_join(): panic" == NULL);
-    return -1;
+    return _to_errno(oe_thread_join(thread, retval));
 }
 
 int oe_pthread_detach(oe_pthread_t thread)
