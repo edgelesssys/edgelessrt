@@ -83,6 +83,17 @@ oe_result_t oe_thread_create(
  */
 oe_result_t oe_thread_join(oe_thread_t thread, void** retval);
 
+/**
+ * Detach a thread.
+ *
+ * @param thread The thread to be detached.
+ *
+ * @return OE_OK the operation was successful
+ * @return OE_INVALID_PARAMETER one or more parameters is invalid
+ *
+ */
+oe_result_t oe_thread_detach(oe_thread_t thread);
+
 typedef uint32_t oe_once_t;
 
 /**

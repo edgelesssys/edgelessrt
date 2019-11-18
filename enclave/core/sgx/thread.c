@@ -231,6 +231,18 @@ oe_result_t oe_thread_join(oe_thread_t thread, void** retval)
     return OE_OK;
 }
 
+oe_result_t oe_thread_detach(oe_thread_t thread)
+{
+    if (!thread)
+        return OE_INVALID_PARAMETER;
+
+    oe_new_thread_t* const new_thread = ((oe_sgx_td_t*)thread)->new_thread;
+    oe_assert(new_thread);
+    oe_new_thread_detach(new_thread);
+
+    return OE_OK;
+}
+
 oe_result_t oe_sgx_create_thread_ecall(void)
 {
     oe_new_thread_t* const new_thread = oe_new_thread_queue_pop_front();
@@ -249,7 +261,8 @@ oe_result_t oe_sgx_create_thread_ecall(void)
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_DONE);
 
     // wait for join before releasing the thread
-    oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_JOINED);
+    oe_new_thread_state_wait_enter_or_detached(
+        new_thread, OE_NEWTHREADSTATE_JOINED);
 
     oe_free(new_thread);
 

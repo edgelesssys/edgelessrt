@@ -27,6 +27,8 @@ typedef struct _oe_new_thread
     oe_new_thread_state_t _state;
     oe_mutex_t _mutex;
     oe_cond_t _cond;
+
+    bool _detached;
 } oe_new_thread_t;
 
 // initializes a newly allocated oe_new_thread_t object
@@ -35,6 +37,9 @@ void oe_new_thread_init(
     void* (*func)(void*),
     void* arg);
 
+// detaches the thread
+void oe_new_thread_detach(oe_new_thread_t* new_thread);
+
 // updates the thread's state and notifies waiting threads
 void oe_new_thread_state_update(
     oe_new_thread_t* new_thread,
@@ -42,6 +47,12 @@ void oe_new_thread_state_update(
 
 // waits until the thread's state is updated to desired_state
 void oe_new_thread_state_wait_enter(
+    oe_new_thread_t* new_thread,
+    oe_new_thread_state_t desired_state);
+
+// waits until the thread's state is updated to desired_state or thread is
+// detached
+void oe_new_thread_state_wait_enter_or_detached(
     oe_new_thread_t* new_thread,
     oe_new_thread_state_t desired_state);
 

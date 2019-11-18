@@ -24,6 +24,7 @@
 #undef OE_INLINE
 #define OE_INLINE
 #endif
+#include <openenclave/corelibc/bits/pthread_attr.h>
 #include <openenclave/corelibc/bits/pthread_cond.h>
 #include <openenclave/corelibc/bits/pthread_equal.h>
 #include <openenclave/corelibc/bits/pthread_key.h>
@@ -98,8 +99,7 @@ int pthread_detach(pthread_t thread)
 {
     if (!_pthread_hooks || !_pthread_hooks->detach)
     {
-        oe_assert("pthread_detach(): panic" == NULL);
-        return -1;
+        return oe_pthread_detach((oe_pthread_t)thread);
     }
 
     return _pthread_hooks->detach(thread);

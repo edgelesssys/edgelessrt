@@ -67,6 +67,10 @@ typedef struct _oe_pthread_rwlock
     uint64_t __private[5];
 } oe_pthread_rwlock_t;
 
+int oe_pthread_attr_init(oe_pthread_attr_t* attr);
+int oe_pthread_attr_destroy(oe_pthread_attr_t* attr);
+int oe_pthread_attr_setdetachstate(oe_pthread_attr_t* attr, int detachstate);
+
 oe_pthread_t oe_pthread_self(void);
 
 int oe_pthread_equal(oe_pthread_t thread1, oe_pthread_t thread2);
@@ -159,6 +163,7 @@ void* oe_pthread_getspecific(oe_pthread_key_t key);
 #if defined(OE_NEED_STDC_NAMES)
 
 #include <openenclave/corelibc/bits/pthread_def.h>
+#include <openenclave/corelibc/bits/pthread_attr.h>
 #include <openenclave/corelibc/bits/pthread_cond.h>
 #include <openenclave/corelibc/bits/pthread_create.h>
 #include <openenclave/corelibc/bits/pthread_equal.h>

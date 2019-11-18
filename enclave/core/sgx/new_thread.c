@@ -30,6 +30,17 @@ void oe_new_thread_init(
     new_thread->_state = OE_NEWTHREADSTATE_QUEUED;
     _check(oe_mutex_init(&new_thread->_mutex));
     _check(oe_cond_init(&new_thread->_cond));
+    new_thread->_detached = false;
+}
+
+void oe_new_thread_detach(oe_new_thread_t* new_thread)
+{
+    oe_assert(new_thread);
+    _check(oe_mutex_lock(&new_thread->_mutex));
+    oe_assert(!new_thread->_detached);
+    new_thread->_detached = true;
+    _check(oe_cond_broadcast(&new_thread->_cond));
+    _check(oe_mutex_unlock(&new_thread->_mutex));
 }
 
 void oe_new_thread_state_update(
@@ -50,6 +61,17 @@ void oe_new_thread_state_wait_enter(
     oe_assert(new_thread);
     _check(oe_mutex_lock(&new_thread->_mutex));
     while (new_thread->_state != desired_state)
+        _check(oe_cond_wait(&new_thread->_cond, &new_thread->_mutex));
+    _check(oe_mutex_unlock(&new_thread->_mutex));
+}
+
+void oe_new_thread_state_wait_enter_or_detached(
+    oe_new_thread_t* new_thread,
+    oe_new_thread_state_t desired_state)
+{
+    oe_assert(new_thread);
+    _check(oe_mutex_lock(&new_thread->_mutex));
+    while (new_thread->_state != desired_state && !new_thread->_detached)
         _check(oe_cond_wait(&new_thread->_cond, &new_thread->_mutex));
     _check(oe_mutex_unlock(&new_thread->_mutex));
 }

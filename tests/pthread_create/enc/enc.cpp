@@ -26,6 +26,7 @@ static void _test_invalid_arguments()
     OE_TEST(pthread_create(nullptr, nullptr, start_routine, nullptr) == EINVAL);
     OE_TEST(pthread_create(&thread, nullptr, nullptr, nullptr) == EINVAL);
     OE_TEST(pthread_join(pthread_t(), &ret) == EINVAL);
+    OE_TEST(pthread_detach(thread) == EINVAL);
 }
 
 static void _test_created_thread_runs_concurrently()
@@ -127,6 +128,51 @@ static void _test_multiple_threads()
     OE_TEST(count == threads.size());
 }
 
+static void _test_detach()
+{
+    const auto start_routine = [](void*) -> void* { return nullptr; };
+
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 8; ++j)
+        {
+            pthread_t t{};
+            OE_TEST(pthread_create(&t, nullptr, start_routine, nullptr) == 0);
+            OE_TEST(pthread_detach(t) == 0);
+        }
+
+        _sleep();
+
+        // If pthread_detach() did not work, the next 8 threads would exceed
+        // the TCS limit.
+    }
+}
+
+static void _test_detached()
+{
+    const auto start_routine = [](void*) -> void* { return nullptr; };
+
+    pthread_attr_t attr{};
+    OE_TEST(pthread_attr_init(&attr) == 0);
+    OE_TEST(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == 0);
+
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 8; ++j)
+        {
+            pthread_t t{};
+            OE_TEST(pthread_create(&t, &attr, start_routine, nullptr) == 0);
+        }
+
+        _sleep();
+
+        // If PTHREAD_CREATE_DETACHED did not work, the next 8 threads would
+        // exceed the TCS limit
+    }
+
+    OE_TEST(pthread_attr_destroy(&attr) == 0);
+}
+
 void test_ecall()
 {
     _test_invalid_arguments();
@@ -135,6 +181,8 @@ void test_ecall()
     _test_join_before_thread_ends();
     _test_join_after_thread_ends();
     _test_multiple_threads();
+    _test_detach();
+    _test_detached();
 }
 
 OE_SET_ENCLAVE_SGX(

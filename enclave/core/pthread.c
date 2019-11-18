@@ -3,6 +3,7 @@
 
 #include <openenclave/corelibc/errno.h>
 #include <openenclave/corelibc/pthread.h>
+#include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/defs.h>
 #include <openenclave/internal/thread.h>
@@ -39,6 +40,59 @@ OE_INLINE int _to_errno(oe_result_t result)
 /*
 **==============================================================================
 **
+** pthread_attr_t
+**
+**==============================================================================
+*/
+
+// Internal attr implementation
+typedef struct _oe_attr_impl
+{
+    bool detached;
+} oe_attr_impl_t;
+
+OE_STATIC_ASSERT(sizeof(oe_attr_impl_t) <= sizeof(oe_pthread_attr_t));
+
+#define PTHREAD_CREATE_JOINABLE 0
+#define PTHREAD_CREATE_DETACHED 1
+
+int oe_pthread_attr_init(oe_pthread_attr_t* attr)
+{
+    oe_assert(attr);
+    memset(attr, 0, sizeof *attr);
+    return 0;
+}
+
+int oe_pthread_attr_destroy(oe_pthread_attr_t* attr)
+{
+    oe_assert(attr);
+    (void)attr;
+    return 0;
+}
+
+int oe_pthread_attr_setdetachstate(oe_pthread_attr_t* attr, int detachstate)
+{
+    oe_assert(attr);
+    oe_attr_impl_t* const iattr = (oe_attr_impl_t*)attr;
+
+    switch (detachstate)
+    {
+        case PTHREAD_CREATE_JOINABLE:
+            iattr->detached = false;
+            break;
+        case PTHREAD_CREATE_DETACHED:
+            iattr->detached = true;
+            break;
+        default:
+            return OE_EINVAL;
+    }
+
+    return 0;
+}
+
+/*
+**==============================================================================
+**
 ** pthread_t
 **
 **==============================================================================
@@ -64,9 +118,13 @@ int oe_pthread_create(
     void* (*start_routine)(void*),
     void* arg)
 {
-    if (attr)
-        OE_TRACE_WARNING("oe_pthread_create(): attr not implemented");
-    return _to_errno(oe_thread_create(thread, start_routine, arg));
+    const oe_result_t res = oe_thread_create(thread, start_routine, arg);
+
+    if (res == OE_OK && attr && ((oe_attr_impl_t*)attr)->detached &&
+        oe_thread_detach(*thread) != OE_OK)
+        oe_abort();
+
+    return _to_errno(res);
 }
 
 int oe_pthread_join(oe_pthread_t thread, void** retval)
@@ -76,9 +134,7 @@ int oe_pthread_join(oe_pthread_t thread, void** retval)
 
 int oe_pthread_detach(oe_pthread_t thread)
 {
-    OE_UNUSED(thread);
-    oe_assert("oe_pthread_detach(): panic" == NULL);
-    return -1;
+    return _to_errno(oe_thread_detach(thread));
 }
 
 /*
