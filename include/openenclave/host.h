@@ -183,6 +183,18 @@ oe_result_t oe_create_enclave(
     oe_enclave_t** enclave);
 
 /**
+ * Join all threads that have been created from inside the enclave.
+ *
+ * This function should be called before **oe_terminate_enclave()**.
+ *
+ * @param enclave The instance of the enclave whose threads should be joined.
+ *
+ * @returns Returns OE_OK on success.
+ *
+ */
+oe_result_t oe_join_threads_created_inside_enclave(oe_enclave_t* enclave);
+
+/**
  * Terminate an enclave and reclaims its resources.
  *
  * This function terminates an enclave and reclaims its resources. This
