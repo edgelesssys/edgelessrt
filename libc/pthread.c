@@ -104,3 +104,8 @@ int pthread_detach(pthread_t thread)
 
     return _pthread_hooks->detach(thread);
 }
+
+int pthread_setcancelstate(int state, int* oldstate)
+{
+    return 0; // noop, return success
+}
