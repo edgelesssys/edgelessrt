@@ -17,6 +17,8 @@ install(DIRECTORY openenclave/edger8r
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 install(FILES openenclave/enclave.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
+install(FILES openenclave/enclave_args.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 install(FILES openenclave/host.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 install(

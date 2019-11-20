@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "init_fini.h"
+#include "args.h"
 
 /*
 **==============================================================================
@@ -57,13 +58,18 @@
 
 void oe_call_init_functions(void)
 {
-    void (**fn)(void);
+    void (**fn)();
     extern void (*__init_array_start)(void);
     extern void (*__init_array_end)(void);
 
+    // EDG: Go expects args to be passed to init functions.
+    const int argc = oe_get_argc();
+    char** const argv = oe_get_argv();
+    char** const envp = oe_get_envp();
+
     for (fn = &__init_array_start; fn < &__init_array_end; fn++)
     {
-        (*fn)();
+        (*fn)(argc, argv, envp);
     }
 }
 

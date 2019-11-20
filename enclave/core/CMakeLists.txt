@@ -155,6 +155,7 @@ add_enclave_library(
   ${MUSL_SRC_DIR}/string/memset.c
   __stack_chk_fail.c
   arena.c
+  args.c
   assert.c
   atexit.c
   backtrace.c

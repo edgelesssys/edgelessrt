@@ -131,5 +131,6 @@ endif ()
 
 # edgeless
 if (OE_SGX AND UNIX)
+  add_subdirectory(args)
   add_subdirectory(pthread_create)
 endif ()

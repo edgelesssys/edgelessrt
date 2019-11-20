@@ -29,6 +29,7 @@
 #include "../../../common/sgx/sgxmeasure.h"
 #include "../../sgx/report.h"
 #include "../arena.h"
+#include "../args.h"
 #include "../atexit.h"
 #include "../tracee.h"
 #include "asmdefs.h"
@@ -214,6 +215,9 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
 
             /* Initialize the CPUID table before calling global constructors. */
             OE_CHECK(oe_initialize_cpuid());
+
+            /* EDG: Initialize args before calling global constructors. */
+            OE_CHECK(oe_init_args());
 
             /* Call global constructors. Now they can safely use simulated
              * instructions like CPUID. */
