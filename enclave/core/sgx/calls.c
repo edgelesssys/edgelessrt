@@ -219,14 +219,16 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
             /* EDG: Initialize args before calling global constructors. */
             OE_CHECK(oe_init_args());
 
-            /* Call global constructors. Now they can safely use simulated
-             * instructions like CPUID. */
-            oe_call_init_functions();
-
-            /* DCLP Release barrier. */
+            /* EDG: DCLP Release barrier and set initialized before calling
+             * global constructors because they may create threads whose ecall
+             * would otherwise fail. (Go does so.) */
             OE_ATOMIC_MEMORY_BARRIER_RELEASE();
             _once = true;
             __oe_initialized = 1;
+
+            /* Call global constructors. Now they can safely use simulated
+             * instructions like CPUID. */
+            oe_call_init_functions();
         }
 
         oe_spin_unlock(&_lock);

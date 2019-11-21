@@ -52,6 +52,16 @@ void _test_tls()
 }
 } // namespace
 
+static int _test_create_thread_during_initialization = [] {
+    const auto start_routine = [](void*) -> void* { return nullptr; };
+
+    pthread_t thread{};
+    OE_TEST(pthread_create(&thread, nullptr, start_routine, nullptr) == 0);
+    OE_TEST(pthread_join(thread, nullptr) == 0);
+
+    return 0;
+}();
+
 static void _sleep()
 {
     timespec t{0, 100'000'000};
