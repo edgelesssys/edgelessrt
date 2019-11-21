@@ -228,6 +228,8 @@ oe_result_t oe_thread_join(oe_thread_t thread, void** retval)
 
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_JOINED);
 
+    // Open issue: TLS is not unwound yet
+
     return OE_OK;
 }
 
@@ -265,6 +267,8 @@ oe_result_t oe_sgx_create_thread_ecall(void)
         new_thread, OE_NEWTHREADSTATE_JOINED);
 
     oe_free(new_thread);
+
+    // Open issue: TLS is not unwound yet
 
     return OE_OK;
 }

@@ -74,6 +74,8 @@ oe_result_t oe_thread_create(
 /**
  * Join a thread.
  *
+ * Warning: This does not wait until TLS has been unwound.
+ *
  * @param thread The thread to be joined.
  * @param retval Receives the return value of the thread. Can be NULL.
  *

@@ -9,6 +9,49 @@
 
 using namespace std;
 
+namespace
+{
+thread_local int _tl_i = 2;
+
+struct TlsCtorDtorTest
+{
+    static atomic<int> ctor_count;
+    static atomic<int> dtor_count;
+    int i;
+
+    TlsCtorDtorTest() : i(4)
+    {
+        ++ctor_count;
+    }
+
+    ~TlsCtorDtorTest()
+    {
+        ++dtor_count;
+    }
+
+    static void reset_count()
+    {
+        ctor_count = 0;
+        dtor_count = 0;
+    }
+
+    static void expect_count(int count)
+    {
+        OE_TEST(ctor_count == count);
+        OE_TEST(dtor_count == count);
+    }
+} thread_local _tl_ctor_dtor;
+
+atomic<int> TlsCtorDtorTest::ctor_count, TlsCtorDtorTest::dtor_count;
+
+void _test_tls()
+{
+    // test that TLS variables are reinitialized
+    OE_TEST(++_tl_i == 3);
+    OE_TEST(++_tl_ctor_dtor.i == 5);
+}
+} // namespace
+
 static void _sleep()
 {
     timespec t{0, 100'000'000};
@@ -112,12 +155,14 @@ static void _test_multiple_threads()
     const auto start_routine = [](void* arg) -> void* {
         auto& a = *static_cast<atomic<int>*>(arg);
         ++a;
+        _test_tls();
         _sleep();
         return nullptr;
     };
 
     array<pthread_t, 8> threads{};
     atomic<int> count = 0;
+    TlsCtorDtorTest::reset_count();
 
     for (pthread_t& t : threads)
         OE_TEST(pthread_create(&t, nullptr, start_routine, &count) == 0);
@@ -126,11 +171,21 @@ static void _test_multiple_threads()
         OE_TEST(pthread_join(t, nullptr) == 0);
 
     OE_TEST(count == threads.size());
+
+    // The current implementation of join does not wait until TLS has been
+    // unwound.
+    _sleep();
+    TlsCtorDtorTest::expect_count(threads.size());
 }
 
 static void _test_detach()
 {
-    const auto start_routine = [](void*) -> void* { return nullptr; };
+    const auto start_routine = [](void*) -> void* {
+        _test_tls();
+        return nullptr;
+    };
+
+    TlsCtorDtorTest::reset_count();
 
     for (int i = 0; i < 2; ++i)
     {
@@ -146,15 +201,23 @@ static void _test_detach()
         // If pthread_detach() did not work, the next 8 threads would exceed
         // the TCS limit.
     }
+
+    // threads should be finished by now
+    TlsCtorDtorTest::expect_count(16);
 }
 
 static void _test_detached()
 {
-    const auto start_routine = [](void*) -> void* { return nullptr; };
+    const auto start_routine = [](void*) -> void* {
+        _test_tls();
+        return nullptr;
+    };
 
     pthread_attr_t attr{};
     OE_TEST(pthread_attr_init(&attr) == 0);
     OE_TEST(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == 0);
+
+    TlsCtorDtorTest::reset_count();
 
     for (int i = 0; i < 2; ++i)
     {
@@ -169,6 +232,9 @@ static void _test_detached()
         // If PTHREAD_CREATE_DETACHED did not work, the next 8 threads would
         // exceed the TCS limit
     }
+
+    // threads should be finished by now
+    TlsCtorDtorTest::expect_count(16);
 
     OE_TEST(pthread_attr_destroy(&attr) == 0);
 }
