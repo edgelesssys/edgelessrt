@@ -21,6 +21,7 @@
 #define INT64_MAX OE_INT64_MAX
 #define UINT64_MAX OE_UINT64_MAX
 #define SIZE_MAX OE_SIZE_MAX
+#define UINTPTR_MAX OE_UINTPTR_MAX
 
 #endif /* defined(OE_NEED_STDC_NAMES) */
 

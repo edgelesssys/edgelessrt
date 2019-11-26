@@ -148,6 +148,7 @@ add_enclave_library(
   STATIC
   ../../common/safecrt.c
   ../../common/argv.c
+  ../../common/bitset.c
   ${MUSL_SRC_DIR}/prng/rand.c
   ${MUSL_SRC_DIR}/string/memcmp.c
   ${MUSL_SRC_DIR}/string/memcpy.c
