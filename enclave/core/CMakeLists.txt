@@ -168,6 +168,7 @@ add_enclave_library(
   hostcalls.c
   intstr.c
   malloc.c
+  mman.c
   once.c
   printf.c
   pthread.c

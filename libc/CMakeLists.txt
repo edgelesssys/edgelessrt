@@ -441,8 +441,6 @@ add_enclave_library(
   ${MUSLSRC}/misc/ioctl.c
   ${MUSLSRC}/misc/nftw.c
   ${MUSLSRC}/misc/uname.c
-  ${MUSLSRC}/mman/mmap.c
-  ${MUSLSRC}/mman/munmap.c
   ${MUSLSRC}/multibyte/btowc.c
   ${MUSLSRC}/multibyte/c16rtomb.c
   ${MUSLSRC}/multibyte/c32rtomb.c
@@ -793,7 +791,6 @@ add_enclave_library(
   ${MUSLSRC}/unistd/unlink.c
   ${MUSLSRC}/unistd/write.c
   ${MUSLSRC}/unistd/writev.c
-
   ${MUSLSRC}/conf/confstr.c
   ${MUSLSRC}/conf/fpathconf.c
   ${MUSLSRC}/conf/legacy.c
@@ -878,7 +875,6 @@ add_enclave_library(
   ${MUSLSRC}/linux/iopl.c
   ${MUSLSRC}/linux/klogctl.c
   ${MUSLSRC}/linux/memfd_create.c
-  ${MUSLSRC}/linux/mlock2.c
   ${MUSLSRC}/linux/module.c
   ${MUSLSRC}/linux/name_to_handle_at.c
   ${MUSLSRC}/linux/open_by_handle_at.c
@@ -919,9 +915,6 @@ add_enclave_library(
   ${MUSLSRC}/linux/xattr.c
   ${MUSLSRC}/locale/newlocale.c
   ${MUSLSRC}/locale/uselocale.c
-  ${MUSLSRC}/malloc/expand_heap.c
-  ${MUSLSRC}/malloc/lite_malloc.c
-  ${MUSLSRC}/malloc/malloc_usable_size.c
   ${MUSLSRC}/misc/a64l.c
   ${MUSLSRC}/misc/ffs.c
   ${MUSLSRC}/misc/ffsl.c

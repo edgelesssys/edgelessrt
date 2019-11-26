@@ -4,7 +4,10 @@
 #include <openenclave/enclave.h>
 #include <openenclave/internal/allocator.h>
 
-#define HAVE_MMAP 0
+// EDG: use mmap instead of morecore
+#define HAVE_MMAP 1
+#define HAVE_MREMAP 0
+#define HAVE_MORECORE 0
 #define LACKS_UNISTD_H
 #define LACKS_SYS_PARAM_H
 #define LACKS_SYS_TYPES_H
@@ -13,7 +16,7 @@
 #define ABORT oe_abort()
 #define USE_DL_PREFIX
 #define LACKS_STDLIB_H
-#define LACKS_STRING_H
+//#define LACKS_STRING_H
 #define USE_LOCKS 1
 #define fprintf _dlmalloc_stats_fprintf
 #define NO_MALLOC_STATS 1
