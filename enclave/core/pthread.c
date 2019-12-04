@@ -330,6 +330,8 @@ int oe_pthread_key_create(
     return _to_errno(oe_thread_key_create((oe_thread_key_t*)key, destructor));
 }
 
+OE_WEAK_ALIAS(oe_pthread_key_create, __pthread_key_create);
+
 int oe_pthread_key_delete(oe_pthread_key_t key)
 {
     return _to_errno(oe_thread_key_delete((oe_thread_key_t)key));
