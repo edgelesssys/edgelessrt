@@ -369,29 +369,20 @@ oe_result_t oe_get_qetarget_info_ocall(
         format_id, opt_params, opt_params_size, target_info);
 }
 
-static char** _backtrace_symbols(
-    oe_enclave_t* enclave,
-    void* const* buffer,
+char** oe_host_backtrace_symbols(
+    const elf64_t* elf,
+    uint64_t enclave_addr,
+    const void* const* buffer,
     int size)
 {
     char** ret = NULL;
 
-    elf64_t elf = ELF64_INIT;
-    bool elf_loaded = false;
     size_t malloc_size = 0;
     const char unknown[] = "<unknown>";
     char* ptr = NULL;
 
-    if (!enclave || enclave->magic != ENCLAVE_MAGIC || !buffer || !size)
+    if (!elf || !enclave_addr || !buffer || !size)
         goto done;
-
-    /* Open the enclave ELF64 image */
-    {
-        if (elf64_load(enclave->path, &elf) != 0)
-            goto done;
-
-        elf_loaded = true;
-    }
 
     /* Determine total memory requirements */
     {
@@ -403,8 +394,8 @@ static char** _backtrace_symbols(
         /* Calculate space for each string */
         for (int i = 0; i < size; i++)
         {
-            const uint64_t vaddr = (uint64_t)buffer[i] - enclave->addr;
-            const char* name = elf64_get_function_name(&elf, vaddr);
+            const uint64_t vaddr = (uint64_t)buffer[i] - enclave_addr;
+            const char* name = elf64_get_function_name(elf, vaddr);
 
             if (!name)
                 name = unknown;
@@ -432,8 +423,8 @@ static char** _backtrace_symbols(
     /* Copy strings into return buffer */
     for (int i = 0; i < size; i++)
     {
-        const uint64_t vaddr = (uint64_t)buffer[i] - enclave->addr;
-        const char* name = elf64_get_function_name(&elf, vaddr);
+        const uint64_t vaddr = (uint64_t)buffer[i] - enclave_addr;
+        const char* name = elf64_get_function_name(elf, vaddr);
 
         if (!name)
             name = unknown;
@@ -445,10 +436,6 @@ static char** _backtrace_symbols(
     }
 
 done:
-
-    if (elf_loaded)
-        elf64_unload(&elf);
-
     return ret;
 }
 
@@ -462,14 +449,21 @@ oe_result_t oe_sgx_backtrace_symbols_ocall(
 {
     oe_result_t result = OE_UNEXPECTED;
     char** strings = NULL;
+    elf64_t elf = ELF64_INIT;
+    bool elf_loaded = false;
 
     /* Reject invalid parameters. */
     if (!oe_enclave || !buffer || size > OE_INT_MAX || !symbols_buffer_size_out)
         OE_RAISE(OE_INVALID_PARAMETER);
 
+    /* Open the enclave ELF64 image */
+    if (elf64_load(oe_enclave->path, &elf) != 0)
+        OE_RAISE(OE_FAILURE);
+    elf_loaded = true;
+
     /* Convert the addresses into symbol strings. */
-    if (!(strings =
-              _backtrace_symbols(oe_enclave, (void* const*)buffer, (int)size)))
+    if (!(strings = oe_host_backtrace_symbols(
+              &elf, oe_enclave->addr, (const void* const*)buffer, (int)size)))
     {
         OE_RAISE(OE_FAILURE);
     }
@@ -489,6 +483,9 @@ done:
 
     if (strings)
         free(strings);
+
+    if (elf_loaded)
+        elf64_unload(&elf);
 
     return result;
 }

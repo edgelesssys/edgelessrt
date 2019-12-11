@@ -47,6 +47,11 @@ uint8_t __oe_initialized = 0;
 
 extern bool oe_disable_debug_malloc_check;
 
+#ifndef NDEBUG
+// EDG: initialized in _handle_ecall() and used in oe_ocall()
+static __thread void** _backtrace_buffer;
+#endif
+
 /*
 **==============================================================================
 **
@@ -451,6 +456,13 @@ static void _handle_ecall(
         goto done;
     }
 
+    // EDG: initialize backtrace buffer
+#ifndef NDEBUG
+    if (!_backtrace_buffer &&
+        oe_sgx_get_backtrace_buffer_ocall(&_backtrace_buffer) != OE_OK)
+        oe_abort();
+#endif
+
     /* Dispatch the ECALL */
     switch (func)
     {
@@ -686,6 +698,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
 
 oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
 {
+    // EDG: trace ocalls
+#ifndef NDEBUG
+    if (_backtrace_buffer)
+        // use first array element to store size
+        *(intptr_t*)_backtrace_buffer =
+            oe_backtrace(_backtrace_buffer + 1, OE_BACKTRACE_MAX);
+#endif
+
     oe_result_t result = OE_UNEXPECTED;
     oe_sgx_td_t* td = oe_sgx_get_td();
     Callsite* callsite = td->callsites;

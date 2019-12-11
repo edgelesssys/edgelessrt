@@ -1,0 +1,13 @@
+diff --git a/f_emitter.h b/f_emitter.h
+index 6aeefbf..d79db3b 100644
+--- a/f_emitter.h
++++ b/f_emitter.h
+@@ -41,7 +41,7 @@ class FEmitter
+         ecall_ = ecall;
+         std::string pfx = ecall_ ? "ecall_" : "ocall_";
+         std::string args_t = f->name_ + "_args_t";
+-        out() << "static void " + pfx + f->name_ + "("
++        out() << "void " + pfx + f->name_ + "("
+               << "    uint8_t* input_buffer,"
+               << "    size_t input_buffer_size,"
+               << "    uint8_t* output_buffer,"

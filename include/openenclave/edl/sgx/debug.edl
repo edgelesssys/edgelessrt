@@ -29,5 +29,7 @@ enclave
             [out, size=symbols_buffer_size] void* symbols_buffer,
             size_t symbols_buffer_size,
             [out] size_t* symbols_buffer_size_out);
+
+        void** oe_sgx_get_backtrace_buffer_ocall();
     };
 };

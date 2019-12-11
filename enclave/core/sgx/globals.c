@@ -161,6 +161,11 @@ const void* __oe_get_enclave_elf_header(void)
     return __oe_get_enclave_base();
 }
 
+uint64_t oe_get_num_tcs(void)
+{
+    return oe_enclave_properties_sgx.header.size_settings.num_tcs;
+}
+
 /*
 **==============================================================================
 **
@@ -273,4 +278,23 @@ uint64_t oe_get_num_heap_pages(void)
 uint64_t oe_get_num_pages(void)
 {
     return __oe_get_enclave_size() / OE_PAGE_SIZE;
+}
+
+/*
+**==============================================================================
+**
+** Stack:
+**
+**==============================================================================
+*/
+
+size_t oe_get_num_stack_pages(void)
+{
+    return oe_enclave_properties_sgx.header.size_settings.num_stack_pages;
+}
+
+size_t oe_get_stack_size(void)
+{
+    return oe_enclave_properties_sgx.header.size_settings.num_stack_pages *
+           OE_PAGE_SIZE;
 }

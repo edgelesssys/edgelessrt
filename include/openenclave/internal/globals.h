@@ -14,6 +14,7 @@ OE_EXTERNC_BEGIN
 const void* __oe_get_enclave_base(void);
 size_t __oe_get_enclave_size(void);
 const void* __oe_get_enclave_elf_header(void);
+uint64_t oe_get_num_tcs(void);
 
 /* Reloc */
 const void* __oe_get_reloc_base(void);
@@ -36,6 +37,10 @@ uint64_t oe_get_num_pages(void);
 /* Extended enclave initialization data */
 const void* __oe_get_eeid(void);
 #endif
+
+/* Stack */
+size_t oe_get_num_stack_pages(void);
+size_t oe_get_stack_size(void);
 
 OE_EXTERNC_END
 

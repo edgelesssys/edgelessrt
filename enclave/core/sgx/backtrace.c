@@ -25,7 +25,28 @@ const void* _check_address(const void* ptr)
     if (!oe_is_within_enclave(ptr, sizeof(uint64_t)))
         return NULL;
 
-    return ptr;
+    // EDG: We must also check that ptr is not within a guard page of a thread
+    // context. See _add_data_pages() in host/sgx/create.c
+
+    const size_t num_stack_pages = oe_get_num_stack_pages();
+
+    const uintptr_t thread_contexts_start = (uintptr_t)__oe_get_heap_end();
+    const size_t thread_context_size =
+        (1 + num_stack_pages + 1 + 6) * OE_PAGE_SIZE; // see _add_data_pages()
+    const uintptr_t thread_contexts_end =
+        thread_contexts_start + oe_get_num_tcs() * thread_context_size;
+
+    const uintptr_t uptr = (uintptr_t)ptr;
+    if (!(thread_contexts_start <= uptr && uptr < thread_contexts_end))
+        return ptr;
+
+    // ptr is within thread contexts area. Check that it is within stack pages.
+    const size_t page_number =
+        (uptr - thread_contexts_start) % thread_context_size / OE_PAGE_SIZE;
+    if (1 <= page_number && page_number < 1 + num_stack_pages)
+        return ptr;
+
+    return NULL;
 }
 
 /* Safe implementation of backtrace.

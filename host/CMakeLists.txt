@@ -267,6 +267,7 @@ if (OE_SGX)
     sgx/load.c
     sgx/loadelf.c
     sgx/ocalls.c
+    sgx/ocall_tracer.cpp
     sgx/quote.c
     sgx/registers.c
     sgx/report.c
