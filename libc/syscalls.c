@@ -27,7 +27,6 @@ static oe_spinlock_t _lock;
 
 static const uint64_t _SEC_TO_MSEC = 1000UL;
 static const uint64_t _MSEC_TO_USEC = 1000UL;
-static const uint64_t _MSEC_TO_NSEC = 1000000UL;
 
 static long _syscall_mmap(long n, ...)
 {
@@ -38,38 +37,8 @@ static long _syscall_mmap(long n, ...)
 
 static long _syscall_clock_gettime(long n, long x1, long x2)
 {
-    clockid_t clk_id = (clockid_t)x1;
-    struct timespec* tp = (struct timespec*)x2;
-    int ret = -1;
-    uint64_t msec;
-
     OE_UNUSED(n);
-
-    if (!tp)
-        goto done;
-
-    // EDG: injected code to support CLOCK_MONOTONIC
-    if (clk_id == CLOCK_MONOTONIC)
-        return oe_clock_gettime(clk_id, (struct oe_timespec*)tp);
-
-    if (clk_id != CLOCK_REALTIME)
-    {
-        /* Only supporting CLOCK_REALTIME */
-        oe_assert("clock_gettime(): panic" == NULL);
-        goto done;
-    }
-
-    if ((msec = oe_get_time()) == (uint64_t)-1)
-        goto done;
-
-    tp->tv_sec = msec / _SEC_TO_MSEC;
-    tp->tv_nsec = (msec % _SEC_TO_MSEC) * _MSEC_TO_NSEC;
-
-    ret = 0;
-
-done:
-
-    return ret;
+    return oe_clock_gettime((clockid_t)x1, (struct oe_timespec*)x2);
 }
 
 static long _syscall_gettimeofday(long n, long x1, long x2)

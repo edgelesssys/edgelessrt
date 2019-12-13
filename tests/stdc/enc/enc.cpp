@@ -214,7 +214,7 @@ static void _test_time_functions(void)
         OE_TEST(clock_gettime(CLOCK_MONOTONIC, &ts2) == 0);
         OE_TEST(
             ts1.tv_sec < ts2.tv_sec ||
-            (ts1.tv_sec == ts2.tv_sec && ts1.tv_nsec < ts2.tv_nsec));
+            (ts1.tv_sec == ts2.tv_sec && ts1.tv_nsec <= ts2.tv_nsec));
     }
 
     /* Test nanosleep() */
