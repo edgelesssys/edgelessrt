@@ -13,6 +13,7 @@ add_custom_command(
 add_enclave(
   TARGET
   stdc_enc
+  CXX
   UUID
   9a30506a-87f6-4214-a007-f15b11c98f8b
   SOURCES

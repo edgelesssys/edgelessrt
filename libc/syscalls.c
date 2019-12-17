@@ -8,6 +8,7 @@
 #include <openenclave/corelibc/errno.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/calls.h>
+#include <openenclave/internal/random.h>
 #include <openenclave/internal/syscall.h>
 #include <openenclave/internal/syscall/sys/stat.h>
 #include <openenclave/internal/syscall/sys/syscall.h>
@@ -69,6 +70,18 @@ static long _syscall_gettimeofday(long n, long x1, long x2)
 
 done:
     return ret;
+}
+
+static ssize_t _syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
+{
+    oe_assert(buf);
+    oe_assert(buflen <= OE_SSIZE_MAX);
+    OE_UNUSED(flags);
+
+    if (oe_random_internal(buf, buflen) != OE_OK)
+        return -1;
+
+    return buflen;
 }
 
 static void _stat_to_oe_stat(struct stat* stat, struct oe_stat_t* oe_stat)
@@ -190,6 +203,8 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return _syscall_clock_gettime(n, x1, x2);
         case SYS_mmap:
             return _syscall_mmap(n, x1, x2, x3, x4, x5, x6);
+        case SYS_getrandom:
+            return _syscall_getrandom((void*)x1, x2, x3);
         case SYS_madvise:
             return 0; // noop, return success
         case SYS_sched_yield:

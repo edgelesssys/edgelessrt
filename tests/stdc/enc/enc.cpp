@@ -20,11 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/random.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 #include <wchar.h>
 #include <wctype.h>
+#include <algorithm>
+#include <array>
 #include "stdc_t.h"
 
 /* ATTN: implement these! */
@@ -34,6 +37,8 @@
 #include <math.h>
 #include <time.h>
 #endif
+
+using namespace std;
 
 void Test_strtol()
 {
@@ -149,6 +154,34 @@ void Test_atox()
     OE_TEST(atol("100") == 100L);
     OE_TEST(atoll("100") == 100LL);
     OE_TEST(atof("1.0") == 1.0);
+}
+
+static void Test_getrandom()
+{
+    for (const int flags :
+         {0, GRND_NONBLOCK, GRND_RANDOM, GRND_NONBLOCK | GRND_RANDOM})
+    {
+        array<uint8_t, 32> buf;
+        for (size_t len = 0; len < buf.size(); ++len)
+        {
+            buf.fill(0);
+
+            do
+            {
+                OE_TEST(
+                    getrandom(
+                        buf.data(), len, static_cast<unsigned int>(flags)) ==
+                    static_cast<ssize_t>(len));
+
+                // Test that not more than len bytes were written.
+                OE_TEST(all_of(buf.cbegin() + len, buf.cend(), [](uint8_t x) {
+                    return !x;
+                }));
+
+                // Test that last byte will eventually become nonzero.
+            } while (len && !buf[len - 1]);
+        }
+    }
 }
 
 static bool _called_allocation_failure_callback;
@@ -276,6 +309,7 @@ int test(char buf1[BUFSIZE], char buf2[BUFSIZE])
     Test_div();
 #endif
     Test_atox();
+    Test_getrandom();
 
     _test_time_functions();
 
