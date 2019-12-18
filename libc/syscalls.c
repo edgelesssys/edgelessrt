@@ -190,6 +190,11 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return _syscall_clock_gettime(n, x1, x2);
         case SYS_mmap:
             return _syscall_mmap(n, x1, x2, x3, x4, x5, x6);
+        case SYS_madvise:
+            return 0; // noop, return success
+        case SYS_sched_yield:
+            __builtin_ia32_pause();
+            return 0;
         default:
             /* Drop through and let the code below handle the syscall. */
             break;
