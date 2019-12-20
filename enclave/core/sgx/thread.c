@@ -1136,3 +1136,75 @@ void oe_thread_destruct_specific(void)
         oe_spin_unlock(&_lock);
     }
 }
+
+// We must pack the struct such that it fits into oe_sem_t which in turn has the
+// size of the unused fields of sem_t (see libc/sem.c). The pointer passed to
+// oe_sem_wait/wake is aligned such that queue is pointer-aligned.
+#pragma pack(push, 1)
+typedef struct
+{
+    oe_spinlock_t lock;
+    Queue queue;
+} oe_sem_impl_t;
+#pragma pack(pop)
+OE_STATIC_ASSERT(sizeof(oe_sem_impl_t) <= sizeof(oe_sem_t));
+
+oe_result_t oe_sem_wait(
+    oe_sem_t* sem,
+    const volatile int* val,
+    const struct oe_timespec* abstime)
+{
+    oe_assert(sem);
+    oe_assert(val);
+    oe_sem_impl_t* const s = (oe_sem_impl_t*)sem;
+    oe_sgx_td_t* const self = oe_sgx_get_td();
+    oe_result_t result = OE_OK;
+
+    oe_spin_lock(&s->lock);
+
+    // Verify that the semaphore still contains the value -1. If not, it has
+    // already been unlocked.
+    if (__atomic_load_n(val, __ATOMIC_SEQ_CST) != -1)
+        goto done;
+
+    /* Add the self thread to the end of the wait queue */
+    _queue_push_back(&s->queue, self);
+
+    for (;;)
+    {
+        oe_spin_unlock(&s->lock);
+        const int res =
+            abstime ? _thread_timedwait(self, abstime) : _thread_wait(self);
+        oe_spin_lock(&s->lock);
+
+        if (res == OE_ETIMEDOUT)
+        {
+            result = OE_TIMEDOUT;
+            _queue_remove(&s->queue, self);
+            break;
+        }
+
+        /* If self is no longer in the queue, then it was selected */
+        if (!_queue_contains(&s->queue, self))
+            break;
+    }
+
+done:
+    oe_spin_unlock(&s->lock);
+
+    return result;
+}
+
+void oe_sem_wake(oe_sem_t* sem)
+{
+    oe_assert(sem);
+    oe_sem_impl_t* const s = (oe_sem_impl_t*)sem;
+    oe_assert((uintptr_t)&s->queue % sizeof(void*) == 0); // check alignment
+
+    oe_spin_lock(&s->lock);
+    oe_sgx_td_t* const waiter = _queue_pop_front(&s->queue);
+    oe_spin_unlock(&s->lock);
+
+    if (waiter)
+        _thread_wake(waiter);
+}

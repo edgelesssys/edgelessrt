@@ -686,6 +686,17 @@ oe_result_t oe_thread_setspecific(oe_thread_key_t key, const void* value);
  */
 void* oe_thread_getspecific(oe_thread_key_t key);
 
+// helpers for libc/sem.c
+typedef struct
+{
+    int _val[5];
+} oe_sem_t;
+oe_result_t oe_sem_wait(
+    oe_sem_t* sem,
+    const volatile int* val,
+    const struct oe_timespec* abstime);
+void oe_sem_wake(oe_sem_t* sem);
+
 OE_EXTERNC_END
 
 #endif // OE_BUILD_ENCLAVE

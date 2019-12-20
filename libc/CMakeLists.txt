@@ -72,6 +72,7 @@ add_enclave_library(
   malloc.c
   pthread.c
   sched_yield.c
+  sem.c
   sigaction.c
   signal.c
   stdlib.c
@@ -748,6 +749,10 @@ add_enclave_library(
   ${MUSLSRC}/temp/mktemp.c
   ${MUSLSRC}/temp/__randname.c
   ${MUSLSRC}/thread/__lock.c
+  ${MUSLSRC}/thread/sem_destroy.c
+  ${MUSLSRC}/thread/sem_getvalue.c
+  ${MUSLSRC}/thread/sem_trywait.c
+  ${MUSLSRC}/thread/sem_wait.c
   ${MUSLSRC}/thread/__wait.c
   ${MUSLSRC}/time/clock_gettime.c
   ${MUSLSRC}/time/gettimeofday.c
