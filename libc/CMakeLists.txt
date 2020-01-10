@@ -59,6 +59,7 @@ add_enclave_library(
   atexit.c
   backtrace.c
   dladdr.c
+  dynlink.c
   errno.c
   epoll.c
   exit.c
