@@ -100,7 +100,10 @@ void* oe_mmap(
     }
 
     // check for unsupported args
-    if ((prot & ~(OE_PROT_READ | OE_PROT_WRITE)) || fd != -1 || offset)
+    // Accept PROT_EXEC even though the memory is not executable. Python ctypes
+    // will allocate such memory, but not necessarily make use of it.
+    if ((prot & ~(OE_PROT_READ | OE_PROT_WRITE | OE_PROT_EXEC)) || fd != -1 ||
+        offset)
     {
         oe_errno = OE_ENOSYS;
         return OE_MAP_FAILED;

@@ -13,6 +13,7 @@
 
 #define OE_PROT_READ 1
 #define OE_PROT_WRITE 2
+#define OE_PROT_EXEC 4
 
 OE_EXTERNC_BEGIN
 
@@ -35,6 +36,7 @@ int oe_munmap(void* addr, size_t length);
 
 #define PROT_READ OE_PROT_READ
 #define PROT_WRITE OE_PROT_WRITE
+#define PROT_EXEC OE_PROT_EXEC
 
 void* mmap(
     void* addr,
