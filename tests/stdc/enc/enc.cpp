@@ -184,6 +184,11 @@ static void Test_getrandom()
     }
 }
 
+static void Test_sysconf()
+{
+    OE_TEST(sysconf(_SC_PAGESIZE) == OE_PAGE_SIZE);
+}
+
 static bool _called_allocation_failure_callback;
 
 static void _allocation_failure_callback(
@@ -310,6 +315,7 @@ int test(char buf1[BUFSIZE], char buf2[BUFSIZE])
 #endif
     Test_atox();
     Test_getrandom();
+    Test_sysconf();
 
     _test_time_functions();
 
