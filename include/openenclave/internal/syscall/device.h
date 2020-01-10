@@ -31,6 +31,9 @@ enum
 
     /* The host epoll device. */
     OE_DEVID_HOST_EPOLL,
+
+    /* Base id for custom devices. Must be last. */
+    OE_DEVID_CUSTOM,
 };
 
 /* Device names. */
@@ -150,6 +153,9 @@ oe_device_t* oe_device_table_find(const char* name, oe_device_type_t type);
 
 /* Remove the given device from the table and call its release() method. */
 int oe_device_table_remove(uint64_t devid);
+
+/* Get a unique id for a custom device. */
+uint64_t oe_device_table_get_custom_devid(void);
 
 /**
  * Associate a device id with the current thread.

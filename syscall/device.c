@@ -270,6 +270,12 @@ done:
     return ret;
 }
 
+uint64_t oe_device_table_get_custom_devid(void)
+{
+    static uint64_t id;
+    return OE_DEVID_CUSTOM + __atomic_fetch_add(&id, 1, __ATOMIC_SEQ_CST);
+}
+
 /*
 **==============================================================================
 **

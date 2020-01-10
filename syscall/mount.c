@@ -160,6 +160,9 @@ int oe_mount(
     if (!device)
         OE_RAISE_ERRNO_MSG(OE_ENODEV, "filesystemtype=%s", filesystemtype);
 
+// EDG: disabled because we want to be able to mount anywhere without simulating
+// a complete root fs.
+#if 0
     /* Be sure the full_target directory exists (if not root). */
     if (oe_strcmp(target, "/") != 0)
     {
@@ -177,6 +180,7 @@ int oe_mount(
         if (!OE_S_ISDIR(buf.st_mode))
             OE_RAISE_ERRNO(OE_ENOTDIR);
     }
+#endif
 
     /* Lock the mount table. */
     oe_spin_lock(&_lock);
