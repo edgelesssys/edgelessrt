@@ -76,6 +76,7 @@ add_enclave_library(
   sem.c
   sigaction.c
   signal.c
+  stdio.c
   stdlib.c
   strerror.c
   stubs.c
