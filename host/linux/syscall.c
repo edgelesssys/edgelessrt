@@ -1215,11 +1215,15 @@ int oe_syscall_poll_ocall(
 
     errno = 0;
 
+// EDG: poll with nfds=0 can be used as sleep. (Python uses it this way and it
+// is also documented in the manpage.)
+#if 0
     if (nfds == 0)
     {
         errno = EINVAL;
         goto done;
     }
+#endif
 
     if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
     {

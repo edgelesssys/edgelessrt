@@ -16,7 +16,9 @@ int oe_poll(struct oe_pollfd* fds, oe_nfds_t nfds, int timeout)
     struct oe_host_pollfd* host_fds = NULL;
     oe_nfds_t i;
 
-    if (!fds || nfds == 0)
+    // EDG: poll with nfds=0 can be used as sleep. (Python uses it this way and
+    // it is also documented in the manpage.)
+    if (!fds) // || nfds == 0)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
