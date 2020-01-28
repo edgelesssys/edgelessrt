@@ -149,6 +149,7 @@ add_enclave_library(
   ../../common/safecrt.c
   ../../common/argv.c
   ../../common/bitset.c
+  ../../common/ringbuffer.c
   ${MUSL_SRC_DIR}/prng/rand.c
   ${MUSL_SRC_DIR}/string/memcmp.c
   ${MUSL_SRC_DIR}/string/memcpy.c
