@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <sys/signal.h>
@@ -1433,4 +1434,17 @@ int oe_syscall_nanosleep_ocall(struct oe_timespec* req, struct oe_timespec* rem)
     errno = 0;
 
     return nanosleep((struct timespec*)req, (struct timespec*)rem);
+}
+
+/*
+**==============================================================================
+**
+** misc
+**
+**==============================================================================
+*/
+
+oe_host_fd_t oe_syscall_eventfd_ocall(unsigned int initval, int flags)
+{
+    return eventfd(initval, flags);
 }

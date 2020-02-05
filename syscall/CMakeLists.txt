@@ -43,6 +43,7 @@ list(
   consolefs.c
   device.c
   dirent.c
+  eventfd.c
   ioctl.c
   fcntl.c
   fdtable.c

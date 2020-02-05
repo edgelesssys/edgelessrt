@@ -288,6 +288,23 @@ done:
     return ret;
 }
 
+int oe_close_hostfd(oe_host_fd_t fd)
+{
+    int ret = -1;
+    int retval = -1;
+
+    if (oe_syscall_close_ocall(&retval, fd) != OE_OK)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    if (retval == -1)
+        OE_RAISE_ERRNO(oe_errno);
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 int oe_dup(int oldfd)
 {
     int ret = -1;

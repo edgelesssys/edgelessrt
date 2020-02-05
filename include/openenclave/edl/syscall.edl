@@ -31,6 +31,13 @@ enclave {
     from "openenclave/edl/unistd.edl" import *;
     from "openenclave/edl/utsname.edl" import *;
 
+    untrusted {
+        oe_host_fd_t oe_syscall_eventfd_ocall(
+            unsigned int initval,
+            int flags)
+            propagate_errno;
+    };
+
     trusted {
         public void oe_syscall_stub_ecall();
     };

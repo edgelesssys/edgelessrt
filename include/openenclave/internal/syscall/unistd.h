@@ -9,6 +9,7 @@
 #include <openenclave/bits/types.h>
 #include <openenclave/corelibc/bits/types.h>
 #include <openenclave/corelibc/stdarg.h>
+#include <openenclave/internal/syscall/types.h>
 #include <openenclave/internal/syscall/unistd.h>
 
 OE_EXTERNC_BEGIN
@@ -71,6 +72,8 @@ char* oe_getcwd(char* buf, size_t size);
 int oe_chdir(const char* path);
 
 int oe_close(int fd);
+
+int oe_close_hostfd(oe_host_fd_t fd);
 
 int oe_gethostname(char* name, size_t len);
 
