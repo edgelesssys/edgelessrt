@@ -70,3 +70,9 @@ size_t oe_ringbuffer_write(oe_ringbuffer_t* rb, const void* buffer, size_t size)
     const size_t n2 = _write(rb, (uint8_t*)buffer + n1, size - n1);
     return n1 + n2;
 }
+
+bool oe_ringbuffer_empty(const oe_ringbuffer_t* rb)
+{
+    oe_assert(rb);
+    return rb->_front == rb->_back && !rb->_full;
+}

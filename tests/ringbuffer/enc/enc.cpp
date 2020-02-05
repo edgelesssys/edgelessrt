@@ -15,10 +15,13 @@ void test_ecall()
 
     const auto rb = oe_ringbuffer_alloc(8);
     OE_TEST(rb);
+    OE_TEST(oe_ringbuffer_empty(rb));
 
     OE_TEST(oe_ringbuffer_read(rb, buf.data(), 1) == 0);
     OE_TEST(oe_ringbuffer_write(rb, "a", 1) == 1);
+    OE_TEST(!oe_ringbuffer_empty(rb));
     OE_TEST(oe_ringbuffer_read(rb, buf.data(), 2) == 1);
+    OE_TEST(oe_ringbuffer_empty(rb));
     OE_TEST(buf[0] == 'a');
     OE_TEST(oe_ringbuffer_read(rb, buf.data(), 1) == 0);
     OE_TEST(oe_ringbuffer_write(rb, "bc", 2) == 2);

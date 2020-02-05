@@ -23,5 +23,6 @@ size_t oe_ringbuffer_write(
     oe_ringbuffer_t* rb,
     const void* buffer,
     size_t size);
+bool oe_ringbuffer_empty(const oe_ringbuffer_t* rb);
 
 OE_EXTERNC_END
