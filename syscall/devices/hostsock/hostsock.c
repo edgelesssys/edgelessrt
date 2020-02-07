@@ -20,6 +20,7 @@
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
+#include "sock.h"
 #include "syscall_t.h"
 
 #define DEVICE_MAGIC 0x536f636b
@@ -34,14 +35,7 @@ typedef struct _device
     oe_host_fd_t host_fd;
 } device_t;
 
-typedef struct _sock
-{
-    oe_fd_t base;
-    uint32_t magic;
-    oe_host_fd_t host_fd;
-} sock_t;
-
-static sock_t* _new_sock(void)
+sock_t* oe_hostsock_new_sock(void)
 {
     sock_t* sock = NULL;
 
@@ -97,8 +91,10 @@ static oe_fd_t* _hostsock_device_socket(
     if (!sock)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (!(new_sock = _new_sock()))
+    if (!(new_sock = oe_hostsock_new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
+
+    // TODO Do not create host socket here, but in bind or connect.
 
     /* Call the host. */
     {
@@ -142,10 +138,10 @@ static ssize_t _hostsock_device_socketpair(
 
     /* Create the new socket devices. */
     {
-        if (!(pair[0] = _new_sock()))
+        if (!(pair[0] = oe_hostsock_new_sock()))
             OE_RAISE_ERRNO(OE_ENOMEM);
 
-        if (!(pair[1] = _new_sock()))
+        if (!(pair[1] = oe_hostsock_new_sock()))
             OE_RAISE_ERRNO(OE_ENOMEM);
     }
 
@@ -210,6 +206,13 @@ static int _hostsock_connect(
     if (oe_memcpy_s(&buf, sizeof(buf), addr, addrlen) != OE_OK)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    // EDG: try internal first
+    const oe_result_t internal = oe_internalsock_connect(sock, addr);
+    if (internal == OE_OK)
+        return 0;
+    if (internal != OE_NOT_FOUND)
+        OE_RAISE_ERRNO(oe_errno);
+
     /* Call host. */
     if (oe_syscall_connect_ocall(&ret, sock->host_fd, &buf.addr, addrlen) !=
         OE_OK)
@@ -253,7 +256,7 @@ static oe_fd_t* _hostsock_accept(
     }
 
     /* Create the new socket. */
-    if (!(new_sock = _new_sock()))
+    if (!(new_sock = oe_hostsock_new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     /* Call the host. */
@@ -311,6 +314,13 @@ static int _hostsock_bind(
 
     if (oe_memcpy_s(&buf, sizeof(buf), addr, addrlen) != OE_OK)
         OE_RAISE_ERRNO(OE_EINVAL);
+
+    // EDG: try internal first
+    const oe_result_t internal = oe_internalsock_bind(sock, addr);
+    if (internal == OE_OK)
+        return 0;
+    if (internal != OE_NOT_FOUND)
+        OE_RAISE_ERRNO(oe_errno);
 
     /* Call the host. */
     if (oe_syscall_bind_ocall(&ret, sock->host_fd, &buf.addr, addrlen) != OE_OK)
@@ -648,7 +658,7 @@ static int _hostsock_dup(oe_fd_t* sock_, oe_fd_t** new_sock_out)
     if (!sock || !new_sock_out)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (!(new_sock = _new_sock()))
+    if (!(new_sock = oe_hostsock_new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     /* Call the host. */

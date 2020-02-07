@@ -32,7 +32,7 @@ void* enclave_server_thread(void* arg)
     r = oe_create_socket_test_enclave(arg, type, flags, NULL, 0, &enclave);
     OE_TEST(r == OE_OK);
 
-    OE_TEST(ecall_run_server(enclave, &retval) == OE_OK);
+    OE_TEST(ecall_run_server(enclave, &retval, INADDR_LOOPBACK) == OE_OK);
 
     return NULL;
 }
@@ -181,7 +181,8 @@ static void _run_host_server_test(const char* path)
 
     test_data_len = 1024;
     OE_TEST(
-        ecall_run_client(enclave, &ret, test_data_rtn, &test_data_len) ==
+        ecall_run_client(
+            enclave, &ret, INADDR_LOOPBACK, test_data_rtn, &test_data_len) ==
         OE_OK);
 
     printf("host received: %.*s\n", (int)test_data_len, test_data_rtn);
@@ -197,7 +198,7 @@ static void _run_enclave_server_test(const char* path)
 {
     static char TESTDATA[] = "This is TEST DATA\n";
     thread_t thread;
-    const in_port_t PORT = 1493;
+    const in_port_t PORT = 1492;
 
     // enclave server to host client
     OE_TEST(thread_create(&thread, enclave_server_thread, (void*)path) == 0);
@@ -217,6 +218,49 @@ static void _run_enclave_server_test(const char* path)
     printf("=== passed %s\n", __FUNCTION__);
 }
 
+static const uint32_t _internal_ipaddr = 0xFF000001;
+
+static void* internal_server_thread(void* arg)
+{
+    int retval;
+    OE_TEST(ecall_run_server(arg, &retval, _internal_ipaddr) == OE_OK);
+    return NULL;
+}
+
+static void _run_internal_server_test(const char* path)
+{
+    oe_enclave_t* enclave = NULL;
+    OE_TEST(
+        oe_create_socket_test_enclave(
+            path,
+            OE_ENCLAVE_TYPE_SGX,
+            oe_get_create_flags(),
+            NULL,
+            0,
+            &enclave) == OE_OK);
+
+    thread_t thread;
+    OE_TEST(thread_create(&thread, internal_server_thread, enclave) == 0);
+
+    // Give the server time to launch
+    sleep_msec(250);
+
+    int ret = 0;
+    char test_data_rtn[1024] = {0};
+    ssize_t test_data_len = 1024;
+    OE_TEST(
+        ecall_run_client(
+            enclave, &ret, _internal_ipaddr, test_data_rtn, &test_data_len) ==
+        OE_OK);
+
+    OE_TEST(ret == OE_OK);
+    printf("host received: %.*s\n", (int)test_data_len, test_data_rtn);
+
+    thread_join(thread);
+    OE_TEST(oe_terminate_enclave(enclave) == OE_OK);
+    printf("=== passed %s\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -232,6 +276,7 @@ int main(int argc, const char* argv[])
 
     _run_host_server_test(argv[1]);
     _run_enclave_server_test(argv[1]);
+    _run_internal_server_test(argv[1]);
 
     sock_cleanup();
 

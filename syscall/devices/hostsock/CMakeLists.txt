@@ -1,7 +1,7 @@
 # Copyright (c) Open Enclave SDK contributors.
 # Licensed under the MIT License.
 
-add_enclave_library(oehostsock STATIC hostsock.c)
+add_enclave_library(oehostsock STATIC hostsock.c internalsock.c)
 
 maybe_build_using_clangw(oehostsock)
 

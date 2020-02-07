@@ -8,12 +8,12 @@ enclave {
 
     trusted {
         /* define ECALLs here. */
-        public int ecall_run_client([in, out, count=1024]char *buf, [in, out, count=1]ssize_t *buflen);
-        public int ecall_run_server();
+        public int ecall_run_client(uint32_t ipaddr, [in, out, count=1024]char *buf, [in, out, count=1]ssize_t *buflen);
+        public int ecall_run_server(uint32_t ipaddr);
     };
 
     untrusted {
         /* define OCALLs here. */
-    
+
     };
 };

@@ -39,7 +39,7 @@ static void _initialize()
 /* This client connects to an echo server, sends a text message,
  * and outputs the text reply.
  */
-int ecall_run_client(char* recv_buff, ssize_t* recv_buff_len)
+int ecall_run_client(uint32_t ipaddr, char* recv_buff, ssize_t* recv_buff_len)
 {
     _initialize();
     int sockfd = 0;
@@ -55,7 +55,7 @@ int ecall_run_client(char* recv_buff, ssize_t* recv_buff_len)
         return OE_FAILURE;
     }
     serv_addr.sin_family = OE_AF_INET;
-    serv_addr.sin_addr.s_addr = oe_htonl(OE_INADDR_LOOPBACK);
+    serv_addr.sin_addr.s_addr = oe_htonl(ipaddr);
     serv_addr.sin_port = oe_htons(1492);
 
     printf("socket fd = %d\n", sockfd);
@@ -85,7 +85,8 @@ int ecall_run_client(char* recv_buff, ssize_t* recv_buff_len)
         oe_getpeername(
             sockfd, (struct oe_sockaddr*)&peer_addr, &peer_addr_len) == 0);
     OE_TEST(peer_addr_len == sizeof(serv_addr));
-    OE_TEST(memcmp(&serv_addr, &peer_addr, peer_addr_len) == 0);
+    // OE_TEST(memcmp(&serv_addr, &peer_addr, peer_addr_len) == 0);
+    OE_TEST(serv_addr.sin_addr.s_addr == peer_addr.sin_addr.s_addr);
 
     int sockdup = oe_dup(sockfd);
 
@@ -117,7 +118,7 @@ int ecall_run_client(char* recv_buff, ssize_t* recv_buff_len)
 /* This server acts as an echo server.  It accepts a connection,
  * receives messages, and echoes them back.
  */
-int ecall_run_server()
+int ecall_run_server(uint32_t ipaddr)
 {
     _initialize();
     int status = OE_FAILURE;
@@ -136,8 +137,8 @@ int ecall_run_server()
     }
 
     serv_addr.sin_family = OE_AF_INET;
-    serv_addr.sin_addr.s_addr = oe_htonl(OE_INADDR_LOOPBACK);
-    serv_addr.sin_port = oe_htons(1493);
+    serv_addr.sin_addr.s_addr = oe_htonl(ipaddr);
+    serv_addr.sin_port = oe_htons(1492);
 
     printf("enclave: binding\n");
     rtn = oe_bind(listenfd, (struct oe_sockaddr*)&serv_addr, sizeof(serv_addr));
@@ -172,7 +173,7 @@ int ecall_run_server()
         OE_TEST(peer_addr_len == sizeof(peer_addr));
         OE_TEST(peer_addr.sin_family == OE_AF_INET);
         OE_TEST(oe_ntohs(peer_addr.sin_port) >= 1024);
-        OE_TEST(oe_ntohl(peer_addr.sin_addr.s_addr) == OE_INADDR_LOOPBACK);
+        OE_TEST(oe_ntohl(peer_addr.sin_addr.s_addr) == ipaddr);
 
         if (connfd >= 0)
         {
@@ -225,4 +226,4 @@ OE_SET_ENCLAVE_SGX(
     true, /* Debug */
     256,  /* NumHeapPages */
     256,  /* NumStackPages */
-    1);   /* NumTCS */
+    2);   /* NumTCS */
