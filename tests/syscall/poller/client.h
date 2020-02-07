@@ -6,6 +6,6 @@
 
 #include <stdint.h>
 
-void run_client(uint16_t port);
+void run_client(uint32_t ipaddr, uint16_t port);
 
 #endif /* _OE_TESTS_LIBCSOCKETS_CLIENT_H */

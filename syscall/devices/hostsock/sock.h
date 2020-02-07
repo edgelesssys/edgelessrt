@@ -17,6 +17,12 @@ typedef struct _internalsock_buffer
     oe_ringbuffer_t* buf;
     oe_mutex_t mutex;
     oe_cond_t cond;
+
+    // This array contains either client or server or bound sockets, but not
+    // mixed types. Usually it contains only one socket, but there may be
+    // dup()ed sockets. The array size can be increased or made dynamic if we
+    // ever need to support more sockets.
+    struct _sock* socks[2];
 } internalsock_buffer_t;
 
 typedef struct _internalsock_boundsock
@@ -53,6 +59,8 @@ typedef struct _sock
         internalsock_connection_t* connection;
 
         internalsock_connection_side_t side; // client or server
+        int flags;                           // set by fcntl()
+        bool event_notified; // state of the eventfd referred by host_fd
     } internal;
 } sock_t;
 

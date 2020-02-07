@@ -17,7 +17,7 @@
 
 extern "C" void oe_abort();
 
-void run_client(uint16_t port)
+void run_client(uint32_t ipaddr, uint16_t port)
 {
     socket_t sd;
     const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
@@ -37,7 +37,7 @@ void run_client(uint16_t port)
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_addr.s_addr = htonl(ipaddr);
         addr.sin_port = htons(port);
 
         if (connect(sd, (struct sockaddr*)&addr, sizeof(addr)) != 0)

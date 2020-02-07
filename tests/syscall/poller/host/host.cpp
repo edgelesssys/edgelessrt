@@ -22,12 +22,13 @@ static oe_enclave_t* _enclave;
 typedef struct thread_arg
 {
     poller_type_t poller_type;
+    uint32_t ipaddr;
 } server_arg_t;
 
 static void* _run_host_client(void* arg)
 {
     OE_UNUSED(arg);
-    run_client(PORT);
+    run_client(static_cast<thread_arg*>(arg)->ipaddr, PORT);
     return NULL;
 }
 
@@ -35,7 +36,7 @@ static void* _run_host_server(void* arg_)
 {
     server_arg_t* arg = (server_arg_t*)arg_;
 
-    run_server(PORT, NUM_CLIENTS, arg->poller_type);
+    run_server(arg->ipaddr, PORT, NUM_CLIENTS, arg->poller_type);
 
     return NULL;
 }
@@ -44,7 +45,8 @@ static void* _run_enclave_server(void* arg_)
 {
     server_arg_t* arg = (server_arg_t*)arg_;
 
-    run_enclave_server(_enclave, PORT, NUM_CLIENTS, arg->poller_type);
+    run_enclave_server(
+        _enclave, arg->ipaddr, PORT, NUM_CLIENTS, arg->poller_type);
 
     return NULL;
 }
@@ -53,7 +55,7 @@ static void* _run_enclave_client(void* arg)
 {
     OE_UNUSED(arg);
 
-    run_enclave_client(_enclave, PORT);
+    run_enclave_client(_enclave, static_cast<thread_arg*>(arg)->ipaddr, PORT);
 
     return NULL;
 }
@@ -61,11 +63,12 @@ static void* _run_enclave_client(void* arg)
 void run_test(
     void* (*client_proc)(void*),
     void* (*server_proc)(void*),
-    poller_type_t poller_type)
+    poller_type_t poller_type,
+    uint32_t ipaddr = INADDR_LOOPBACK)
 {
     thread_t clients[NUM_CLIENTS];
     thread_t server;
-    server_arg_t arg = {poller_type};
+    thread_arg arg = {poller_type, ipaddr};
 
     if (thread_create(&server, server_proc, &arg) != 0)
     {
@@ -76,7 +79,7 @@ void run_test(
 
     for (size_t i = 0; i < NUM_CLIENTS; i++)
     {
-        if (thread_create(&clients[i], client_proc, NULL) != 0)
+        if (thread_create(&clients[i], client_proc, &arg) != 0)
         {
             OE_TEST("thread_create()" == NULL);
         }
@@ -120,6 +123,14 @@ void test_enclave_to_enclave(poller_type_t poller_type)
     fflush(stdout);
 }
 
+static void test_enclave_to_enclave_internal(poller_type_t poller_type)
+{
+    printf("=== start %s(): %s\n", __FUNCTION__, poller::name(poller_type));
+    run_test(_run_enclave_client, _run_enclave_server, poller_type, 0xFF000001);
+    printf("=== passed %s(): %s\n", __FUNCTION__, poller::name(poller_type));
+    fflush(stdout);
+}
+
 int main(int argc, const char* argv[])
 {
     oe_result_t r;
@@ -154,6 +165,7 @@ int main(int argc, const char* argv[])
     test_enclave_to_host(poller_type);
     test_host_to_enclave(poller_type);
     test_enclave_to_enclave(poller_type);
+    test_enclave_to_enclave_internal(poller_type);
 
     test_fd_set(_enclave);
 

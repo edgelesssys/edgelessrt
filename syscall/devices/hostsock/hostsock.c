@@ -26,6 +26,10 @@
 #define DEVICE_MAGIC 0x536f636b
 #define SOCK_MAGIC 0xe57a696d
 
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK 04000
+#endif
+
 static oe_socket_ops_t _get_socket_ops(void);
 
 typedef struct _device
@@ -110,6 +114,11 @@ static oe_fd_t* _hostsock_device_socket(
     }
 
     ret = &new_sock->base;
+
+    // EDG: remember flag for internal socket
+    if (type & SOCK_NONBLOCK)
+        new_sock->internal.flags = OE_O_NONBLOCK;
+
     new_sock = NULL;
 
 done:

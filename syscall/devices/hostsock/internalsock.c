@@ -5,13 +5,18 @@
 The internal sockets transfer data between each other without leaving the
 enclave. A socket becomes internal by being bound or connected to any port on
 255.0.0.1. These sockets than behave as usal.
+To support waiting on nonblocking sockets, the internal socket will create an
+eventfd if any poller requests its host fd.
 */
 
 #include <openenclave/corelibc/assert.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/internal/syscall/arpa/inet.h>
+#include <openenclave/internal/syscall/eventfd.h>
+#include <openenclave/internal/syscall/fcntl.h>
 #include <openenclave/internal/syscall/raise.h>
+#include <openenclave/internal/syscall/unistd.h>
 #include "sock.h"
 #include "syscall_t.h" // TODO remove
 
@@ -28,12 +33,12 @@ enclave. A socket becomes internal by being bound or connected to any port on
 
 static int _sock_dup(oe_fd_t* sock_, oe_fd_t** new_sock_out);
 STUB(ioctl)
-STUB(fcntl)
+static int _sock_fcntl(oe_fd_t* sock_, int cmd, uint64_t arg);
 static ssize_t _sock_read(oe_fd_t* sock_, void* buf, size_t count);
 static ssize_t _sock_write(oe_fd_t* sock_, const void* buf, size_t count);
 STUBS(readv)
 STUBS(writev)
-STUB_(get_host_fd, oe_host_fd_t, -1)
+static oe_host_fd_t _sock_get_host_fd(oe_fd_t* sock_);
 static int _sock_close(oe_fd_t* sock_);
 static oe_fd_t* _sock_accept(
     oe_fd_t* sock_,
@@ -75,12 +80,12 @@ STUB(connect)
 static oe_socket_ops_t _sock_ops = {
     .fd.dup = _sock_dup,
     .fd.ioctl = _stub_ioctl,
-    .fd.fcntl = _stub_fcntl,
+    .fd.fcntl = _sock_fcntl,
     .fd.read = _sock_read,
     .fd.write = _sock_write,
     .fd.readv = _stub_readv,
     .fd.writev = _stub_writev,
-    .fd.get_host_fd = _stub_get_host_fd,
+    .fd.get_host_fd = _sock_get_host_fd,
     .fd.close = _sock_close,
     .accept = _sock_accept,
     .bind = _stub_bind,
@@ -140,8 +145,48 @@ static internalsock_boundsock_t* _find_bound_socket(uint16_t port)
     return p;
 }
 
-static internalsock_connection_t* _connection_alloc(void)
+// caller must hold buffer->mutex
+// Updates the eventfds of the sockets associated with this buffer so that
+// threads waiting on these sockets wake up if data is available to read.
+static void _update_events(internalsock_buffer_t* buffer, bool force_notify)
 {
+    oe_assert(buffer);
+    const bool needs_notification =
+        force_notify || !oe_ringbuffer_empty(buffer->buf);
+
+    for (size_t i = 0; i < OE_COUNTOF(buffer->socks); ++i)
+    {
+        sock_t* const sock = buffer->socks[i];
+        if (!sock || sock->host_fd < 0)
+            continue;
+
+        bool* const notified = &sock->internal.event_notified;
+
+        if (needs_notification)
+        {
+            // Even if the eventfd is already notified, it must be notified
+            // again because the poller might be edge-triggered (see
+            // http://man7.org/linux/man-pages/man7/epoll.7.html).
+            const int res = oe_host_eventfd_write(sock->host_fd, 1);
+            oe_assert(res == 0);
+            (void)res;
+            *notified = true;
+        }
+        else if (*notified)
+        {
+            oe_eventfd_t value = 0;
+            const int res = oe_host_eventfd_read(sock->host_fd, &value);
+            oe_assert(res == 0 && value > 0);
+            (void)res;
+            *notified = false;
+        }
+    }
+}
+
+static internalsock_connection_t* _connection_alloc(sock_t* sock)
+{
+    oe_assert(sock && sock->internal.side == CONNECTION_CLIENT);
+
     // This is the default write buffer size on Linux.
     // cat /proc/sys/net/ipv4/tcp_wmem
     // Not sure if this is the best value to use here.
@@ -165,6 +210,7 @@ static internalsock_connection_t* _connection_alloc(void)
     }
 
     res->buf[CONNECTION_CLIENT].refcount = 1;
+    res->buf[CONNECTION_CLIENT].socks[0] = sock;
     return res;
 }
 
@@ -177,15 +223,41 @@ static void _connection_free(internalsock_connection_t* connection)
     oe_free(connection);
 }
 
-static void _connection_add(sock_t* sock)
+// Adds the socket to the connection's sockets array so that its eventfd can be
+// notified. sock->internal.connection must already be set.
+static void _connection_add(sock_t* sock, bool increment_refcount)
 {
     oe_assert(sock);
 
     internalsock_connection_t* const connection = sock->internal.connection;
     oe_assert(connection);
 
+    internalsock_buffer_t* const con = &connection->buf[sock->internal.side];
+
+    size_t i = 0;
+
     oe_spin_lock(&connection->lock);
-    ++connection->buf[sock->internal.side].refcount;
+
+    oe_mutex_lock(&con->mutex);
+
+    for (; i < OE_COUNTOF(con->socks); ++i)
+        if (!con->socks[i])
+        {
+            con->socks[i] = sock;
+            break;
+        }
+
+    if (i == OE_COUNTOF(con->socks))
+    {
+        oe_assert("socks full" == NULL);
+        oe_abort();
+    }
+
+    oe_mutex_unlock(&con->mutex);
+
+    if (increment_refcount)
+        ++con->refcount;
+
     oe_spin_unlock(&connection->lock);
 }
 
@@ -206,6 +278,21 @@ static void _connection_remove(sock_t* sock)
     const bool is_other_zero = con.other->refcount == 0;
     oe_spin_unlock(&connection->lock);
 
+    size_t i = 0;
+
+    oe_mutex_lock(&con.self->mutex);
+
+    for (; i < OE_COUNTOF(con.self->socks); ++i)
+        if (con.self->socks[i] == sock)
+        {
+            con.self->socks[i] = NULL;
+            break;
+        }
+
+    oe_mutex_unlock(&con.self->mutex);
+
+    oe_assert(i < OE_COUNTOF(con.self->socks));
+
     if (!is_zero)
         return;
 
@@ -218,6 +305,7 @@ static void _connection_remove(sock_t* sock)
     // notify other side of the connection
     oe_mutex_lock(&con.other->mutex);
     oe_cond_broadcast(&con.other->cond);
+    _update_events(con.other, true);
     oe_mutex_unlock(&con.other->mutex);
 }
 
@@ -302,7 +390,7 @@ oe_result_t oe_internalsock_connect(
     oe_result_t result = OE_FAILURE;
     internalsock_boundsock_t* bound = NULL;
 
-    internalsock_connection_t* con = _connection_alloc();
+    internalsock_connection_t* con = _connection_alloc(sock);
 
     oe_spin_lock(&_lock);
 
@@ -333,6 +421,7 @@ oe_result_t oe_internalsock_connect(
 
     // notify listener that a new connection is available
     oe_cond_signal(&bound->backlog.cond);
+    _update_events(&bound->backlog, false);
 
     result = OE_OK;
 
@@ -362,10 +451,36 @@ static int _sock_dup(oe_fd_t* sock_, oe_fd_t** new_sock_out)
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     *new_sock = *sock;
-    _connection_add(new_sock);
+    new_sock->host_fd = -1;
+    new_sock->internal.event_notified = false;
+    _connection_add(new_sock, true);
     *new_sock_out = (oe_fd_t*)new_sock;
 
     result = 0;
+
+done:
+    return result;
+}
+
+static int _sock_fcntl(oe_fd_t* sock_, int cmd, uint64_t arg)
+{
+    oe_assert(sock_);
+    sock_t* const sock = (sock_t*)sock_;
+
+    int result = -1;
+
+    switch (cmd)
+    {
+        case OE_F_GETFL:
+            result = sock->internal.flags;
+            break;
+        case OE_F_SETFL:
+            sock->internal.flags = (int)arg;
+            result = 0;
+            break;
+        default:
+            OE_RAISE_ERRNO(OE_ENOSYS);
+    }
 
 done:
     return result;
@@ -379,6 +494,23 @@ static ssize_t _sock_read(oe_fd_t* sock_, void* buf, size_t count)
 static ssize_t _sock_write(oe_fd_t* sock_, const void* buf, size_t count)
 {
     return _sock_sendto(sock_, buf, count, 0, NULL, 0);
+}
+
+static oe_host_fd_t _sock_get_host_fd(oe_fd_t* sock_)
+{
+    oe_assert(sock_);
+    sock_t* const sock = (sock_t*)sock_;
+
+    if (sock->host_fd == -1)
+    {
+        sock->host_fd = oe_host_eventfd(0, 0);
+
+        if (sock->internal.connection)
+            _update_events(
+                &sock->internal.connection->buf[sock->internal.side], false);
+    }
+
+    return sock->host_fd;
 }
 
 static void _free_boundsock(internalsock_boundsock_t* bound)
@@ -444,6 +576,14 @@ static int _sock_close(oe_fd_t* sock_)
     _free_boundsock(sock->internal.boundsock);
     _connection_remove(sock);
 
+    // close eventfd
+    if (sock->host_fd >= 0)
+    {
+        const int res = oe_close_hostfd(sock->host_fd);
+        oe_assert(res == 0);
+        (void)res;
+    }
+
     oe_free(sock);
 
     return 0;
@@ -488,10 +628,13 @@ static oe_fd_t* _sock_accept(
 
     oe_assert(bytes_read == sizeof con);
 
+    _update_events(&bound->backlog, false);
+
     oe_mutex_unlock(&bound->backlog.mutex);
 
     oe_assert(con);
     newsock->internal.connection = con;
+    _connection_add(newsock, false);
 
     if (addr)
     {
@@ -534,6 +677,7 @@ static int _sock_listen(oe_fd_t* sock_, int backlog)
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     bound->backlog.buf = rb;
+    bound->backlog.socks[0] = sock;
     result = 0;
 
 done:
@@ -643,19 +787,28 @@ static ssize_t _sock_recvfrom(
 
     sock_t* const sock = (sock_t*)sock_;
     const con_t con = _get_con(sock);
+    const bool block = !(sock->internal.flags & OE_O_NONBLOCK);
 
     oe_mutex_lock(&con.self->mutex);
 
     size_t bytes_read;
     while (!(bytes_read = oe_ringbuffer_read(con.self->buf, buf, count)) &&
-           _get_refcount(sock->internal.connection, con.other))
+           block && _get_refcount(sock->internal.connection, con.other))
         oe_cond_wait(&con.self->cond, &con.self->mutex);
 
-    oe_cond_broadcast(&con.self->cond);
-    oe_mutex_unlock(&con.self->mutex);
+    if (bytes_read)
+    {
+        oe_cond_broadcast(&con.self->cond);
+        _update_events(con.self, false);
+        oe_assert(bytes_read <= OE_SSIZE_MAX);
+        result = (ssize_t)bytes_read;
+    }
+    else if (!block && _get_refcount(sock->internal.connection, con.other))
+        oe_errno = OE_EAGAIN;
+    else
+        result = 0;
 
-    oe_assert(bytes_read <= OE_SSIZE_MAX);
-    result = (ssize_t)bytes_read;
+    oe_mutex_unlock(&con.self->mutex);
 
 done:
     return result;
@@ -697,6 +850,7 @@ static ssize_t _sock_sendto(
         written += oe_ringbuffer_write(
             con.other->buf, (uint8_t*)buf + written, count - written);
         oe_cond_broadcast(&con.other->cond);
+        _update_events(con.other, false);
         if (written == count)
             break;
         oe_cond_wait(&con.other->cond, &con.other->mutex);

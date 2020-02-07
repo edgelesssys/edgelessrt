@@ -8,6 +8,7 @@
 #include "poller.h"
 
 extern "C" void run_server(
+    uint32_t ipaddr,
     uint16_t port,
     size_t num_clients,
     poller_type_t poller_type);

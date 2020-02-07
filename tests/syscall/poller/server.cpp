@@ -19,7 +19,7 @@
 
 extern "C" void oe_abort();
 
-socket_t create_listener_socket(uint16_t port)
+socket_t create_listener_socket(uint32_t ipaddr, uint16_t port)
 {
     socket_t ret = INVALID_SOCKET;
     socket_t sock = INVALID_SOCKET;
@@ -36,7 +36,7 @@ socket_t create_listener_socket(uint16_t port)
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_addr.s_addr = htonl(ipaddr);
     addr.sin_port = htons(port);
 
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0)
@@ -75,6 +75,7 @@ client_t* find_client(std::vector<client_t>& clients, socket_t sock)
 }
 
 extern "C" void run_server(
+    uint32_t ipaddr,
     uint16_t port,
     size_t num_clients,
     poller_type_t poller_type)
@@ -89,7 +90,7 @@ extern "C" void run_server(
 
     sock_startup();
 
-    if ((listener = create_listener_socket(port)) == INVALID_SOCKET)
+    if ((listener = create_listener_socket(ipaddr, port)) == INVALID_SOCKET)
     {
         OE_TEST("create_listener_socket() failed" == NULL);
     }

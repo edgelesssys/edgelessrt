@@ -9,11 +9,13 @@ enclave {
     trusted {
 
         public void run_enclave_server(
+            uint32_t ipaddr,
             uint16_t port,
             size_t num_clients,
             uint32_t poller_type);
 
         public void run_enclave_client(
+            uint32_t ipaddr,
             uint16_t port);
 
         public void test_fd_set();
