@@ -22,7 +22,7 @@ build:
 		--search-path $(INCDIR)/openenclave/edl/sgx
 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -std=c++11 ecalls.cpp server.cpp identity_verifier.cpp cert_verifier.cpp ../../common/utility.cpp
 	$(CC) -c $(CFLAGS) $(CINCLUDES) tls_server_t.c
-	$(CXX) -o tls_server_enc ecalls.o server.o cert_verifier.o identity_verifier.o utility.o tls_server_t.o $(LDFLAGS) -lmbedtls -lmbedcrypto -loehostsock -loehostresolver -loecore -loelibc -loesyscall
+	$(CXX) -o tls_server_enc ecalls.o server.o cert_verifier.o identity_verifier.o utility.o tls_server_t.o -lmbedtls -loehostsock -loehostresolver $(LDFLAGS)
 
 sign:
 	oesign sign -e tls_server_enc -c enc.conf -k private.pem

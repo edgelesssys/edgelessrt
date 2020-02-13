@@ -194,6 +194,26 @@ int ecall_getaddrinfo(struct oe_addrinfo** res)
     return 0;
 }
 
+void ecall_getaddrinfo_internally(void)
+{
+    struct oe_addrinfo* ai = NULL;
+
+    OE_TEST(oe_getaddrinfo("2.3.4.5", "1111", NULL, &ai) == 0);
+    OE_TEST(ai && ai->ai_addr);
+    OE_TEST(ai->ai_addr->sa_family == AF_INET);
+    const struct oe_sockaddr_in* const ad = (struct oe_sockaddr_in*)ai->ai_addr;
+    OE_TEST(ntohl(ad->sin_addr.s_addr) == 0x02030405);
+    OE_TEST(ntohs(ad->sin_port) == 1111);
+    oe_freeaddrinfo(ai);
+
+    // IP addresses should never be resolved by the host.
+    // Named services cannot be resolved internally so the following fails.
+    // (We may implement internal service name resolution if we ever need it.)
+    ai = NULL;
+    OE_TEST(oe_getaddrinfo("2.3.4.5", "telnet", NULL, &ai) == OE_EAI_SERVICE);
+    OE_TEST(!ai);
+}
+
 OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */

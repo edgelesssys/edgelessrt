@@ -66,6 +66,9 @@ int main(int argc, const char* argv[])
 
     OE_TEST(result == OE_OK);
 
+    // test without host resolver loaded
+    OE_TEST(ecall_getaddrinfo_internally(client_enclave) == OE_OK);
+
     OE_TEST(ecall_device_init(client_enclave, &ret) == OE_OK);
 
     OE_TEST(ecall_getaddrinfo(client_enclave, &ret, &addrinfo) == OE_OK);
@@ -123,6 +126,9 @@ int main(int argc, const char* argv[])
                                    // be. Windows returns the node name
         printf("host received: host = %s\n", host);
     }
+
+    // test with host resolver loaded
+    OE_TEST(ecall_getaddrinfo_internally(client_enclave) == OE_OK);
 
     OE_TEST(oe_terminate_enclave(client_enclave) == OE_OK);
 

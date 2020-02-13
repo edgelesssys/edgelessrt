@@ -72,7 +72,7 @@ enclave_include_directories(
   oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
   ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
 
-enclave_link_libraries(oesyscall oecore)
+enclave_link_libraries(oesyscall oecore oelibc)
 enclave_compile_options(oesyscall PRIVATE -ffunction-sections)
 
 if (COMPILE_SYSTEM_EDL)

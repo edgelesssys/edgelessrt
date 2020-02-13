@@ -13,6 +13,8 @@ enclave {
         public int ecall_getaddrinfo(
             [in,out,count=1] struct oe_addrinfo** res);
 
+        public void ecall_getaddrinfo_internally();
+
         public int ecall_getnameinfo(
             [in, out, count=bufflen] char* buffer,
             size_t bufflen);
