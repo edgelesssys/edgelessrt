@@ -447,6 +447,131 @@ done:
     return ret;
 }
 
+// copied from musl/src/getnameinfo.c
+static char* itoa(char* p, unsigned x)
+{
+    p += 3 * sizeof(int);
+    *--p = 0;
+    do
+    {
+        *--p = (char)('0' + x % 10);
+        x /= 10;
+    } while (x);
+    return p;
+}
+
+// copied from musl/src/getnameinfo.c
+static void mkptr4(char* s, const unsigned char* ip)
+{
+    int sprintf();
+    sprintf(s, "%d.%d.%d.%d.in-addr.arpa", ip[3], ip[2], ip[1], ip[0]);
+}
+
+// copied from musl/src/getnameinfo.c
+static void mkptr6(char* s, const unsigned char* ip)
+{
+    static const char xdigits[] = "0123456789abcdef";
+    int i;
+    for (i = 15; i >= 0; i--)
+    {
+        *s++ = xdigits[ip[i] & 15];
+        *s++ = '.';
+        *s++ = xdigits[ip[i] >> 4];
+        *s++ = '.';
+    }
+    char* strcpy(char*, const char*);
+    strcpy(s, "ip6.arpa");
+}
+
+#define IF_NAMESIZE 16
+
+// adapted from musl/src/getnameinfo.c
+// do not try hosts/services file or DNS
+static int _getnameinfo(
+    const struct oe_sockaddr* restrict sa,
+    oe_socklen_t sl,
+    char* restrict node,
+    oe_socklen_t nodelen,
+    char* restrict serv,
+    oe_socklen_t servlen,
+    int flags)
+{
+    char* strcpy(char*, const char*);
+    char* strcat(char*, const char*);
+    const char* inet_ntop(int, const void*, char*, oe_socklen_t);
+    char* if_indextoname(unsigned int, char*);
+
+    const size_t PTR_MAX = 64 + sizeof ".in-addr.arpa";
+
+    char ptr[PTR_MAX];
+    char buf[256], num[3 * sizeof(int) + 1];
+    int af = sa->sa_family;
+    unsigned char* a;
+    unsigned scopeid;
+
+    switch (af)
+    {
+        case OE_AF_INET:
+            a = (void*)&((struct oe_sockaddr_in*)sa)->sin_addr;
+            if (sl < sizeof(struct oe_sockaddr_in))
+                return OE_EAI_FAMILY;
+            mkptr4(ptr, a);
+            scopeid = 0;
+            break;
+        case OE_AF_INET6:
+            a = (void*)&((struct oe_sockaddr_in6*)sa)->sin6_addr;
+            if (sl < sizeof(struct oe_sockaddr_in6))
+                return OE_EAI_FAMILY;
+            if (memcmp(a, "\0\0\0\0\0\0\0\0\0\0\xff\xff", 12))
+                mkptr6(ptr, a);
+            else
+                mkptr4(ptr, a + 12);
+            scopeid = ((struct oe_sockaddr_in6*)sa)->sin6_scope_id;
+            break;
+        default:
+            return OE_EAI_FAMILY;
+    }
+
+    if (node && nodelen)
+    {
+        buf[0] = 0;
+        {
+            if (flags & OE_NI_NAMEREQD)
+                return OE_EAI_NONAME;
+            inet_ntop(af, a, buf, sizeof buf);
+            if (scopeid)
+            {
+                char *p = 0, tmp[IF_NAMESIZE + 1];
+                if (!(flags & OE_NI_NUMERICSCOPE) &&
+                    (OE_IN6_IS_ADDR_LINKLOCAL(a) ||
+                     OE_IN6_IS_ADDR_MC_LINKLOCAL(a)))
+                    p = if_indextoname(scopeid, tmp + 1);
+                if (!p)
+                    p = itoa(num, scopeid);
+                *--p = '%';
+                strcat(buf, p);
+            }
+        }
+        if (oe_strlen(buf) >= nodelen)
+            return OE_EAI_OVERFLOW;
+        strcpy(node, buf);
+    }
+
+    if (serv && servlen)
+    {
+        char* p = buf;
+        int port = oe_ntohs(((struct oe_sockaddr_in*)sa)->sin_port);
+        buf[0] = 0;
+        if (!*p)
+            p = itoa(num, (unsigned)port);
+        if (oe_strlen(p) >= servlen)
+            return OE_EAI_OVERFLOW;
+        strcpy(serv, p);
+    }
+
+    return 0;
+}
+
 int oe_getnameinfo(
     const struct oe_sockaddr* sa,
     oe_socklen_t salen,
@@ -458,6 +583,12 @@ int oe_getnameinfo(
 {
     ssize_t ret = OE_EAI_FAIL;
     bool locked = false;
+
+    // EDG: Try to resolve internally.
+    const int ret_getnameinfo =
+        _getnameinfo(sa, salen, host, hostlen, serv, servlen, flags);
+    if (ret_getnameinfo != OE_EAI_NONAME)
+        return ret_getnameinfo;
 
     oe_spin_lock(&_lock);
     locked = true;

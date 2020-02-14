@@ -68,6 +68,8 @@ int main(int argc, const char* argv[])
 
     // test without host resolver loaded
     OE_TEST(ecall_getaddrinfo_internally(client_enclave) == OE_OK);
+    OE_TEST(
+        ecall_getnameinfo(client_enclave, &ret, host, sizeof(host)) == OE_OK);
 
     OE_TEST(ecall_device_init(client_enclave, &ret) == OE_OK);
 

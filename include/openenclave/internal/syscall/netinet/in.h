@@ -53,6 +53,12 @@ struct oe_in_addr
 #include <openenclave/internal/syscall/netinet/bits/sockaddr_in6.h>
 #undef __OE_SOCKADDR_IN6
 
+#define OE_IN6_IS_ADDR_MULTICAST(a) (((uint8_t*)(a))[0] == 0xff)
+#define OE_IN6_IS_ADDR_LINKLOCAL(a) \
+    ((((uint8_t*)(a))[0]) == 0xfe && (((uint8_t*)(a))[1] & 0xc0) == 0x80)
+#define OE_IN6_IS_ADDR_MC_LINKLOCAL(a) \
+    (OE_IN6_IS_ADDR_MULTICAST(a) && ((((uint8_t*)(a))[1] & 0xf) == 0x2))
+
 OE_EXTERNC_END
 
 #endif /* _OE_SYSCALL_NETINET_IN_H */

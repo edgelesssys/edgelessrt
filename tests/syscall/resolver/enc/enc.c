@@ -18,9 +18,12 @@ size_t oe_debug_malloc_check();
 
 struct addrinfo;
 
+static bool _initialized;
+
 int ecall_device_init()
 {
     OE_TEST(oe_load_module_host_resolver() == OE_OK);
+    _initialized = true;
     return 0;
 }
 
@@ -51,10 +54,34 @@ int ecall_getnameinfo(char* buffer, size_t bufflen)
         0);
 
     OE_TEST(rslt == 0);
-    OE_TEST(strcmp(host, "") != 0);
-    OE_TEST(strcmp(serv, "") != 0);
+    OE_TEST(strcmp(host, "127.0.0.1") == 0);
+    OE_TEST(strcmp(serv, "23") == 0);
 
     strlcpy(buffer, host, bufflen);
+
+    *host = 0;
+    *serv = 0;
+
+    // test with NI_NAMEREQD
+    rslt = oe_getnameinfo(
+        (const struct oe_sockaddr*)&addr,
+        sizeof(addr),
+        host,
+        sizeof(host),
+        serv,
+        sizeof(serv),
+        OE_NI_NAMEREQD);
+
+    if (_initialized)
+    {
+        // expect that it can be resolved by the host
+        OE_TEST(rslt == 0);
+        OE_TEST(*host);
+        OE_TEST(*serv);
+    }
+    else
+        // with NI_NAMEREQD it cannot be resolved internally
+        OE_TEST(rslt == OE_EAI_SYSTEM);
 
     return 0;
 }
