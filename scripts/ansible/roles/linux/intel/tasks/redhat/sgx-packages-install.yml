@@ -44,6 +44,11 @@
     state: latest
   when: flc_enabled|bool
 
+- name: Install Intel SGX launch package
+  yum:
+    name: "{{ intel_sgx_launch_package }}"
+    state: latest
+
 - name: Cleanup installation
   file:
     path: "/tmp/sgx_rpm_local_repo.tgz"
