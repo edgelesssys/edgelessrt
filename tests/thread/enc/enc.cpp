@@ -164,6 +164,14 @@ void enc_signal()
     oe_cond_signal(&cond);
 }
 
+void enc_cond_init_monotonic()
+{
+    oe_condattr_t attr{};
+    oe_condattr_init(&attr);
+    oe_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    oe_cond_init(&cond, &attr);
+}
+
 static unsigned int nthreads = 0;
 
 static oe_mutex_t ex_mutex = OE_MUTEX_INITIALIZER;

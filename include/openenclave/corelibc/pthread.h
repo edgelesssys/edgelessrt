@@ -144,6 +144,9 @@ int oe_pthread_cond_broadcast(oe_pthread_cond_t* cond);
 
 int oe_pthread_cond_destroy(oe_pthread_cond_t* cond);
 
+int oe_pthread_condattr_init(oe_pthread_condattr_t* attr);
+int oe_pthread_condattr_setclock(oe_pthread_condattr_t* attr, int clockid);
+
 int oe_pthread_key_create(
     oe_pthread_key_t* key,
     void (*destructor)(void* value));

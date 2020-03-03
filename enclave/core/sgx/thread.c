@@ -16,6 +16,11 @@
 #include "platform_t.h"
 #include "td.h"
 
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC 1
+#endif
+
 /*
 **==============================================================================
 **
@@ -62,13 +67,14 @@ done:
 
 static int _thread_timedwait(
     oe_sgx_td_t* self,
-    const struct oe_timespec* abstime)
+    const struct oe_timespec* abstime,
+    bool clock_monotonic)
 {
     int ret = -1;
     const uint64_t tcs = (uint64_t)td_to_tcs((oe_sgx_td_t*)self);
 
-    if (oe_sgx_thread_timedwait_ocall(&ret, oe_get_enclave(), tcs, abstime) !=
-        OE_OK)
+    if (oe_sgx_thread_timedwait_ocall(
+            &ret, oe_get_enclave(), tcs, abstime, clock_monotonic) != OE_OK)
         ret = -1;
 
     return ret;
@@ -515,11 +521,13 @@ typedef struct _oe_cond_impl
         oe_sgx_td_t* front;
         oe_sgx_td_t* back;
     } queue;
+
+    bool clock_monotonic;
 } oe_cond_impl_t;
 
 OE_STATIC_ASSERT(sizeof(oe_cond_impl_t) <= sizeof(oe_cond_t));
 
-oe_result_t oe_cond_init(oe_cond_t* condition)
+oe_result_t oe_cond_init(oe_cond_t* condition, const oe_condattr_t* attr)
 {
     oe_cond_impl_t* cond = (oe_cond_impl_t*)condition;
     oe_result_t result = OE_UNEXPECTED;
@@ -529,6 +537,10 @@ oe_result_t oe_cond_init(oe_cond_t* condition)
 
     memset(cond, 0, sizeof(oe_cond_t));
     cond->lock = OE_SPINLOCK_INITIALIZER;
+
+    // EDG: set attributes
+    if (attr && attr->__impl == CLOCK_MONOTONIC)
+        cond->clock_monotonic = true;
 
     result = OE_OK;
 
@@ -644,7 +656,7 @@ oe_result_t oe_cond_timedwait(
                     waiter = NULL;
                 }
 
-                res = _thread_timedwait(self, abstime);
+                res = _thread_timedwait(self, abstime, cond->clock_monotonic);
             }
             oe_spin_lock(&cond->lock);
 
@@ -712,6 +724,22 @@ oe_result_t oe_cond_broadcast(oe_cond_t* condition)
         _thread_wake(p);
     }
 
+    return OE_OK;
+}
+
+oe_result_t oe_condattr_init(oe_condattr_t* attr)
+{
+    if (!attr)
+        return OE_INVALID_PARAMETER;
+    attr->__impl = 0;
+    return OE_OK;
+}
+
+oe_result_t oe_condattr_setclock(oe_condattr_t* attr, int clockid)
+{
+    if (!attr || !(clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC))
+        return OE_INVALID_PARAMETER;
+    attr->__impl = (uint32_t)clockid;
     return OE_OK;
 }
 
@@ -1186,8 +1214,8 @@ oe_result_t oe_sem_wait(
     for (;;)
     {
         oe_spin_unlock(&s->lock);
-        const int res =
-            abstime ? _thread_timedwait(self, abstime) : _thread_wait(self);
+        const int res = abstime ? _thread_timedwait(self, abstime, false)
+                                : _thread_wait(self);
         oe_spin_lock(&s->lock);
 
         if (res == OE_ETIMEDOUT)

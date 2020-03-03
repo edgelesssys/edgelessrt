@@ -102,7 +102,8 @@ void oe_sgx_thread_wake_wait_ocall(
 int oe_sgx_thread_timedwait_ocall(
     oe_enclave_t* enclave,
     uint64_t tcs,
-    const struct oe_timespec* abstime)
+    const struct oe_timespec* abstime,
+    bool clock_monotonic)
 {
     EnclaveEvent* event = GetEnclaveEvent(enclave, tcs);
     assert(event);
@@ -114,7 +115,8 @@ int oe_sgx_thread_timedwait_ocall(
             const long res = syscall(
                 __NR_futex,
                 &event->value,
-                FUTEX_WAIT_BITSET_PRIVATE | FUTEX_CLOCK_REALTIME,
+                FUTEX_WAIT_BITSET_PRIVATE |
+                    (clock_monotonic ? 0 : FUTEX_CLOCK_REALTIME),
                 -1,
                 abstime,
                 NULL,

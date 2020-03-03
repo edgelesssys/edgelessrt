@@ -82,10 +82,10 @@ void test_cond(oe_enclave_t* enclave)
     }
 }
 
-void test_cond_timed(oe_enclave_t* enclave)
+void test_cond_timed(oe_enclave_t* enclave, clockid_t clockid)
 {
     timespec abstime{};
-    OE_TEST(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+    OE_TEST(clock_gettime(clockid, &abstime) == 0);
     abstime.tv_sec += 2;
 
     std::thread threads[NUM_THREADS];
@@ -108,10 +108,10 @@ void test_cond_timed(oe_enclave_t* enclave)
     }
 }
 
-void test_cond_timeout(oe_enclave_t* enclave)
+void test_cond_timeout(oe_enclave_t* enclave, clockid_t clockid)
 {
     timespec abstime{};
-    OE_TEST(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+    OE_TEST(clock_gettime(clockid, &abstime) == 0);
     ++abstime.tv_sec;
 
     std::thread threads[NUM_THREADS];
@@ -384,8 +384,11 @@ int main(int argc, const char* argv[])
     test_mutex(enclave);
 
     test_cond(enclave);
-    test_cond_timed(enclave);
-    test_cond_timeout(enclave);
+    test_cond_timed(enclave, CLOCK_REALTIME);
+    test_cond_timeout(enclave, CLOCK_REALTIME);
+    OE_TEST(enc_cond_init_monotonic(enclave) == OE_OK);
+    test_cond_timed(enclave, CLOCK_MONOTONIC);
+    test_cond_timeout(enclave, CLOCK_MONOTONIC);
 
     test_cond_broadcast(enclave);
 

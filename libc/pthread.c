@@ -49,6 +49,7 @@ OE_STATIC_ASSERT(sizeof(pthread_once_t) == sizeof(oe_once_t));
 OE_STATIC_ASSERT(sizeof(pthread_spinlock_t) == sizeof(oe_spinlock_t));
 OE_STATIC_ASSERT(sizeof(pthread_mutex_t) >= sizeof(oe_mutex_t));
 OE_STATIC_ASSERT(sizeof(pthread_cond_t) >= sizeof(oe_cond_t));
+OE_STATIC_ASSERT(sizeof(pthread_condattr_t) >= sizeof(oe_condattr_t));
 OE_STATIC_ASSERT(sizeof(pthread_rwlock_t) >= sizeof(oe_rwlock_t));
 
 static __thread struct __pthread _pthread_self = {.locale = C_LOCALE};
@@ -108,6 +109,16 @@ int pthread_detach(pthread_t thread)
 void pthread_exit(void* retval)
 {
     oe_pthread_exit(retval);
+}
+
+int pthread_condattr_init(pthread_condattr_t* attr)
+{
+    return oe_pthread_condattr_init((oe_pthread_condattr_t*)attr);
+}
+
+int pthread_condattr_setclock(pthread_condattr_t* attr, clockid_t clockid)
+{
+    return oe_pthread_condattr_setclock((oe_pthread_condattr_t*)attr, clockid);
 }
 
 int pthread_setcancelstate(int state, int* oldstate)

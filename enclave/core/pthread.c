@@ -288,7 +288,7 @@ int oe_pthread_cond_init(
     const oe_pthread_condattr_t* attr)
 {
     OE_UNUSED(attr);
-    return _to_errno(oe_cond_init((oe_cond_t*)cond));
+    return _to_errno(oe_cond_init((oe_cond_t*)cond, (oe_condattr_t*)attr));
 }
 
 int oe_pthread_cond_wait(oe_pthread_cond_t* cond, oe_pthread_mutex_t* mutex)
@@ -318,6 +318,16 @@ int oe_pthread_cond_broadcast(oe_pthread_cond_t* cond)
 int oe_pthread_cond_destroy(oe_pthread_cond_t* cond)
 {
     return _to_errno(oe_cond_destroy((oe_cond_t*)cond));
+}
+
+int oe_pthread_condattr_init(oe_pthread_condattr_t* attr)
+{
+    return _to_errno(oe_condattr_init((oe_condattr_t*)attr));
+}
+
+int oe_pthread_condattr_setclock(oe_pthread_condattr_t* attr, int clockid)
+{
+    return _to_errno(oe_condattr_setclock((oe_condattr_t*)attr, clockid));
 }
 
 /*

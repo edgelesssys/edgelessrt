@@ -329,6 +329,11 @@ typedef struct _oe_cond
     uint64_t __impl[4]; /**< Internal private implementation */
 } oe_cond_t;
 
+typedef struct _oe_condattr_t
+{
+    uint32_t __impl; /**< Internal private implementation */
+} oe_condattr_t;
+
 /**
  * Initialize a condition variable
  *
@@ -341,12 +346,13 @@ typedef struct _oe_cond
  * first-served (FCFS) policy.
  *
  * @param cond Initialize this condition variable.
+ * @param attr Initialize with attributes. Can be NULL.
  *
  * @return OE_OK the operation was successful
  * @return OE_INVALID_PARAMETER one or more parameters is invalid
  *
  */
-oe_result_t oe_cond_init(oe_cond_t* cond);
+oe_result_t oe_cond_init(oe_cond_t* cond, const oe_condattr_t* attr);
 
 /**
  * Wait on a condition variable.
@@ -442,6 +448,9 @@ oe_result_t oe_cond_broadcast(oe_cond_t* cond);
  *
  */
 oe_result_t oe_cond_destroy(oe_cond_t* cond);
+
+oe_result_t oe_condattr_init(oe_condattr_t* attr);
+oe_result_t oe_condattr_setclock(oe_condattr_t* attr, int clockid);
 
 /**
  * Readers-writer lock representation.

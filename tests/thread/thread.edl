@@ -25,6 +25,8 @@ enclave {
 
         public void enc_signal();
 
+        public void enc_cond_init_monotonic();
+
         public void enc_wait_for_exclusive_access();
 
         public void enc_relinquish_exclusive_access();

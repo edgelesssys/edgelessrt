@@ -32,7 +32,8 @@ enclave
         int oe_sgx_thread_timedwait_ocall(
             [user_check] oe_enclave_t* oe_enclave,
             uint64_t tcs,
-            [in] const struct oe_timespec* abstime);
+            [in] const struct oe_timespec* abstime,
+            bool clock_monotonic);
 
         oe_result_t oe_sgx_create_thread_ocall(
             [user_check] oe_enclave_t* oe_enclave);
