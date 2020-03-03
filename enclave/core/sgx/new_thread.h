@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <openenclave/internal/jump.h>
 #include <openenclave/internal/thread.h>
 
 typedef enum _oe_new_thread_state
@@ -21,6 +22,7 @@ typedef struct _oe_new_thread
 
     void* return_value;
     oe_thread_t self;
+    oe_jmpbuf_t jmp_exit; // for oe_thread_exit
 
     struct _oe_new_thread* _next; // for the queue
 

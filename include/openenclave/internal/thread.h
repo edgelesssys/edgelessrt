@@ -96,6 +96,13 @@ oe_result_t oe_thread_join(oe_thread_t thread, void** retval);
  */
 oe_result_t oe_thread_detach(oe_thread_t thread);
 
+/**
+ * Terminate calling thread.
+ *
+ * @param retval The thread's return value.
+ */
+void oe_thread_exit(void* retval) OE_NO_RETURN;
+
 typedef uint32_t oe_once_t;
 
 /**

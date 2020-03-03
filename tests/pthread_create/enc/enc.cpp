@@ -249,6 +249,21 @@ static void _test_detached()
     OE_TEST(pthread_attr_destroy(&attr) == 0);
 }
 
+static void _test_exit()
+{
+    const auto start_routine = [](void*) -> void* {
+        pthread_exit(reinterpret_cast<void*>(2));
+        OE_TEST(false);
+    };
+
+    pthread_t thread{};
+    OE_TEST(pthread_create(&thread, nullptr, start_routine, nullptr) == 0);
+
+    intptr_t ret = 0;
+    OE_TEST(pthread_join(thread, reinterpret_cast<void**>(&ret)) == 0);
+    OE_TEST(ret == 2);
+}
+
 void test_ecall()
 {
     _test_invalid_arguments();
@@ -259,6 +274,7 @@ void test_ecall()
     _test_multiple_threads();
     _test_detach();
     _test_detached();
+    _test_exit();
 }
 
 OE_SET_ENCLAVE_SGX(

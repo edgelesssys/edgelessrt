@@ -85,6 +85,8 @@ int oe_pthread_join(oe_pthread_t thread, void** retval);
 
 int oe_pthread_detach(oe_pthread_t thread);
 
+void oe_pthread_exit(void* retval) OE_NO_RETURN;
+
 int oe_pthread_once(oe_pthread_once_t* once, void (*func)(void));
 
 int oe_pthread_spin_init(oe_pthread_spinlock_t* spinlock, int pshared);

@@ -137,6 +137,11 @@ int oe_pthread_detach(oe_pthread_t thread)
     return _to_errno(oe_thread_detach(thread));
 }
 
+void oe_pthread_exit(void* retval)
+{
+    oe_thread_exit(retval);
+}
+
 /*
 **==============================================================================
 **

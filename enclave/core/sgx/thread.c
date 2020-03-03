@@ -8,6 +8,7 @@
 #include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/calls.h>
+#include <openenclave/internal/jump.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
 #include <openenclave/internal/thread.h>
@@ -245,6 +246,17 @@ oe_result_t oe_thread_detach(oe_thread_t thread)
     return OE_OK;
 }
 
+void oe_thread_exit(void* retval)
+{
+    oe_new_thread_t* const new_thread = oe_sgx_get_td()->new_thread;
+    if (new_thread)
+    {
+        new_thread->return_value = retval;
+        oe_longjmp(&new_thread->jmp_exit, 1);
+    }
+    oe_abort();
+}
+
 oe_result_t oe_sgx_create_thread_ecall(void)
 {
     oe_new_thread_t* const new_thread = oe_new_thread_queue_pop_front();
@@ -259,7 +271,8 @@ oe_result_t oe_sgx_create_thread_ecall(void)
 
     // run the thread function
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_RUNNING);
-    new_thread->return_value = new_thread->func(new_thread->arg);
+    if (oe_setjmp(&new_thread->jmp_exit) == 0)
+        new_thread->return_value = new_thread->func(new_thread->arg);
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_DONE);
 
     // wait for join before releasing the thread
