@@ -94,6 +94,7 @@ add_enclave_library(
   __vfprintf_chk.c
   __vsprintf_chk.c
   __vsnprintf_chk.c
+  __vasprintf_chk.c
   ${MUSLSRC}/complex/cabs.c
   ${MUSLSRC}/complex/cabsf.c
   ${MUSLSRC}/complex/cabsl.c
