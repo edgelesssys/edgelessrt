@@ -11,6 +11,7 @@
 #include <openenclave/internal/safemath.h>
 #include <openenclave/internal/syscall/device.h>
 #include <openenclave/internal/syscall/dirent.h>
+#include <openenclave/internal/syscall/eventfd.h>
 #include <openenclave/internal/syscall/fcntl.h>
 #include <openenclave/internal/syscall/raise.h>
 #include <openenclave/internal/syscall/sys/ioctl.h>
@@ -834,6 +835,13 @@ static long _syscall(
             struct oe_timespec* req = (struct oe_timespec*)arg1;
             struct oe_timespec* rem = (struct oe_timespec*)arg2;
             ret = (long)oe_nanosleep(req, rem);
+            goto done;
+        }
+        case OE_SYS_eventfd2:
+        {
+            const unsigned int initval = (unsigned int)arg1;
+            const int flags = (int)arg2;
+            ret = oe_eventfd(initval, flags);
             goto done;
         }
         default:
