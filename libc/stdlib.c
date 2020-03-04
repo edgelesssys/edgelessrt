@@ -34,3 +34,8 @@ char* __realpath_chk(const char* buf, char* resolved, size_t resolvedlen)
     }
     return realpath(buf, resolved);
 }
+
+char* secure_getenv(const char* name)
+{
+    return getenv(name);
+}
