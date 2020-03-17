@@ -84,6 +84,7 @@ add_enclave_library(
   sysconf.c
   regcomp.c
   regexec.c
+  threaded.c
   tre-mem.c
   __printf_chk.c
   __fprintf_chk.c
@@ -550,7 +551,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/feof.c
   ${MUSLSRC}/stdio/ferror.c
   ${MUSLSRC}/stdio/fflush.c
-  ${MUSLSRC}/stdio/fgetc.c
   ${MUSLSRC}/stdio/fgetln.c
   ${MUSLSRC}/stdio/fgetpos.c
   ${MUSLSRC}/stdio/fgets.c
@@ -564,7 +564,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/fopencookie.c
   ${MUSLSRC}/stdio/__fopen_rb_ca.c
   ${MUSLSRC}/stdio/fprintf.c
-  ${MUSLSRC}/stdio/fputc.c
   ${MUSLSRC}/stdio/fputs.c
   ${MUSLSRC}/stdio/fputwc.c
   ${MUSLSRC}/stdio/fputws.c
@@ -580,8 +579,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/fwprintf.c
   ${MUSLSRC}/stdio/fwrite.c
   ${MUSLSRC}/stdio/fwscanf.c
-  ${MUSLSRC}/stdio/getc.c
-  ${MUSLSRC}/stdio/getchar.c
   ${MUSLSRC}/stdio/getchar_unlocked.c
   ${MUSLSRC}/stdio/getc_unlocked.c
   ${MUSLSRC}/stdio/getdelim.c
@@ -590,7 +587,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/getw.c
   ${MUSLSRC}/stdio/getwc.c
   ${MUSLSRC}/stdio/getwchar.c
-  ${MUSLSRC}/stdio/__lockfile.c
   ${MUSLSRC}/stdio/ofl_add.c
   ${MUSLSRC}/stdio/ofl.c
   ${MUSLSRC}/stdio/open_memstream.c
@@ -599,8 +595,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/pclose.c
   ${MUSLSRC}/stdio/perror.c
   ${MUSLSRC}/stdio/printf.c
-  ${MUSLSRC}/stdio/putc.c
-  ${MUSLSRC}/stdio/putchar.c
   ${MUSLSRC}/stdio/putchar_unlocked.c
   ${MUSLSRC}/stdio/putc_unlocked.c
   ${MUSLSRC}/stdio/puts.c
@@ -750,12 +744,10 @@ add_enclave_library(
   ${MUSLSRC}/temp/mkstemps.c
   ${MUSLSRC}/temp/mktemp.c
   ${MUSLSRC}/temp/__randname.c
-  ${MUSLSRC}/thread/__lock.c
   ${MUSLSRC}/thread/sem_destroy.c
   ${MUSLSRC}/thread/sem_getvalue.c
   ${MUSLSRC}/thread/sem_trywait.c
   ${MUSLSRC}/thread/sem_wait.c
-  ${MUSLSRC}/thread/__wait.c
   ${MUSLSRC}/time/clock_gettime.c
   ${MUSLSRC}/time/gettimeofday.c
   ${MUSLSRC}/time/gmtime.c

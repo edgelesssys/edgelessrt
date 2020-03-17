@@ -11,6 +11,7 @@
 #include <openenclave/internal/sgx/td.h>
 #include <openenclave/internal/thread.h>
 #include <pthread.h>
+#include "threaded.h"
 
 #ifdef pthread_equal
 #undef pthread_equal
@@ -56,6 +57,11 @@ static __thread struct __pthread _pthread_self = {.locale = C_LOCALE};
 
 pthread_t __pthread_self()
 {
+    // EDG: musl needs a tid for thread locking
+    static int tid;
+    if (!_pthread_self.tid)
+        _pthread_self.tid = __atomic_add_fetch(&tid, 1, __ATOMIC_SEQ_CST);
+
     return &_pthread_self;
 }
 
@@ -76,6 +82,7 @@ int pthread_create(
 {
     if (!_pthread_hooks || !_pthread_hooks->create)
     {
+        musl_init_threaded();
         return oe_pthread_create(
             (oe_pthread_t*)thread,
             (const oe_pthread_attr_t*)attr,
