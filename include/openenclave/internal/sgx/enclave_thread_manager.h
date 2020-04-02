@@ -4,17 +4,20 @@
 #pragma once
 
 #include <openenclave/host.h>
-#include <condition_variable>
+#include <atomic>
+#include <list>
 #include <map>
 #include <mutex>
+#include <thread>
 
 namespace open_enclave::host
 {
-class EnclaveThreadManager
+class EnclaveThreadManager final
 {
   public:
     EnclaveThreadManager(const EnclaveThreadManager&) = delete;
     EnclaveThreadManager& operator=(const EnclaveThreadManager&) = delete;
+    ~EnclaveThreadManager();
 
     static EnclaveThreadManager& get_instance();
 
@@ -26,11 +29,20 @@ class EnclaveThreadManager
     // *enclave*.
     void join_all_threads(const oe_enclave_t* enclave);
 
+    // Cancels all threads that have been created with create_thread() for
+    // *enclave*.
+    void cancel_all_threads(oe_enclave_t* enclave);
+
   private:
     EnclaveThreadManager() = default;
 
-    std::map<const oe_enclave_t*, int> thread_count_;
+    struct Thread
+    {
+        std::thread thread;
+        std::atomic<bool> finished;
+    };
+
+    std::map<const oe_enclave_t*, std::list<Thread>> threads_;
     std::mutex mutex_;
-    std::condition_variable cv_;
 };
 } // namespace open_enclave::host

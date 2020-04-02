@@ -7,7 +7,7 @@
 #include "enclave.h"
 
 void HandleThreadWait(oe_enclave_t* enclave, uint64_t arg);
-void HandleThreadWake(oe_enclave_t* enclave, uint64_t arg);
+OE_EXTERNC void HandleThreadWake(oe_enclave_t* enclave, uint64_t arg);
 OE_EXTERNC char** oe_host_backtrace_symbols(
     const elf64_t* elf,
     uint64_t enclave_addr,

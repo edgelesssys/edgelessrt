@@ -404,6 +404,10 @@ static oe_result_t _handle_ocall(
         }
     }
 
+    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
+    // that EnclaveThreadManager is able to cancel enclave threads.
+    pthread_testcancel();
+
     result = OE_OK;
 
 done:
