@@ -12,3 +12,6 @@
 [submodule "tools/oeedger8r-cpp"]
 	path = tools/oeedger8r-cpp
 	url = https://github.com/openenclave/oeedger8r-cpp
+[submodule "3rdparty/go"]
+	path = 3rdparty/go
+	url = https://github.com/edgelesssys/ertgo
