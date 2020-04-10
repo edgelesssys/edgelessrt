@@ -41,6 +41,7 @@ install(
   DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 add_subdirectory(ertdevhost)
+add_subdirectory(ertgo)
 
 if (OE_SGX)
   add_subdirectory(oesgx)

@@ -279,8 +279,9 @@ enable_testing()
 include(add_enclave_test)
 
 # EDG: update required submodules
-execute_process(COMMAND git submodule update --init tools/oeedger8r-cpp
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+execute_process(
+  COMMAND git submodule update --init tools/oeedger8r-cpp 3rdparty/go
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Recurse through subdirectories
 add_subdirectory(include)
