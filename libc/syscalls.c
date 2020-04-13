@@ -14,6 +14,7 @@
 #include <openenclave/internal/syscall/sys/syscall.h>
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/time.h>
+#include <openenclave/internal/trace.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,8 +231,11 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     }
 
     /* All other MUSL-initiated syscalls are aborted. */
-    fprintf(stderr, "error: unhandled syscall: n=%lu\n", n);
-    abort();
+    // fprintf(stderr, "error: unhandled syscall: n=%lu\n", n);
+    // abort();
+    OE_TRACE_WARNING("unhandled syscall: n=%lu", n);
+    errno = ENOSYS;
+    return -1;
 }
 
 /* Intercept __syscalls_cp() from MUSL */

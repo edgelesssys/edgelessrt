@@ -16,7 +16,7 @@ OE_EXTERNC_BEGIN
     do                                                         \
     {                                                          \
         int __err = ERRNO;                                     \
-        oe_log(OE_LOG_LEVEL_ERROR, "oe_errno=%d [%s %s:%d]\n", \
+        oe_log(OE_LOG_LEVEL_WARNING, "oe_errno=%d [%s %s:%d]\n", \
             __err, __FILE__, __FUNCTION__, __LINE__);          \
         oe_errno = __err;                                      \
         goto done;                                             \
@@ -29,7 +29,7 @@ OE_EXTERNC_BEGIN
     do                                                              \
     {                                                               \
         int __err = ERRNO;                                          \
-        oe_log(OE_LOG_LEVEL_ERROR, FMT " oe_errno=%d [%s %s:%d]\n", \
+        oe_log(OE_LOG_LEVEL_WARNING, FMT " oe_errno=%d [%s %s:%d]\n", \
            ##__VA_ARGS__, __err, __FILE__, __FUNCTION__, __LINE__); \
         oe_errno = __err;                                           \
         goto done;                                                  \
