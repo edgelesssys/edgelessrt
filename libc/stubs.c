@@ -1,7 +1,10 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+#include <assert.h>
+#include <errno.h>
 #include <openenclave/enclave_stubs.h>
+#include <openenclave/internal/globals.h>
 #include <openenclave/internal/trace.h>
 #include <string.h>
 #include <wchar.h>
@@ -35,3 +38,17 @@ CHK2(wcscpy)
 CHK3(wcsncpy)
 
 #pragma GCC diagnostic pop
+
+int pthread_attr_getstacksize(const void* attr, size_t* stacksize)
+{
+    assert(attr);
+    assert(stacksize);
+    *stacksize = oe_get_stack_size();
+    return 0;
+}
+
+int pthread_sigmask()
+{
+    errno = ENOSYS;
+    return -1;
+}

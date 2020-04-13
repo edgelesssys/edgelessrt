@@ -211,6 +211,10 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
         case SYS_sched_yield:
             __builtin_ia32_pause();
             return 0;
+        case SYS_rt_sigprocmask:
+        case SYS_sigaltstack:
+            // Signals are not supported. Silently ignore and return success.
+            return 0;
         default:
             /* Drop through and let the code below handle the syscall. */
             break;
