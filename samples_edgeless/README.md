@@ -4,6 +4,7 @@ These samples show how to write a new application or port an existing one to `Ed
 * [helloworld](helloworld/README.md) is a minimal example of an enclave application written in C.
 * [stdc++](stdc++/README.md) shows how to link against `stdc++` so that you can use (most of) the C++17 STL and link against libraries that use `stdc++`.
 * [go](go/README.md) is a minimal example of an enclave application written in Go.
+* [vault](vault/README.md) demonstrates how to port a Go application exemplified by Hashicorp Vault.
 
 ## ertdevhost
 `ertdevhost` is a tool that is used during development to run enclaves. It transparently forwards all commandline arguments and environment variables to the enclave application. The enclave has unlimited access to the host's filesystem.
