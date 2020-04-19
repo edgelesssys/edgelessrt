@@ -192,7 +192,7 @@ findargs='find .'
 get_find_args()
 {
     local defaultExcludeDirs='./.git ./3rdparty ./prereqs ./build *.cquery_cached_index'
-    local defaultIncludeExts='h c cpp'
+    local defaultIncludeExts='h c cpp go'
 
     if [[ -z ${userExcludeDirs} ]]; then
         read -r -a excludeDirs <<< "${defaultExcludeDirs}"
@@ -241,8 +241,11 @@ filecount=0
 changecount=0
 
 cfargs="${cf} -style=file"
+gofmt=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+gofmt="${gofmt}/../3rdparty/go/bin/gofmt -s"
 if [[ ${whatif} -ne 1 ]]; then
     cfargs="${cfargs} -i"
+    gofmt="${gofmt} -w"
 fi
 
 get_file_list()
@@ -274,6 +277,11 @@ for file in "${file_list[@]}"
 do
     ((filecount+=1))
     cf="${cfargs} $file"
+
+    # EDG: use gofmt for go files
+    if [[ $file == *.go ]]; then
+        cf="${gofmt} $file"
+    fi
 
     log_whatif "Formatting $file ..."
 
