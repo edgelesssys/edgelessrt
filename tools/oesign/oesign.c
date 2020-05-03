@@ -170,7 +170,7 @@ done:
     return rc;
 }
 
-static int _load_pem_file(const char* path, void** data, size_t* size)
+int load_pem_file(const char* path, void** data, size_t* size)
 {
     int rc = -1;
     FILE* is = NULL;
@@ -372,7 +372,7 @@ int oesign(
     else
     {
         /* Load private key into memory */
-        if (_load_pem_file(keyfile, &pem_data, &pem_size) != 0)
+        if (load_pem_file(keyfile, &pem_data, &pem_size) != 0)
         {
             oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
             goto done;

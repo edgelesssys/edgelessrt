@@ -24,14 +24,16 @@ int oesign(
     const char* engine_id,
     const char* engine_load_path,
     const char* key_id);
+int oesignerid(const char* keyfile);
 
 static const char _usage_gen[] =
     "Usage: %s <command> [options]\n"
     "\n"
     "Commands:\n"
-    "  sign  -  Sign the specified enclave.\n"
-    "  dump  -  Print out the Open Enclave metadata for the specified "
+    "  sign      -  Sign the specified enclave.\n"
+    "  dump      -  Print out the Open Enclave metadata for the specified "
     "enclave.\n"
+    "  signerid  -  Print out the signer ID for the specified public key.\n"
     "\n"
     "For help with a specific command, enter \"%s <command> --help\"\n";
 
@@ -100,6 +102,17 @@ static const char _usage_dump[] =
     "Description:\n"
     "  This option dumps the .oeinfo data segment and the embedded "
     "signature information for the specified enclave.\n"
+    "\n";
+
+static const char _usage_signerid[] =
+    "Usage: %s signerid -k KEY_FILE\n"
+    "\n"
+    "Options:\n"
+    "  -k, --key-file           path to the public key file of the signer in\n"
+    "                           PEM format.\n"
+    "\n"
+    "Description:\n"
+    "  This option prints the signer ID derived from a public key.\n"
     "\n";
 
 int dump_parser(int argc, const char* argv[])
@@ -363,17 +376,75 @@ done:
     return ret;
 }
 
+static int _signerid_parser(int argc, const char* argv[])
+{
+    int ret = 0;
+    const char* keyfile = NULL;
+
+    const struct option long_options[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"key-file", required_argument, NULL, 'k'},
+        {NULL, 0, NULL, 0},
+    };
+    const char short_options[] = "hk:";
+
+    int c;
+    do
+    {
+        c = getopt_long(
+            argc, (char* const*)argv, short_options, long_options, NULL);
+        if (c == -1)
+        {
+            // all the command-line options are parsed
+            break;
+        }
+
+        switch (c)
+        {
+            case 'h':
+                fprintf(stderr, _usage_signerid, argv[0]);
+                goto done;
+            case 'k':
+                keyfile = optarg;
+                break;
+            case ':':
+                // Missing option argument
+                ret = 1;
+                goto done;
+            case '?':
+            default:
+                // Invalid option
+                ret = 1;
+                goto done;
+        }
+    } while (1);
+
+    if (keyfile == NULL)
+    {
+        oe_err("--key-file option is missing");
+        ret = 1;
+    }
+    if (!ret)
+        ret = oesignerid(keyfile);
+
+done:
+
+    return ret;
+}
+
 int arg_handler(int argc, const char* argv[])
 {
     int ret = 1;
-    if ((strcmp(argv[1], "dump") == 0))
+    if (strcmp(argv[1], "dump") == 0)
         ret = dump_parser(argc, argv);
 #ifdef OE_WITH_EXPERIMENTAL_EEID
-    else if ((strcmp(argv[1], "dump-eeid") == 0))
+    else if (strcmp(argv[1], "dump-eeid") == 0)
         ret = dump_eeid_parser(argc, argv);
 #endif
-    else if ((strcmp(argv[1], "sign") == 0))
+    else if (strcmp(argv[1], "sign") == 0)
         ret = sign_parser(argc, argv);
+    else if (strcmp(argv[1], "signerid") == 0)
+        ret = _signerid_parser(argc, argv);
     else
     {
         fprintf(stderr, _usage_gen, argv[0], argv[0]);

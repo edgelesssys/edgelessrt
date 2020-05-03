@@ -10,7 +10,8 @@ list(
   oe_err.c
   oedump.c
   oeinfo.c
-  oesign.c)
+  oesign.c
+  oesignerid.c)
 
 if (WITH_EEID)
   list(APPEND SOURCES oedump_eeid.c)
