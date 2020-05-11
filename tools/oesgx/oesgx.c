@@ -1,10 +1,10 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/bits/types.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../host/sgx/cpuid.h"
+#include "../../host/sgx/cpuid.h"
 
 #define EXTENDED_FEATURE_FLAGS_FUNCTION 0x7
 #define SGX_CAPABILITY_ENUMERATION 0x12

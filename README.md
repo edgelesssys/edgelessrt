@@ -1,87 +1,103 @@
-Open Enclave SDK
-================
+# Edgeless RT
 
-[![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/21855)
-[![Join the chat at https://gitter.im/openenclave/community](https://badges.gitter.im/openenclave/community.svg)](https://gitter.im/openenclave/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It aims to provide support for modern programming languages and to facilitate the porting of existing applications.
+Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
 
-Integration Partners
---------------------
+Key features of Edgeless RT are:
+* Support for Go
+* Extended C/C++ support
+  * More libc and POSIX functions
+  * More C++17 STL
+  * pthread and std::thread
+  * libstdc++ for better compatibility with existing code
+* Soon: support for Rust and Python
+* Soon: seamless integration with [Edgeless Mesh](https://edgeless.systems) to create distributed confidential applications
 
-Agnostic Cloud Provider
+## Build
+Edgeless RT primarily targets Ubuntu 18.04. Other Linuxes may work as well. Windows is not yet supported.
 
-[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Agnostic-Linux-Badge/badge/icon?subject=Provider%20Agnostic%20Regession)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Agnostic-Linux-Badge/)
-[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Agnostic-Linux-Badge/badge/icon?subject=Agnostic-Linux)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Agnostic-Linux-Badge/)
+1. Determine the SGX support of your system
+   ```bash
+   cc -ooesgx tools/oesgx/oesgx.c && ./oesgx
+   ```
+   You will get one of the following three types of output:
 
-Azure
+   |                                oesgx output | SGX support level |
+   |:--------------------------------------------|:------------------:|
+   | CPU supports SGX_FLC:Flexible Launch Control<br>CPU supports Software Guard Extensions:SGX1| SGX1+FLC          |
+   | CPU supports Software Guard Extensions:SGX1 | SGX1              |
+   | CPU does not support SGX                    |   Simulation      |
 
-[![Nightly Testing Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/buildStatus/icon?job=Nightly&subject=Azure%20Regression%20Testing)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/Nightly/)
-[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Azure-Windows-Badge/badge/icon?subject=Azure-Windows)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Azure-Windows-Badge/)
-[![Nightly Libcxx Testing Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/buildStatus/icon?job=OpenEnclave-libcxx-tests&subject=Azure%20libcxx%20testing)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/OpenEnclave-libcxx-tests/)
-[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Azure-Linux-Badge/badge/icon?subject=Azure-Linux)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/pipelines/job/Azure-Linux-Badge/)
-[![Packages Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/buildStatus/icon?job=OpenEnclave-nightly-packages&subject=Azure%20Package%20build)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/OpenEnclave-nightly-packages/)
+2. Set up the environment
 
+   Ansible is required to install the project requirements. Install it by running:
+   ```bash
+   sudo scripts/ansible/install-ansible.sh
+   ```
 
-Introduction
-------------
+   Run one of the following commands depending on the SGX support level:
 
-The Open Enclave SDK is a hardware-agnostic open source library for developing
-applications that utilize Hardware-based Trusted Execution Environments, also
-known as Enclaves.
+   * SGX1+FLC in an Azure Confidential Compute (ACC) VM:
+     ```bash
+     ansible-playbook scripts/ansible/oe-contributors-acc-setup.yml
+     ```
 
-Open Enclave (OE) is an SDK for building enclave applications in C and C++. An
-enclave application partitions itself into two components:
-1. An untrusted component (called the host) and
-2. A trusted component (called the enclave).
+   * SGX1+FLC:
+     ```bash
+     ansible-playbook scripts/ansible/oe-contributors-setup.yml
+     ```
 
-An _enclave_ is a protected memory region that provides confidentiality for data
-and code execution. It is an instance of a Trusted Execution Environment (TEE)
-which is usually secured by hardware, for example,
-[Intel Software Guard Extensions (SGX)](https://software.intel.com/en-us/sgx).
+   * SGX1:
+     ```bash
+     ansible-playbook scripts/ansible/oe-contributors-setup-sgx1.yml
+     ```
 
-This SDK aims to generalize the development of enclave applications across TEEs
-from different hardware vendors. The current implementation provides support for
-Intel SGX as well as preview support for OP-TEE OS on ARM TrustZone. As an
-open source project, this SDK also strives to provide a transparent solution
-that is agnostic to specific vendors, service providers and choice of operating
-systems.
+   * Simulation:
+     ```bash
+     ansible-playbook scripts/ansible/oe-contributors-setup-sim.yml
+     ```
 
+   NOTE: The Ansible playbook commands require `sudo` rights. You may need to specify `--ask-become-pass` and enter your sudo password.
 
-Getting Started Using OE SDK
----------------
+3. Build the SDK
+   ```bash
+   mkdir build
+   cd build
+   cmake -GNinja ..
+   ninja
+   ```
+   For SGX1 or simulation mode, add `-DHAS_QUOTE_PROVIDER=OFF` to the cmake command line.
 
-See the API documentation on [openenclave.io](https://openenclave.io/sdk/)
+   To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
 
-Binary packages can be [downloaded from GitHub](https://github.com/openenclave/openenclave/releases)
+## Test
+After building, run the following command in the build directory to confirm everything works as expected:
 
-Contributing to OE SDK
----------------
+```bash
+ctest
+```
 
-You'll find comprehensive documentation in the
-[Contributor's Getting Started Guide](docs/GettingStartedDocs).
+In simulation mode run this command instead:
+```bash
+OE_SIMULATION=1 ctest
+```
 
-The [community documentation](docs/Community/) hosts lots of information on
-where to go to get engaged with the community, whether you want to contribute
-code, add test cases, help improve our documentation, or something else. If
-you're looking for information on how to join meetings or who to contact about
-what, you will find it there.
+## Install
+From the build directory run:
+```bash
+ninja install
+```
+Or if you do not have write permissions for the installation path:
+```bash
+sudo ninja install
+```
 
-You don't necessarily need a hardware enclave to develop OE SDK; some tests and
-code paths can be executed in *simulation mode* for the purposes of testing on
-non-TEE-enabled hardware.
+## Use
+To use the SDK you need to source the `openenclaverc` file to setup environment variables:
+```bash
+. /opt/edgelessrt/share/openenclave/openenclaverc
+```
 
-----
+Now you are ready to build applications with Edgeless RT! To start, check out the [samples](samples_edgeless/README.md) in the `samples_edgeless` folder.
 
-Licensing
----------
-
-This project is released under the
-[MIT License](https://github.com/openenclave/openenclave/blob/master/LICENSE).
-
-Send Feedback
-=============
-
-Send general questions, announcements, and discussion to the
-[oesdk@lists.confidentialcomputing.io Mailing List](https://lists.confidentialcomputing.io/g/oesdk).
-
-To report a problem or suggest a new feature, file a
-[GitHub issue](https://github.com/openenclave/openenclave/issues).
+Also see the [C API documentation](https://TODO-doxygen-link) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
