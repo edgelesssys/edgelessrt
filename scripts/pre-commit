@@ -46,9 +46,9 @@ if ! "$scripts/format-cmake" --quiet --whatif --files="${files[*]}"; then
     exit_ "Commit failed: please run './scripts/format-cmake --staged' to fix the formatting"
 fi
 
-if ! "$scripts/check-license" "${files[@]}"; then
-    exit_ "Commit failed: please add license headers to the above files"
-fi
+# if ! "$scripts/check-license" "${files[@]}"; then
+#     exit_ "Commit failed: please add license headers to the above files"
+# fi
 
 if ! "$scripts/check-linters" "${files[@]}"; then
     exit_ "Commit failed: please run './scripts/check-linters' and fix the warnings"

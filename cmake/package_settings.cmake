@@ -17,7 +17,7 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
         CACHE PATH "default install prefix" FORCE)
   else ()
     set(CMAKE_INSTALL_PREFIX
-        "/opt/openenclave"
+        "/opt/edgelessrt"
         CACHE PATH "default install prefix" FORCE)
   endif ()
 endif ()

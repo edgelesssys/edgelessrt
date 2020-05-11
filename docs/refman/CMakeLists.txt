@@ -11,7 +11,7 @@ if (ENABLE_REFMAN)
         "Doxygen not found! Skip generation with '-DENABLE_REFMAN=OFF'")
   endif ()
 
-  set(DOXYGEN_PROJECT_NAME "Open Enclave")
+  set(DOXYGEN_PROJECT_NAME "Edgeless RT")
   set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "MainPage.md")
   set(DOXYGEN_OUTPUT_DIRECTORY "${OE_DOCDIR}/openenclave")
   set(DOXYGEN_RECURSIVE NO) # CMake enables this by default.
@@ -55,8 +55,6 @@ if (ENABLE_REFMAN)
     bits/exception.h
     bits/module.h
     ../../docs/refman/MainPage.md
-    WORKING_DIRECTORY
-    ${PROJECT_SOURCE_DIR}/include/openenclave/
-    COMMENT
-    "Generating refman HTML documentation")
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/include/openenclave/
+    COMMENT "Generating refman HTML documentation")
 endif ()
