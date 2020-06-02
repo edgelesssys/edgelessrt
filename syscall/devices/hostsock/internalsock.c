@@ -598,8 +598,8 @@ static oe_fd_t* _sock_accept(
 
     oe_fd_t* result = NULL;
 
-    internalsock_boundsock_t* const bound =
-        ((sock_t*)sock_)->internal.boundsock;
+    const sock_t* const sock = (sock_t*)sock_;
+    internalsock_boundsock_t* const bound = sock->internal.boundsock;
     if (!bound)
         OE_RAISE_ERRNO(OE_EINVAL);
 
@@ -608,6 +608,8 @@ static oe_fd_t* _sock_accept(
 
     if (!bound->backlog.buf)
         OE_RAISE_ERRNO(OE_EINVAL); // not listening
+
+    const bool block = !(sock->internal.flags & OE_O_NONBLOCK);
 
     sock_t* const newsock = oe_hostsock_new_sock();
     if (!newsock)
@@ -622,15 +624,24 @@ static oe_fd_t* _sock_accept(
 
     // wait for a client
     size_t bytes_read;
-    while (!(
-        bytes_read = oe_ringbuffer_read(bound->backlog.buf, &con, sizeof con)))
+    while (!(bytes_read =
+                 oe_ringbuffer_read(bound->backlog.buf, &con, sizeof con)) &&
+           block)
         oe_cond_wait(&bound->backlog.cond, &bound->backlog.mutex);
 
-    oe_assert(bytes_read == sizeof con);
-
-    _update_events(&bound->backlog, false);
+    if (bytes_read)
+    {
+        oe_assert(bytes_read == sizeof con);
+        _update_events(&bound->backlog, false);
+    }
 
     oe_mutex_unlock(&bound->backlog.mutex);
+
+    if (!bytes_read)
+    {
+        oe_errno = OE_EAGAIN;
+        return result;
+    }
 
     oe_assert(con);
     newsock->internal.connection = con;
