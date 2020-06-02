@@ -48,7 +48,12 @@ STUB(bind)
 static int _sock_listen(oe_fd_t* sock_, int backlog);
 static int _sock_shutdown(oe_fd_t* sock_, int how);
 STUB(getsockopt)
-STUB(setsockopt)
+static int _sock_setsockopt(
+    oe_fd_t* sock_,
+    int level,
+    int optname,
+    const void* optval,
+    oe_socklen_t optlen);
 static int _sock_getsockname(
     oe_fd_t* sock_,
     struct oe_sockaddr* addr,
@@ -92,7 +97,7 @@ static oe_socket_ops_t _sock_ops = {
     .listen = _sock_listen,
     .shutdown = _sock_shutdown,
     .getsockopt = _stub_getsockopt,
-    .setsockopt = _stub_setsockopt,
+    .setsockopt = _sock_setsockopt,
     .getpeername = _sock_getsockname,
     .getsockname = _sock_getsockname,
     .recv = _sock_recv,
@@ -716,6 +721,31 @@ static int _sock_shutdown(oe_fd_t* sock_, int how)
 
     OE_TRACE_WARNING("not implemented");
     result = 0;
+
+done:
+    return result;
+}
+
+static int _sock_setsockopt(
+    oe_fd_t* sock_,
+    int level,
+    int optname,
+    const void* optval,
+    oe_socklen_t optlen)
+{
+    oe_assert(sock_);
+    (void)sock_;
+    int result = -1;
+
+    if (level == OE_SOL_SOCKET && optname == OE_SO_KEEPALIVE && optval &&
+        optlen == sizeof(int))
+    {
+        // Setting SO_KEEPALIVE should succeed. Internal sockets have no timeout
+        // so we don't have to do anything.
+        result = 0;
+    }
+    else
+        OE_RAISE_ERRNO(OE_ENOSYS);
 
 done:
     return result;
