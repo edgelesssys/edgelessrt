@@ -1,0 +1,56 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    container:
+      image: edgsys/oetools-full-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: CMake
+      run: |
+        mkdir build
+        cd build
+        cmake -GNinja ..
+    - name: Ninja
+      run: |
+        ninja
+      working-directory: build
+    - run: mkdir build_zip
+      working-directory: ${{ github.workspace }}
+    - name: Zip Build
+      uses: montudor/action-zip@v0.1.0
+      with:
+        args: zip -qq -r ./build_zip/build.zip build tools tests
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: build_zip
+        path: build_zip
+
+  Test:
+    needs: Build
+    runs-on: ubuntu-latest
+    container:
+      image: edgsys/oetools-full-18.04
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: build_zip
+      - name: Unzip Build
+        uses: montudor/action-zip@v0.1.0
+        with:
+            args: unzip -qq ./build_zip/build.zip -d .
+      - name: CTest
+        run: |
+          OE_SIMULATION=1 ctest -E "samples"
+        working-directory: build

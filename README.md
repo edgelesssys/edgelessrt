@@ -1,5 +1,7 @@
 # Edgeless RT
 
+![](https://github.com/edgelesssys/edgelessrt/workflows/Unit%20Tests/badge.svg?branch=master)
+
 [Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It aims to provide support for modern programming languages and to facilitate the porting of existing applications.
 Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
 
