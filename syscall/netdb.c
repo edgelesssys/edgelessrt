@@ -146,8 +146,11 @@ static int _lookup_name(
         cnt = __lookup_ipliteral(buf, name, family);
     if (!cnt && !(flags & OE_AI_NUMERICHOST))
     {
-        // EDG: cannot be resolved internally (do not try /etc/hosts)
-        return OE_EAI_FAIL;
+        if (oe_strcmp(name, "localhost") == 0)
+            cnt = name_from_null(buf, NULL, family, 0);
+        if (!cnt)
+            // EDG: cannot be resolved internally (do not try /etc/hosts)
+            return OE_EAI_FAIL;
     }
     if (cnt <= 0)
         return cnt ? cnt : OE_EAI_NONAME;

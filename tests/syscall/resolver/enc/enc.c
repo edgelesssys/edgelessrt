@@ -200,7 +200,8 @@ done:
 int ecall_getaddrinfo(struct oe_addrinfo** res)
 {
     struct oe_addrinfo* ai = NULL;
-    const char host[] = {"localhost"};
+    const char host[] = {
+        "lOcalhOst"}; // capital letters force external resolution
     const char serv[] = {"telnet"};
     struct oe_addrinfo hints;
 
@@ -228,7 +229,7 @@ void ecall_getaddrinfo_internally(void)
     OE_TEST(oe_getaddrinfo("2.3.4.5", "1111", NULL, &ai) == 0);
     OE_TEST(ai && ai->ai_addr);
     OE_TEST(ai->ai_addr->sa_family == AF_INET);
-    const struct oe_sockaddr_in* const ad = (struct oe_sockaddr_in*)ai->ai_addr;
+    const struct oe_sockaddr_in* ad = (struct oe_sockaddr_in*)ai->ai_addr;
     OE_TEST(ntohl(ad->sin_addr.s_addr) == 0x02030405);
     OE_TEST(ntohs(ad->sin_port) == 1111);
     oe_freeaddrinfo(ai);
@@ -239,6 +240,16 @@ void ecall_getaddrinfo_internally(void)
     ai = NULL;
     OE_TEST(oe_getaddrinfo("2.3.4.5", "telnet", NULL, &ai) == OE_EAI_SERVICE);
     OE_TEST(!ai);
+
+    // localhost can be resolved internally
+    ai = NULL;
+    OE_TEST(oe_getaddrinfo("localhost", "1111", NULL, &ai) == 0);
+    OE_TEST(ai && ai->ai_addr);
+    OE_TEST(ai->ai_addr->sa_family == AF_INET);
+    ad = (struct oe_sockaddr_in*)ai->ai_addr;
+    OE_TEST(ntohl(ad->sin_addr.s_addr) == OE_INADDR_LOOPBACK);
+    OE_TEST(ntohs(ad->sin_port) == 1111);
+    oe_freeaddrinfo(ai);
 }
 
 OE_SET_ENCLAVE_SGX(
