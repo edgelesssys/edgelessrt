@@ -1,7 +1,4 @@
 # Edgeless RT
-
-![](https://github.com/edgelesssys/edgelessrt/workflows/Unit%20Tests/badge.svg?branch=master)
-
 [Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It aims to provide support for modern programming languages and to facilitate the porting of existing applications.
 Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
 
@@ -102,7 +99,7 @@ To use the SDK you need to source the `openenclaverc` file to setup environment 
 
 Now you are ready to build applications with Edgeless RT! To start, check out the [samples](samples_edgeless/README.md) in the `samples_edgeless` folder.
 
-Also see the [C API documentation](https://TODO-doxygen-link) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
+Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
 
 ## Debug
 You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT. `oegdb` is automatically installed with Edgeless RT. It also supports Go enclaves.
