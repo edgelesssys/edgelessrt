@@ -52,5 +52,5 @@ jobs:
             args: unzip -qq ./build_zip/build.zip -d .
       - name: CTest
         run: |
-          OE_SIMULATION=1 ctest -E "samples"
+          OE_SIMULATION=1 ctest
         working-directory: build
