@@ -14,43 +14,32 @@ jobs:
     container:
       image: edgsys/oetools-full-18.04
     steps:
+
     - uses: actions/checkout@v2
-    - name: CMake
+
+    - name: Setup directories
       run: |
         mkdir build
-        cd build
-        cmake -GNinja ..
-    - name: Ninja
+        mkdir build_zip
+
+    - name: CMake and Ninja
       run: |
+        cmake -GNinja ..
         ninja
       working-directory: build
-    - run: mkdir build_zip
-      working-directory: ${{ github.workspace }}
+
+    - name: CTest
+      run: |
+        OE_SIMULATION=1 ctest --output-on-failure
+      working-directory: build
+
     - name: Zip Build
       uses: montudor/action-zip@v0.1.0
       with:
-        args: zip -qq -r ./build_zip/build.zip build tools tests
+        args: zip -qq -r ./build_zip/build.zip build
+
     - name: Upload artifact
       uses: actions/upload-artifact@v1
       with:
         name: build_zip
         path: build_zip
-
-  Test:
-    needs: Build
-    runs-on: ubuntu-latest
-    container:
-      image: edgsys/oetools-full-18.04
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v1
-        with:
-          name: build_zip
-      - name: Unzip Build
-        uses: montudor/action-zip@v0.1.0
-        with:
-            args: unzip -qq ./build_zip/build.zip -d .
-      - name: CTest
-        run: |
-          OE_SIMULATION=1 ctest
-        working-directory: build
