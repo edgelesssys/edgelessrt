@@ -181,3 +181,38 @@ extern "C"
     OE_WEAK_ALIAS(pthread_join, __pthread_join);
     OE_WEAK_ALIAS(pthread_exit, __pthread_exit);
 }
+
+// These functions are called using weak refs in stdc++ (see
+// libgcc/gthr-posix.h). They would not be linked if not refererenced elsewhere.
+// As enclaves are linked with -gc-sections, the variables defined here won't be
+// in the final binary. The same goes for those functions that are really not
+// used.
+#define ert_ref(x) extern const auto ert_##x = x
+ert_ref(pthread_once);
+ert_ref(pthread_getspecific);
+ert_ref(pthread_setspecific);
+ert_ref(pthread_create);
+ert_ref(pthread_join);
+ert_ref(pthread_equal);
+ert_ref(pthread_self);
+ert_ref(pthread_detach);
+ert_ref(pthread_cancel);
+ert_ref(sched_yield);
+ert_ref(pthread_mutex_lock);
+ert_ref(pthread_mutex_trylock);
+ert_ref(pthread_mutex_timedlock);
+ert_ref(pthread_mutex_unlock);
+ert_ref(pthread_mutex_init);
+ert_ref(pthread_mutex_destroy);
+ert_ref(pthread_cond_init);
+ert_ref(pthread_cond_broadcast);
+ert_ref(pthread_cond_signal);
+ert_ref(pthread_cond_wait);
+ert_ref(pthread_cond_timedwait);
+ert_ref(pthread_cond_destroy);
+ert_ref(pthread_key_create);
+ert_ref(pthread_key_delete);
+ert_ref(pthread_mutexattr_init);
+ert_ref(pthread_mutexattr_settype);
+ert_ref(pthread_mutexattr_destroy);
+#undef ert_ref
