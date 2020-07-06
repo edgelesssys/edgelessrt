@@ -15,7 +15,12 @@ add_custom_command(
 )
 add_custom_target(goratestlib DEPENDS gotest.a)
 
-add_enclave(TARGET go_ra_enc CXX SOURCES enc.cpp test_t.c)
+add_enclave_library(go_ra_enc_lib enc.cpp test_t.c)
+enclave_include_directories(go_ra_enc_lib PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+enclave_link_libraries(go_ra_enc_lib PRIVATE oe_includes)
+set_property(TARGET go_ra_enc_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_enclave(TARGET go_ra_enc SOURCES ${CMAKE_SOURCE_DIR}/ert/tests/empty.c)
+enclave_link_libraries(go_ra_enc go_ra_enc_lib
+                       ${CMAKE_CURRENT_BINARY_DIR}/gotest.a ertlibc)
 add_dependencies(go_ra_enc goratestlib)
-target_include_directories(go_ra_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(go_ra_enc ${CMAKE_CURRENT_BINARY_DIR}/gotest.a)

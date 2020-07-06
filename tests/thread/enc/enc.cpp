@@ -139,6 +139,7 @@ void enc_wait(size_t num_threads, const timespec* abstime, bool expect_timeout)
         oe_cond_wait(&cond, &cond_mutex);
     else
     {
+#ifdef _PTHREAD_ENC_
         const auto res = oe_cond_timedwait(
             &cond,
             &cond_mutex,
@@ -147,6 +148,9 @@ void enc_wait(size_t num_threads, const timespec* abstime, bool expect_timeout)
             OE_TEST(res == TEST_TIMEDOUT);
         else
             OE_TEST(res == 0);
+#else
+        (void)expect_timeout;
+#endif
     }
 
     oe_host_printf("Done waiting!\n");
@@ -162,14 +166,6 @@ void enc_wait(size_t num_threads, const timespec* abstime, bool expect_timeout)
 void enc_signal()
 {
     oe_cond_signal(&cond);
-}
-
-void enc_cond_init_monotonic()
-{
-    oe_condattr_t attr{};
-    oe_condattr_init(&attr);
-    oe_condattr_setclock(&attr, CLOCK_MONOTONIC);
-    oe_cond_init(&cond, &attr);
 }
 
 static unsigned int nthreads = 0;

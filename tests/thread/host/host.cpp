@@ -386,9 +386,6 @@ int main(int argc, const char* argv[])
     test_cond(enclave);
     test_cond_timed(enclave, CLOCK_REALTIME);
     test_cond_timeout(enclave, CLOCK_REALTIME);
-    OE_TEST(enc_cond_init_monotonic(enclave) == OE_OK);
-    test_cond_timed(enclave, CLOCK_MONOTONIC);
-    test_cond_timeout(enclave, CLOCK_MONOTONIC);
 
     test_cond_broadcast(enclave);
 
