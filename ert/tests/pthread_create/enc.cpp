@@ -71,15 +71,8 @@ static void _sleep()
 
 static void _test_invalid_arguments()
 {
-    const auto start_routine = [](void*) -> void* { return nullptr; };
-
-    pthread_t thread{};
-    void* ret = nullptr;
-
-    OE_TEST(pthread_create(nullptr, nullptr, start_routine, nullptr) == EINVAL);
-    OE_TEST(pthread_create(&thread, nullptr, nullptr, nullptr) == EINVAL);
-    OE_TEST(pthread_join(pthread_t(), &ret) == EINVAL);
-    OE_TEST(pthread_detach(thread) == EINVAL);
+    OE_TEST(pthread_join(pthread_t(), nullptr) == ESRCH);
+    OE_TEST(pthread_detach(pthread_t()) == ESRCH);
 }
 
 static void _test_created_thread_runs_concurrently()

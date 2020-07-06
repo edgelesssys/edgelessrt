@@ -388,8 +388,10 @@ done:
 /**
  * Register a destructor to be called on the given object when the
  * thread exits. This call is emitted by the compiler.
+ *
+ * EDG: renamed from __cxa_thread_atexit
  */
-void __cxa_thread_atexit(void (*destructor)(void*), void* object)
+void __cxa_thread_atexit_impl(void (*destructor)(void*), void* object)
 {
     oe_tls_atexit_t item = {destructor, object};
 
@@ -402,6 +404,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
 
     _tls_atexit_functions[_num_tls_atexit_functions - 1] = item;
 }
+
+// EDG: stdc++ defines __cxa_thread_atexit which calls
+// __cxa_thread_atexit_impl. So behavior will be the same whether or not stdc++
+// is linked.
+OE_WEAK_ALIAS(__cxa_thread_atexit_impl, __cxa_thread_atexit);
 
 /**
  * Cleanup the thread-local section for a given thread.
