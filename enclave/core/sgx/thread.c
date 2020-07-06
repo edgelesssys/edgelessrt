@@ -3,23 +3,14 @@
 
 #include "thread.h"
 #include <openenclave/bits/sgx/sgxtypes.h>
-#include <openenclave/corelibc/errno.h>
-#include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/calls.h>
-#include <openenclave/internal/jump.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
 #include <openenclave/internal/thread.h>
-#include "new_thread.h"
 #include "platform_t.h"
 #include "td.h"
-
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME 0
-#define CLOCK_MONOTONIC 1
-#endif
 
 /*
 **==============================================================================
@@ -62,21 +53,6 @@ static int _thread_wake_wait(oe_sgx_td_t* waiter, oe_sgx_td_t* self)
     ret = 0;
 
 done:
-    return ret;
-}
-
-static int _thread_timedwait(
-    oe_sgx_td_t* self,
-    const struct oe_timespec* abstime,
-    bool clock_monotonic)
-{
-    int ret = -1;
-    const uint64_t tcs = (uint64_t)td_to_tcs((oe_sgx_td_t*)self);
-
-    if (oe_sgx_thread_timedwait_ocall(
-            &ret, oe_get_enclave(), tcs, abstime, clock_monotonic) != OE_OK)
-        ret = -1;
-
     return ret;
 }
 
@@ -139,30 +115,6 @@ static __inline__ bool _queue_empty(Queue* queue)
     return queue->front ? false : true;
 }
 
-static void _queue_remove(Queue* queue, const oe_sgx_td_t* thread)
-{
-    oe_assert(queue);
-    oe_assert(thread);
-
-    oe_sgx_td_t* prev = NULL;
-
-    for (oe_sgx_td_t* p = queue->front; p; p = p->next)
-    {
-        if (p == thread)
-        {
-            if (p == queue->front)
-                queue->front = p->next;
-            if (p == queue->back)
-                queue->back = prev;
-            if (prev)
-                prev->next = p->next;
-            p->next = NULL;
-            return;
-        }
-        prev = p;
-    }
-}
-
 /*
 **==============================================================================
 **
@@ -179,117 +131,6 @@ oe_thread_t oe_thread_self(void)
 bool oe_thread_equal(oe_thread_t thread1, oe_thread_t thread2)
 {
     return thread1 == thread2;
-}
-
-oe_result_t oe_thread_create(
-    oe_thread_t* thread,
-    void* (*func)(void*),
-    void* arg)
-{
-    if (!thread || !func)
-        return OE_INVALID_PARAMETER;
-
-    oe_new_thread_t* const new_thread = oe_malloc(sizeof *new_thread);
-    if (!new_thread)
-        return OE_OUT_OF_MEMORY;
-
-    oe_new_thread_init(new_thread, func, arg);
-    oe_new_thread_queue_push_back(new_thread);
-
-    // oe_create_thread_ocall() will create a new thread that calls
-    // oe_create_thread_ecall()
-    oe_result_t retval = OE_FAILURE;
-    oe_result_t result = oe_sgx_create_thread_ocall(&retval, oe_get_enclave());
-    if (result == OE_OK)
-        result = retval;
-
-    if (result != OE_OK)
-    {
-        oe_new_thread_queue_remove(new_thread);
-        oe_free(new_thread);
-        return result;
-    }
-
-    // wait until a thread enters and executes the queued new_thread
-    oe_new_thread_state_wait_exit(new_thread, OE_NEWTHREADSTATE_QUEUED);
-
-    oe_assert(new_thread->self);
-    *thread = new_thread->self;
-
-    return result;
-}
-
-oe_result_t oe_thread_join(oe_thread_t thread, void** retval)
-{
-    if (!thread)
-        return OE_INVALID_PARAMETER;
-
-    oe_new_thread_t* const new_thread = ((oe_sgx_td_t*)thread)->new_thread;
-    oe_assert(new_thread);
-
-    // wait until the thread has finished executing
-    oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_DONE);
-
-    if (retval)
-        *retval = new_thread->return_value;
-
-    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_JOINED);
-
-    // Open issue: TLS is not unwound yet
-
-    return OE_OK;
-}
-
-oe_result_t oe_thread_detach(oe_thread_t thread)
-{
-    if (!thread)
-        return OE_INVALID_PARAMETER;
-
-    oe_new_thread_t* const new_thread = ((oe_sgx_td_t*)thread)->new_thread;
-    oe_assert(new_thread);
-    oe_new_thread_detach(new_thread);
-
-    return OE_OK;
-}
-
-void oe_thread_exit(void* retval)
-{
-    oe_new_thread_t* const new_thread = oe_sgx_get_td()->new_thread;
-    if (new_thread)
-    {
-        new_thread->return_value = retval;
-        oe_longjmp(&new_thread->jmp_exit, 1);
-    }
-    oe_abort();
-}
-
-oe_result_t oe_sgx_create_thread_ecall(void)
-{
-    oe_new_thread_t* const new_thread = oe_new_thread_queue_pop_front();
-    if (!new_thread)
-    {
-        // oe_create_thread_ecall() called without prior oe_thread_create()
-        oe_abort();
-    }
-
-    oe_sgx_get_td()->new_thread = new_thread;
-    new_thread->self = oe_thread_self();
-
-    // run the thread function
-    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_RUNNING);
-    if (oe_setjmp(&new_thread->jmp_exit) == 0)
-        new_thread->return_value = new_thread->func(new_thread->arg);
-    oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_DONE);
-
-    // wait for join before releasing the thread
-    oe_new_thread_state_wait_enter_or_detached(
-        new_thread, OE_NEWTHREADSTATE_JOINED);
-
-    oe_free(new_thread);
-
-    // Open issue: TLS is not unwound yet
-
-    return OE_OK;
 }
 
 /*
@@ -521,13 +362,11 @@ typedef struct _oe_cond_impl
         oe_sgx_td_t* front;
         oe_sgx_td_t* back;
     } queue;
-
-    bool clock_monotonic;
 } oe_cond_impl_t;
 
 OE_STATIC_ASSERT(sizeof(oe_cond_impl_t) <= sizeof(oe_cond_t));
 
-oe_result_t oe_cond_init(oe_cond_t* condition, const oe_condattr_t* attr)
+oe_result_t oe_cond_init(oe_cond_t* condition)
 {
     oe_cond_impl_t* cond = (oe_cond_impl_t*)condition;
     oe_result_t result = OE_UNEXPECTED;
@@ -537,10 +376,6 @@ oe_result_t oe_cond_init(oe_cond_t* condition, const oe_condattr_t* attr)
 
     memset(cond, 0, sizeof(oe_cond_t));
     cond->lock = OE_SPINLOCK_INITIALIZER;
-
-    // EDG: set attributes
-    if (attr && attr->__impl == CLOCK_MONOTONIC)
-        cond->clock_monotonic = true;
 
     result = OE_OK;
 
@@ -617,67 +452,6 @@ oe_result_t oe_cond_wait(oe_cond_t* condition, oe_mutex_t* mutex)
     return OE_OK;
 }
 
-oe_result_t oe_cond_timedwait(
-    oe_cond_t* condition,
-    oe_mutex_t* mutex,
-    const struct oe_timespec* abstime)
-{
-    oe_cond_impl_t* cond = (oe_cond_impl_t*)condition;
-    oe_sgx_td_t* self = oe_sgx_get_td();
-
-    if (!cond || !mutex || !abstime)
-        return OE_INVALID_PARAMETER;
-
-    oe_result_t result = OE_OK;
-
-    oe_spin_lock(&cond->lock);
-    {
-        oe_sgx_td_t* waiter = NULL;
-
-        /* Add the self thread to the end of the wait queue */
-        _queue_push_back((Queue*)&cond->queue, self);
-
-        /* Unlock this mutex and get the waiter at the front of the queue */
-        if (_mutex_unlock(mutex, &waiter) != 0)
-        {
-            oe_spin_unlock(&cond->lock);
-            return OE_BUSY;
-        }
-
-        for (;;)
-        {
-            int res = 0;
-
-            oe_spin_unlock(&cond->lock);
-            {
-                if (waiter)
-                {
-                    _thread_wake(waiter);
-                    waiter = NULL;
-                }
-
-                res = _thread_timedwait(self, abstime, cond->clock_monotonic);
-            }
-            oe_spin_lock(&cond->lock);
-
-            if (res == OE_ETIMEDOUT)
-            {
-                result = OE_TIMEDOUT;
-                _queue_remove((Queue*)&cond->queue, self);
-                break;
-            }
-
-            /* If self is no longer in the queue, then it was selected */
-            if (!_queue_contains((Queue*)&cond->queue, self))
-                break;
-        }
-    }
-    oe_spin_unlock(&cond->lock);
-    oe_mutex_lock(mutex);
-
-    return result;
-}
-
 oe_result_t oe_cond_signal(oe_cond_t* condition)
 {
     oe_cond_impl_t* cond = (oe_cond_impl_t*)condition;
@@ -724,22 +498,6 @@ oe_result_t oe_cond_broadcast(oe_cond_t* condition)
         _thread_wake(p);
     }
 
-    return OE_OK;
-}
-
-oe_result_t oe_condattr_init(oe_condattr_t* attr)
-{
-    if (!attr)
-        return OE_INVALID_PARAMETER;
-    attr->__impl = 0;
-    return OE_OK;
-}
-
-oe_result_t oe_condattr_setclock(oe_condattr_t* attr, int clockid)
-{
-    if (!attr || !(clockid == CLOCK_REALTIME || clockid == CLOCK_MONOTONIC))
-        return OE_INVALID_PARAMETER;
-    attr->__impl = (uint32_t)clockid;
     return OE_OK;
 }
 
@@ -1176,76 +934,4 @@ void oe_thread_destruct_specific(void)
         }
         oe_spin_unlock(&_lock);
     }
-}
-
-// We must pack the struct such that it fits into oe_sem_t which in turn has the
-// size of the unused fields of sem_t (see libc/sem.c). The pointer passed to
-// oe_sem_wait/wake is aligned such that queue is pointer-aligned.
-#pragma pack(push, 1)
-typedef struct
-{
-    oe_spinlock_t lock;
-    Queue queue;
-} oe_sem_impl_t;
-#pragma pack(pop)
-OE_STATIC_ASSERT(sizeof(oe_sem_impl_t) <= sizeof(oe_sem_t));
-
-oe_result_t oe_sem_wait(
-    oe_sem_t* sem,
-    const volatile int* val,
-    const struct oe_timespec* abstime)
-{
-    oe_assert(sem);
-    oe_assert(val);
-    oe_sem_impl_t* const s = (oe_sem_impl_t*)sem;
-    oe_sgx_td_t* const self = oe_sgx_get_td();
-    oe_result_t result = OE_OK;
-
-    oe_spin_lock(&s->lock);
-
-    // Verify that the semaphore still contains the value -1. If not, it has
-    // already been unlocked.
-    if (__atomic_load_n(val, __ATOMIC_SEQ_CST) != -1)
-        goto done;
-
-    /* Add the self thread to the end of the wait queue */
-    _queue_push_back(&s->queue, self);
-
-    for (;;)
-    {
-        oe_spin_unlock(&s->lock);
-        const int res = abstime ? _thread_timedwait(self, abstime, false)
-                                : _thread_wait(self);
-        oe_spin_lock(&s->lock);
-
-        if (res == OE_ETIMEDOUT)
-        {
-            result = OE_TIMEDOUT;
-            _queue_remove(&s->queue, self);
-            break;
-        }
-
-        /* If self is no longer in the queue, then it was selected */
-        if (!_queue_contains(&s->queue, self))
-            break;
-    }
-
-done:
-    oe_spin_unlock(&s->lock);
-
-    return result;
-}
-
-void oe_sem_wake(oe_sem_t* sem)
-{
-    oe_assert(sem);
-    oe_sem_impl_t* const s = (oe_sem_impl_t*)sem;
-    oe_assert((uintptr_t)&s->queue % sizeof(void*) == 0); // check alignment
-
-    oe_spin_lock(&s->lock);
-    oe_sgx_td_t* const waiter = _queue_pop_front(&s->queue);
-    oe_spin_unlock(&s->lock);
-
-    if (waiter)
-        _thread_wake(waiter);
 }

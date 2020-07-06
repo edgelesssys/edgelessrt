@@ -2,14 +2,24 @@
 // Licensed under the MIT License.
 
 #include <openenclave/corelibc/pthread.h>
+#include "../ertlibc/ertthread.h"
 #include "pthread_impl.h"
 
 pthread_t __pthread_self()
 {
-    static __thread struct __pthread self;
-    if (!self.self)
-        __init_tp(&self);
-    return &self;
+    static __thread struct
+    {
+        ert_thread_t et;
+        struct __pthread pt;
+    } self;
+
+    if (!self.pt.self)
+    {
+        __init_tp(&self.pt);
+        self.et.tid = self.pt.tid;
+    }
+
+    return &self.pt;
 }
 
 int pthread_cancel(pthread_t thread)

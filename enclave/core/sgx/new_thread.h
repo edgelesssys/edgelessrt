@@ -21,7 +21,7 @@ typedef struct _oe_new_thread
     void* arg;
 
     void* return_value;
-    oe_thread_t self;
+    struct _ert_thread* self;
     oe_jmpbuf_t jmp_exit; // for oe_thread_exit
 
     struct _oe_new_thread* _next; // for the queue
@@ -32,6 +32,8 @@ typedef struct _oe_new_thread
 
     bool _detached;
 } oe_new_thread_t;
+
+OE_EXTERNC_BEGIN
 
 // initializes a newly allocated oe_new_thread_t object
 void oe_new_thread_init(
@@ -68,3 +70,5 @@ void oe_new_thread_state_wait_exit(
 void oe_new_thread_queue_push_back(oe_new_thread_t* new_thread);
 oe_new_thread_t* oe_new_thread_queue_pop_front();
 void oe_new_thread_queue_remove(const oe_new_thread_t* new_thread);
+
+OE_EXTERNC_END

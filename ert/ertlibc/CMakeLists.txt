@@ -4,6 +4,7 @@ enclave_link_libraries(ertlibunwind PRIVATE libunwind)
 
 add_enclave_library(
   ertlibc
+  pthread.cpp
   syscall.cpp)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)

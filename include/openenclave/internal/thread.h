@@ -7,7 +7,6 @@
 #include <openenclave/bits/defs.h>
 #include <openenclave/bits/result.h>
 #include <openenclave/bits/types.h>
-#include <openenclave/corelibc/time.h>
 
 typedef uint64_t oe_thread_t;
 
@@ -52,56 +51,6 @@ oe_thread_t oe_thread_self(void);
  *
  */
 bool oe_thread_equal(oe_thread_t thread1, oe_thread_t thread2);
-
-/**
- * Create a thread.
- *
- * @param thread Receives the thread identifier of the created thread.
- * @param func The pointer to the start routine.
- * @param arg The argument to the start routine.
- *
- * @return OE_OK the operation was successful
- * @return OE_INVALID_PARAMETER one or more parameters is invalid
- * @return OE_OUT_OF_MEMORY insufficient memory exists to allocate thread
- * metadata
- *
- */
-oe_result_t oe_thread_create(
-    oe_thread_t* thread,
-    void* (*func)(void*),
-    void* arg);
-
-/**
- * Join a thread.
- *
- * Warning: This does not wait until TLS has been unwound.
- *
- * @param thread The thread to be joined.
- * @param retval Receives the return value of the thread. Can be NULL.
- *
- * @return OE_OK the operation was successful
- * @return OE_INVALID_PARAMETER one or more parameters is invalid
- *
- */
-oe_result_t oe_thread_join(oe_thread_t thread, void** retval);
-
-/**
- * Detach a thread.
- *
- * @param thread The thread to be detached.
- *
- * @return OE_OK the operation was successful
- * @return OE_INVALID_PARAMETER one or more parameters is invalid
- *
- */
-oe_result_t oe_thread_detach(oe_thread_t thread);
-
-/**
- * Terminate calling thread.
- *
- * @param retval The thread's return value.
- */
-void oe_thread_exit(void* retval) OE_NO_RETURN;
 
 typedef uint32_t oe_once_t;
 
@@ -329,11 +278,6 @@ typedef struct _oe_cond
     uint64_t __impl[4]; /**< Internal private implementation */
 } oe_cond_t;
 
-typedef struct _oe_condattr_t
-{
-    uint32_t __impl; /**< Internal private implementation */
-} oe_condattr_t;
-
 /**
  * Initialize a condition variable
  *
@@ -346,13 +290,12 @@ typedef struct _oe_condattr_t
  * first-served (FCFS) policy.
  *
  * @param cond Initialize this condition variable.
- * @param attr Initialize with attributes. Can be NULL.
  *
  * @return OE_OK the operation was successful
  * @return OE_INVALID_PARAMETER one or more parameters is invalid
  *
  */
-oe_result_t oe_cond_init(oe_cond_t* cond, const oe_condattr_t* attr);
+oe_result_t oe_cond_init(oe_cond_t* cond);
 
 /**
  * Wait on a condition variable.
@@ -378,24 +321,6 @@ oe_result_t oe_cond_init(oe_cond_t* cond, const oe_condattr_t* attr);
  *
  */
 oe_result_t oe_cond_wait(oe_cond_t* cond, oe_mutex_t* mutex);
-
-/**
- * Wait on a condition variable until signaled or timeout.
- *
- * @param cond Wait on this condition variable.
- * @param mutex This mutex must be locked by the caller.
- * @param abstime Wait until this absolute time passes.
- *
- * @return OE_OK the operation was successful
- * @return OE_INVALID_PARAMETER one or more parameters is invalid
- * @return OE_BUSY the mutex is not locked by the calling thread.
- * @return OE_TIMEDOUT abstime has passed.
- *
- */
-oe_result_t oe_cond_timedwait(
-    oe_cond_t* cond,
-    oe_mutex_t* mutex,
-    const struct oe_timespec* abstime);
 
 /**
  * Signal a thread waiting on a condition variable.
@@ -448,9 +373,6 @@ oe_result_t oe_cond_broadcast(oe_cond_t* cond);
  *
  */
 oe_result_t oe_cond_destroy(oe_cond_t* cond);
-
-oe_result_t oe_condattr_init(oe_condattr_t* attr);
-oe_result_t oe_condattr_setclock(oe_condattr_t* attr, int clockid);
 
 /**
  * Readers-writer lock representation.
@@ -701,17 +623,6 @@ oe_result_t oe_thread_setspecific(oe_thread_key_t key, const void* value);
  *
  */
 void* oe_thread_getspecific(oe_thread_key_t key);
-
-// helpers for libc/sem.c
-typedef struct
-{
-    int _val[5];
-} oe_sem_t;
-oe_result_t oe_sem_wait(
-    oe_sem_t* sem,
-    const volatile int* val,
-    const struct oe_timespec* abstime);
-void oe_sem_wake(oe_sem_t* sem);
 
 OE_EXTERNC_END
 

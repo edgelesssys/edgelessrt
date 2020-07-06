@@ -10,6 +10,7 @@
 #include <exception>
 #include <stdexcept>
 #include <system_error>
+#include "ertthread.h"
 
 using namespace std;
 
@@ -25,6 +26,8 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
             case SYS_clock_gettime:
                 return oe_clock_gettime(
                     static_cast<int>(x1), reinterpret_cast<oe_timespec*>(x2));
+            case SYS_gettid:
+                return ert_thread_self()->tid;
 
             case SYS_mprotect:
             case SYS_madvise:
