@@ -94,6 +94,7 @@ add_enclave_library(
   ertfutex.c
   locale.c
   pthreadhooks.c
+  threaded.c
   ${MUSLSRC}/complex/cabs.c
   ${MUSLSRC}/complex/cabsf.c
   ${MUSLSRC}/complex/cabsl.c

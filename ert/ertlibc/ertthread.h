@@ -14,5 +14,6 @@ typedef struct _ert_thread
 OE_EXTERNC_BEGIN
 
 const ert_thread_t* ert_thread_self();
+void ert_musl_init_threaded(void);
 
 OE_EXTERNC_END
