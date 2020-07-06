@@ -13,17 +13,8 @@ add_subdirectory(app)
 # CMake needs at least one source file even if it contains no code.
 add_executable(enclave enc.c)
 
-target_link_libraries(
-  enclave
-  -static
-  -Wl,--eh-frame-hdr # needed for exception handling
-  openenclave::oeenclave
-  openenclave::oecore
-  openenclave::ertdeventry
-  hello
-  stdc++
-  openenclave::oelibcxx # required because it includes libunwind
-)
+target_link_libraries(enclave openenclave::oeenclave openenclave::ertdeventry
+                      hello)
 
 # Generate key
 add_custom_command(

@@ -17,8 +17,8 @@ endif ()
 
 add_executable(enclave main.c)
 
-target_link_libraries(enclave openenclave::oeenclave openenclave::oecore
-                      openenclave::ertdeventry ${GOLIB})
+target_link_libraries(enclave openenclave::oeenclave openenclave::ertdeventry
+                      ${GOLIB})
 
 # Generate key
 add_custom_command(

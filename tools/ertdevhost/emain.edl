@@ -2,6 +2,7 @@ enclave {
     from "openenclave/edl/core.edl" import *;
     from "openenclave/edl/syscall.edl" import *;
     from "platform.edl" import *;
+    from "openenclave/edl/ertlibc.edl" import *;
     include "openenclave/enclave_args.h"
 
     trusted {

@@ -14,10 +14,9 @@ add_subdirectory(app)
 add_executable(enclave enc.c)
 
 # Link against ertdeventry so that the application can be run with ertdevhost.
-target_link_libraries(enclave
-  openenclave::oeenclave
-  openenclave::oecore
-  openenclave::ertdeventry  # for production, link against meshentry
+target_link_libraries(
+  enclave openenclave::oeenclave
+  openenclave::ertdeventry # for production, link against meshentry
   hello)
 
 # Generate key

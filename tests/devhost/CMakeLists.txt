@@ -1,5 +1,9 @@
-add_enclave(TARGET devhost_enc CXX SOURCES enc.cpp)
-target_link_libraries(devhost_enc oeenclave oecore ertdeventry)
+add_enclave_library(devhost_enc_lib enc.cpp)
+enclave_link_libraries(devhost_enc_lib PRIVATE oe_includes)
+set_property(TARGET devhost_enc_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_enclave(TARGET devhost_enc SOURCES ${CMAKE_SOURCE_DIR}/ert/tests/empty.c)
+target_link_libraries(devhost_enc ertdeventry devhost_enc_lib)
 add_dependencies(devhost_enc ertdevhost)
 add_test(
   NAME tests/devhost

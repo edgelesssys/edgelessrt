@@ -13,8 +13,8 @@ add_custom_target(app ertgo build -buildmode=c-archive ${CMAKE_SOURCE_DIR}/app)
 add_executable(enclave main.c)
 add_dependencies(enclave app)
 
-target_link_libraries(enclave openenclave::oeenclave openenclave::oecore
-                      openenclave::ertdeventry ${CMAKE_BINARY_DIR}/app.a)
+target_link_libraries(enclave openenclave::oeenclave openenclave::ertdeventry
+                      ${CMAKE_BINARY_DIR}/app.a)
 
 # Generate key
 add_custom_command(

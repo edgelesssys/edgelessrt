@@ -16,8 +16,8 @@ add_custom_target(
 add_executable(enclave main.c)
 add_dependencies(enclave hello)
 
-target_link_libraries(enclave openenclave::oeenclave openenclave::oecore
-                      openenclave::ertdeventry ${CMAKE_BINARY_DIR}/hello.a)
+target_link_libraries(enclave openenclave::oeenclave openenclave::ertdeventry
+                      ${CMAKE_BINARY_DIR}/hello.a)
 
 # Generate key
 add_custom_command(

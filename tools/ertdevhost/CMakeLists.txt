@@ -8,7 +8,7 @@ target_include_directories(ertdeventry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertdeventry
   PRIVATE oelibc
-  INTERFACE oehostepoll oehostfs oehostresolver oehostsock)
+  INTERFACE ertlibc oehostepoll oehostfs oehostresolver oehostsock)
 install(
   TARGETS ertdeventry
   EXPORT openenclave-targets
