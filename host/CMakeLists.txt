@@ -365,9 +365,15 @@ list(
   strings.c
   traceh_enclave.c)
 
+# EDG: add erthost
+include(../ert/host/erthost.cmake)
+
 # Combine the following common code along with the platform specific code and
 # host verification code to get the full oehost target provided by the OE SDK.
 add_library(oehost STATIC ${PLATFORM_HOST_ONLY_SRC} ${PLATFORM_SDK_ONLY_SRC})
+
+# EDG: add EDL
+add_dependencies(oehost ertlibc_untrusted_edl)
 
 add_library(oehostverify STATIC ${PLATFORM_HOST_ONLY_SRC})
 

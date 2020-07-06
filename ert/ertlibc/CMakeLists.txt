@@ -7,6 +7,7 @@ add_enclave_library(
   syscall.cpp)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
+enclave_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 enclave_link_libraries(
   ertlibc
   INTERFACE
@@ -17,6 +18,14 @@ enclave_link_libraries(
   ertlibunwind
   PRIVATE
   oe_includes)
+
+set(EDL_FILE ${CMAKE_SOURCE_DIR}/include/openenclave/edl/ertlibc.edl)
+add_custom_command(
+  OUTPUT ertlibc_t.h
+  DEPENDS ${EDL_FILE} edger8r
+  COMMAND edger8r --header-only --trusted ${EDL_FILE})
+add_custom_target(ertlibc_trusted_edl DEPENDS ertlibc_t.h)
+add_enclave_dependencies(ertlibc ertlibc_trusted_edl)
 
 install_enclaves(
   TARGETS

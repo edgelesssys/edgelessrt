@@ -17,9 +17,10 @@ enclave
     // intentionally kept in host memory.
     include "openenclave/bits/types.h"
 
-    trusted
+    struct oe_sgx_thread_timedwait_ocall_timespec
     {
-        public oe_result_t oe_sgx_create_thread_ecall();
+        time_t tv_sec;
+        long tv_nsec;
     };
 
     untrusted
@@ -32,10 +33,11 @@ enclave
         int oe_sgx_thread_timedwait_ocall(
             [user_check] oe_enclave_t* oe_enclave,
             uint64_t tcs,
-            [in] const struct oe_timespec* abstime,
-            bool clock_monotonic);
+            [in] const struct oe_sgx_thread_timedwait_ocall_timespec* timeout);
 
-        oe_result_t oe_sgx_create_thread_ocall(
-            [user_check] oe_enclave_t* oe_enclave);
+        void oe_sgx_thread_wake_multiple_ocall(
+            [user_check] oe_enclave_t* oe_enclave,
+            [in, count=tcs_size] const uint64_t* tcs,
+            size_t tcs_size);
     };
 };

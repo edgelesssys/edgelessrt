@@ -1,0 +1,9 @@
+enclave {
+    trusted {
+        public void ert_create_thread_ecall();
+    };
+
+    untrusted {
+        bool ert_create_thread_ocall([user_check] oe_enclave_t* enclave);
+    };
+}
