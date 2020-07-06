@@ -6,6 +6,7 @@ add_enclave_library(
   ertlibc
   locale.cpp
   pthread.cpp
+  sched.cpp
   syscall.cpp)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)

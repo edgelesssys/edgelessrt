@@ -15,7 +15,6 @@
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/time.h>
 #include <openenclave/internal/trace.h>
-#include <sched.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,31 +83,6 @@ static ssize_t _syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
         return -1;
 
     return buflen;
-}
-
-static int _syscall_sched_getaffinity(pid_t pid, size_t size, cpu_set_t* set)
-{
-    if (!size || !set)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-
-    if (pid)
-    {
-        // getting affinity of other processes not supported
-        errno = ENOSYS;
-        return -1;
-    }
-
-    CPU_ZERO_S(size, set);
-
-    // Return at least 2 CPUs so that Go does not assume a single-threaded
-    // process.
-    CPU_SET_S(0, size, set);
-    CPU_SET_S(1, size, set);
-
-    return 1;
 }
 
 static void _stat_to_oe_stat(struct stat* stat, struct oe_stat_t* oe_stat)
@@ -234,8 +208,6 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return _syscall_getrandom((void*)x1, x2, x3);
         case SYS_madvise:
             return 0; // noop, return success
-        case SYS_sched_getaffinity:
-            return _syscall_sched_getaffinity(x1, x2, (void*)x3);
         case SYS_sched_yield:
             __builtin_ia32_pause();
             return 0;

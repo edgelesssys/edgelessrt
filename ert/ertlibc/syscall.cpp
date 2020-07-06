@@ -14,6 +14,7 @@
 #include <system_error>
 #include "ertthread.h"
 #include "locale.h"
+#include "syscalls.h"
 
 using namespace std;
 using namespace ert;
@@ -32,6 +33,12 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
                     static_cast<int>(x1), reinterpret_cast<oe_timespec*>(x2));
             case SYS_gettid:
                 return ert_thread_self()->tid;
+
+            case SYS_sched_getaffinity:
+                return sc::sched_getaffinity(
+                    static_cast<pid_t>(x1),
+                    static_cast<size_t>(x2),
+                    reinterpret_cast<cpu_set_t*>(x3));
 
             case SYS_mprotect:
             case SYS_madvise:
