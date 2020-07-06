@@ -18,6 +18,8 @@ try to find all symbols in the statically linked enclave.
 
 void* dlopen(const char* file, int mode)
 {
+    (void)file;
+    (void)mode;
     return (void*)1; // just return any non-NULL value
 }
 
@@ -28,7 +30,7 @@ static uint32_t gnu_hash(const char* s0)
     uint_fast32_t h = 5381;
     for (; *s; s++)
         h += h * 32 + *s;
-    return h;
+    return (uint32_t)h;
 }
 
 // adapted from musl/ldso/dynlink.c
@@ -62,6 +64,8 @@ static const Elf64_Sym* gnu_lookup(
 
 const void* __dlsym(void* handle, const char* symbol)
 {
+    (void)handle;
+
     if (!symbol)
         abort();
 

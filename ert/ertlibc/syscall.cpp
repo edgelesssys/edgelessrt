@@ -34,6 +34,12 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
             case SYS_gettid:
                 return ert_thread_self()->tid;
 
+            case SYS_getrandom:
+                return sc::getrandom(
+                    reinterpret_cast<void*>(x1),  // buf
+                    static_cast<size_t>(x2),      // buflen
+                    static_cast<unsigned int>(x3) // flags
+                );
             case SYS_sched_getaffinity:
                 return sc::sched_getaffinity(
                     static_cast<pid_t>(x1),

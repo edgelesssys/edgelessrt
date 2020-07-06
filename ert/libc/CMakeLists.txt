@@ -91,6 +91,7 @@ add_enclave_library(
   ../../libc/__vsprintf_chk.c
   ../../libc/__vsnprintf_chk.c
   ${MUSLSRC}/internal/syscall_ret.c
+  chk.c
   ertfutex.c
   locale.c
   pthreadhooks.c
