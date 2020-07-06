@@ -3,11 +3,9 @@
 
 #include <openenclave/corelibc/errno.h>
 #include <openenclave/corelibc/pthread.h>
-#include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/defs.h>
 #include <openenclave/internal/thread.h>
-#include <openenclave/internal/trace.h>
 
 OE_STATIC_ASSERT(sizeof(oe_pthread_once_t) == sizeof(oe_once_t));
 OE_STATIC_ASSERT(sizeof(oe_pthread_spinlock_t) == sizeof(oe_spinlock_t));
@@ -30,64 +28,9 @@ OE_INLINE int _to_errno(oe_result_t result)
             return OE_EPERM;
         case OE_OUT_OF_MEMORY:
             return OE_ENOMEM;
-        case OE_TIMEDOUT:
-            return OE_ETIMEDOUT;
         default:
             return OE_EINVAL; /* unreachable */
     }
-}
-
-/*
-**==============================================================================
-**
-** pthread_attr_t
-**
-**==============================================================================
-*/
-
-// Internal attr implementation
-typedef struct _oe_attr_impl
-{
-    bool detached;
-} oe_attr_impl_t;
-
-OE_STATIC_ASSERT(sizeof(oe_attr_impl_t) <= sizeof(oe_pthread_attr_t));
-
-#define PTHREAD_CREATE_JOINABLE 0
-#define PTHREAD_CREATE_DETACHED 1
-
-int oe_pthread_attr_init(oe_pthread_attr_t* attr)
-{
-    oe_assert(attr);
-    memset(attr, 0, sizeof *attr);
-    return 0;
-}
-
-int oe_pthread_attr_destroy(oe_pthread_attr_t* attr)
-{
-    oe_assert(attr);
-    (void)attr;
-    return 0;
-}
-
-int oe_pthread_attr_setdetachstate(oe_pthread_attr_t* attr, int detachstate)
-{
-    oe_assert(attr);
-    oe_attr_impl_t* const iattr = (oe_attr_impl_t*)attr;
-
-    switch (detachstate)
-    {
-        case PTHREAD_CREATE_JOINABLE:
-            iattr->detached = false;
-            break;
-        case PTHREAD_CREATE_DETACHED:
-            iattr->detached = true;
-            break;
-        default:
-            return OE_EINVAL;
-    }
-
-    return 0;
 }
 
 /*
@@ -118,28 +61,27 @@ int oe_pthread_create(
     void* (*start_routine)(void*),
     void* arg)
 {
-    const oe_result_t res = oe_thread_create(thread, start_routine, arg);
-
-    if (res == OE_OK && attr && ((oe_attr_impl_t*)attr)->detached &&
-        oe_thread_detach(*thread) != OE_OK)
-        oe_abort();
-
-    return _to_errno(res);
+    OE_UNUSED(thread);
+    OE_UNUSED(attr);
+    OE_UNUSED(start_routine);
+    OE_UNUSED(arg);
+    oe_assert("oe_pthread_create(): panic" == NULL);
+    return -1;
 }
 
 int oe_pthread_join(oe_pthread_t thread, void** retval)
 {
-    return _to_errno(oe_thread_join(thread, retval));
+    OE_UNUSED(thread);
+    OE_UNUSED(retval);
+    oe_assert("oe_pthread_join(): panic" == NULL);
+    return -1;
 }
 
 int oe_pthread_detach(oe_pthread_t thread)
 {
-    return _to_errno(oe_thread_detach(thread));
-}
-
-void oe_pthread_exit(void* retval)
-{
-    oe_thread_exit(retval);
+    OE_UNUSED(thread);
+    oe_assert("oe_pthread_detach(): panic" == NULL);
+    return -1;
 }
 
 /*
@@ -288,7 +230,7 @@ int oe_pthread_cond_init(
     const oe_pthread_condattr_t* attr)
 {
     OE_UNUSED(attr);
-    return _to_errno(oe_cond_init((oe_cond_t*)cond, (oe_condattr_t*)attr));
+    return _to_errno(oe_cond_init((oe_cond_t*)cond));
 }
 
 int oe_pthread_cond_wait(oe_pthread_cond_t* cond, oe_pthread_mutex_t* mutex)
@@ -301,8 +243,11 @@ int oe_pthread_cond_timedwait(
     oe_pthread_mutex_t* mutex,
     const struct oe_timespec* ts)
 {
-    return _to_errno(
-        oe_cond_timedwait((oe_cond_t*)cond, (oe_mutex_t*)mutex, ts));
+    OE_UNUSED(cond);
+    OE_UNUSED(mutex);
+    OE_UNUSED(ts);
+    oe_assert("oe_pthread_cond_timedwait(): panic" == NULL);
+    return -1;
 }
 
 int oe_pthread_cond_signal(oe_pthread_cond_t* cond)
@@ -320,16 +265,6 @@ int oe_pthread_cond_destroy(oe_pthread_cond_t* cond)
     return _to_errno(oe_cond_destroy((oe_cond_t*)cond));
 }
 
-int oe_pthread_condattr_init(oe_pthread_condattr_t* attr)
-{
-    return _to_errno(oe_condattr_init((oe_condattr_t*)attr));
-}
-
-int oe_pthread_condattr_setclock(oe_pthread_condattr_t* attr, int clockid)
-{
-    return _to_errno(oe_condattr_setclock((oe_condattr_t*)attr, clockid));
-}
-
 /*
 **==============================================================================
 **
@@ -344,8 +279,6 @@ int oe_pthread_key_create(
 {
     return _to_errno(oe_thread_key_create((oe_thread_key_t*)key, destructor));
 }
-
-OE_WEAK_ALIAS(oe_pthread_key_create, __pthread_key_create);
 
 int oe_pthread_key_delete(oe_pthread_key_t key)
 {

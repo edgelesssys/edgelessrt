@@ -4,7 +4,6 @@
 #include <libc.h>
 #include <locale.h>
 #include <openenclave/enclave.h>
-#include <openenclave/internal/defs.h>
 #include <string.h>
 
 /* ATTN: should these assert? */
@@ -54,8 +53,6 @@ void freelocale(locale_t loc)
 {
     OE_UNUSED(loc);
 }
-
-OE_WEAK_ALIAS(freelocale, __freelocale);
 
 char* setlocale(int category, const char* locale)
 {

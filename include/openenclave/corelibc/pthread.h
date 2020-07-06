@@ -67,10 +67,6 @@ typedef struct _oe_pthread_rwlock
     uint64_t __private[5];
 } oe_pthread_rwlock_t;
 
-int oe_pthread_attr_init(oe_pthread_attr_t* attr);
-int oe_pthread_attr_destroy(oe_pthread_attr_t* attr);
-int oe_pthread_attr_setdetachstate(oe_pthread_attr_t* attr, int detachstate);
-
 oe_pthread_t oe_pthread_self(void);
 
 int oe_pthread_equal(oe_pthread_t thread1, oe_pthread_t thread2);
@@ -84,8 +80,6 @@ int oe_pthread_create(
 int oe_pthread_join(oe_pthread_t thread, void** retval);
 
 int oe_pthread_detach(oe_pthread_t thread);
-
-void oe_pthread_exit(void* retval) OE_NO_RETURN;
 
 int oe_pthread_once(oe_pthread_once_t* once, void (*func)(void));
 
@@ -144,9 +138,6 @@ int oe_pthread_cond_broadcast(oe_pthread_cond_t* cond);
 
 int oe_pthread_cond_destroy(oe_pthread_cond_t* cond);
 
-int oe_pthread_condattr_init(oe_pthread_condattr_t* attr);
-int oe_pthread_condattr_setclock(oe_pthread_condattr_t* attr, int clockid);
-
 int oe_pthread_key_create(
     oe_pthread_key_t* key,
     void (*destructor)(void* value));
@@ -168,7 +159,6 @@ void* oe_pthread_getspecific(oe_pthread_key_t key);
 #if defined(OE_NEED_STDC_NAMES)
 
 #include <openenclave/corelibc/bits/pthread_def.h>
-#include <openenclave/corelibc/bits/pthread_attr.h>
 #include <openenclave/corelibc/bits/pthread_cond.h>
 #include <openenclave/corelibc/bits/pthread_create.h>
 #include <openenclave/corelibc/bits/pthread_equal.h>
