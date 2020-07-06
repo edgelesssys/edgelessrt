@@ -59,10 +59,7 @@ static void* _map(size_t length)
         oe_bitset_find_unset_range(_bitset, _size / OE_PAGE_SIZE, count);
 
     if (pos == OE_SIZE_MAX)
-    {
-        oe_errno = OE_ENOMEM;
-        return OE_MAP_FAILED;
-    }
+        return (void*)-OE_ENOMEM;
 
     oe_bitset_set_range(_bitset, pos, count);
     void* const result = (uint8_t*)_base + pos * OE_PAGE_SIZE;
@@ -73,10 +70,7 @@ static void* _map(size_t length)
 static void* _map_fixed(void* addr, size_t length)
 {
     if (!_addr_in_range(addr, length))
-    {
-        oe_errno = OE_ENOMEM;
-        return OE_MAP_FAILED;
-    }
+        return (void*)-OE_ENOMEM;
 
     // MAP_FIXED discards overlapped part of existing mappings
     oe_bitset_set_range(_bitset, _to_pos(addr), length / OE_PAGE_SIZE);
@@ -94,20 +88,14 @@ void* oe_mmap(
 {
     // check for invalid args
     if ((uintptr_t)addr % OE_PAGE_SIZE || !length)
-    {
-        oe_errno = OE_EINVAL;
-        return OE_MAP_FAILED;
-    }
+        return (void*)-OE_EINVAL;
 
     // check for unsupported args
     // Accept PROT_EXEC even though the memory is not executable. Python ctypes
     // will allocate such memory, but not necessarily make use of it.
     if ((prot & ~(OE_PROT_READ | OE_PROT_WRITE | OE_PROT_EXEC)) || fd != -1 ||
         offset)
-    {
-        oe_errno = OE_ENOSYS;
-        return OE_MAP_FAILED;
-    }
+        return (void*)-OE_ENOSYS;
 
     length = oe_round_up_to_page_size(length);
     void* result = OE_MAP_FAILED;
@@ -120,8 +108,7 @@ void* oe_mmap(
     if (!_length_in_range(length))
     {
         oe_spin_unlock(&_lock);
-        oe_errno = OE_ENOMEM;
-        return result;
+        return (void*)-OE_ENOMEM;
     }
 
     if (!addr && flags == (OE_MAP_ANON | OE_MAP_PRIVATE))
@@ -129,7 +116,7 @@ void* oe_mmap(
     else if (addr && flags == (OE_MAP_ANON | OE_MAP_FIXED | OE_MAP_PRIVATE))
         result = _map_fixed(addr, length);
     else
-        oe_errno = OE_EINVAL;
+        result = (void*)-OE_EINVAL;
 
     oe_spin_unlock(&_lock);
 
@@ -138,7 +125,7 @@ void* oe_mmap(
 
 int oe_munmap(void* addr, size_t length)
 {
-    int result = -1;
+    int result = -OE_EINVAL;
     length = oe_round_up_to_page_size(length);
 
     oe_spin_lock(&_lock);
@@ -149,16 +136,8 @@ int oe_munmap(void* addr, size_t length)
         oe_bitset_reset_range(_bitset, _to_pos(addr), length / OE_PAGE_SIZE);
         result = 0;
     }
-    else
-        oe_errno = OE_EINVAL;
 
     oe_spin_unlock(&_lock);
 
     return result;
 }
-
-OE_WEAK_ALIAS(oe_mmap, mmap);
-OE_WEAK_ALIAS(oe_mmap, __mmap);
-OE_WEAK_ALIAS(oe_mmap, mmap64);
-OE_WEAK_ALIAS(oe_munmap, munmap);
-OE_WEAK_ALIAS(oe_munmap, __munmap);

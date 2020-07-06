@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <openenclave/corelibc/assert.h>
+#include <openenclave/corelibc/mman.h>
 #include <openenclave/internal/syscall.h>
 #include <openenclave/internal/syscall/sys/syscall.h>
 #include <openenclave/internal/thread.h>
@@ -34,6 +35,10 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             static long tid;
             return __atomic_add_fetch(&tid, 1, __ATOMIC_SEQ_CST);
         }
+        case OE_SYS_mmap:
+            return (long)oe_mmap((void*)x1, x2, x3, x4, x5, x6);
+        case OE_SYS_munmap:
+            return oe_munmap((void*)x1, x2);
     }
 
     // Try libertlibc
