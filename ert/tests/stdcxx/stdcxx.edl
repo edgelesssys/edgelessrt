@@ -1,0 +1,16 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+    from "openenclave/edl/logging.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "platform.edl" import *;
+    from "openenclave/edl/ertlibc.edl" import *;
+
+    trusted {
+        public int enc_test(
+            [out] bool* caught,
+            [out] bool* dynamic_cast_works,
+            [out] size_t* n_constructions);
+    };
+};

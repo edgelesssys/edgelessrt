@@ -6,13 +6,17 @@
 #include <openenclave/internal/trace.h>
 #include <sys/syscall.h>
 #include <cerrno>
+#include <clocale>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <stdexcept>
 #include <system_error>
 #include "ertthread.h"
+#include "locale.h"
 
 using namespace std;
+using namespace ert;
 
 long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
 {
@@ -62,4 +66,19 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
     }
 
     return -ENOSYS;
+}
+
+// This function is defined in this source file to guarantee that it overrides
+// the weak symbol in ert/libc/locale.c.
+extern "C" locale_t __newlocale(int mask, const char* locale, locale_t loc)
+{
+    if (!(mask > 0 && !loc && locale && strcmp(locale, "C") == 0))
+        return newlocale(mask, locale, loc);
+
+    // Caller may be stdc++. We must return a struct that satisfies glibc
+    // internals (see glibc/locale/global-locale.c). The following struct is
+    // also compatible with musl.
+    static const __locale_struct c_locale{
+        {}, reinterpret_cast<const unsigned short*>(nl_C_LC_CTYPE_class + 128)};
+    return const_cast<locale_t>(&c_locale);
 }

@@ -4,6 +4,7 @@ enclave_link_libraries(ertlibunwind PRIVATE libunwind)
 
 add_enclave_library(
   ertlibc
+  locale.cpp
   pthread.cpp
   syscall.cpp)
 

@@ -3,7 +3,11 @@
 
 #include <locale.h>
 
-locale_t __newlocale(int mask, const char* locale, locale_t loc)
+// will be overriden by ertlibc
+__attribute__((__weak__)) locale_t __newlocale(
+    int mask,
+    const char* locale,
+    locale_t loc)
 {
     return newlocale(mask, locale, loc);
 }
