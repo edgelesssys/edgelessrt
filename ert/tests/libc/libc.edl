@@ -1,0 +1,14 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+    from "openenclave/edl/logging.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "platform.edl" import *;
+    from "openenclave/edl/ertlibc.edl" import *;
+
+    trusted {
+        public int run_all_tests();
+        public int run_test([in, string] const char* test_name);
+    };
+};

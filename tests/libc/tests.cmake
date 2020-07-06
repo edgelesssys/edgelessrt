@@ -26,7 +26,6 @@ set(LIBC_TESTS
     3rdparty/musl/libc-test/src/functional/search_insque.c
     3rdparty/musl/libc-test/src/functional/search_lsearch.c
     3rdparty/musl/libc-test/src/functional/search_tsearch.c
-    3rdparty/musl/libc-test/src/functional/sem_init.c
     3rdparty/musl/libc-test/src/functional/socket.c
     3rdparty/musl/libc-test/src/functional/snprintf.c
     3rdparty/musl/libc-test/src/functional/sscanf.c
@@ -316,6 +315,7 @@ if (FALSE)
     # sscanf_long Runs out of memory on Windows and Linux CI
     3rdparty/musl/libc-test/src/functional/sscanf_long.c
     3rdparty/musl/libc-test/src/functional/search_hsearch.c
+    3rdparty/musl/libc-test/src/functional/sem_init.c
     3rdparty/musl/libc-test/src/functional/sem_open.c
     3rdparty/musl/libc-test/src/functional/setjmp.c
     3rdparty/musl/libc-test/src/functional/spawn.c # uses pipe
