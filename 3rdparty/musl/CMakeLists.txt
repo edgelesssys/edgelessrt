@@ -92,7 +92,8 @@ ExternalProject_Add(musl_includes
       ${PATCHES_DIR}/endian.h
       ${MUSL_INCLUDES}/endian.h
     # Append deprecations.h to all C header files.
-    COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
+    # EDG: don't deprecate pthread_create and friends
+    #COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
     # Copy local deprecations.h to include/bits/deprecated.h.
     COMMAND ${CMAKE_COMMAND} -E copy
       ${CMAKE_CURRENT_LIST_DIR}/deprecations.h
