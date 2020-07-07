@@ -5,6 +5,8 @@
 #include "../ertlibc/ertthread.h"
 #include "pthread_impl.h"
 
+#define PTHREAD_MUTEX_ADAPTIVE_NP 3
+
 pthread_t __pthread_self()
 {
     static __thread struct
@@ -77,4 +79,18 @@ int pthread_mutex_timedlock(pthread_mutex_t* m, const struct timespec* t)
 {
     _mutex_fix_recursive(m);
     return __pthread_mutex_timedlock(m, t);
+}
+
+int pthread_mutexattr_settype(pthread_mutexattr_t* a, int type)
+{
+    // Handle glibc extension. It's just a performance optimization, so we can
+    // use normal mutex instead.
+    if (type == PTHREAD_MUTEX_ADAPTIVE_NP)
+        type = PTHREAD_MUTEX_NORMAL;
+
+    // copied from musl/thread/pthread_mutexattr_settype.c
+    if ((unsigned)type > 2)
+        return EINVAL;
+    a->__attr = (a->__attr & ~3) | type;
+    return 0;
 }

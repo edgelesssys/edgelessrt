@@ -1235,7 +1235,7 @@ add_enclave_library(
   ${MUSLSRC}/thread/pthread_mutexattr_setprotocol.c
   ${MUSLSRC}/thread/pthread_mutexattr_setpshared.c
   ${MUSLSRC}/thread/pthread_mutexattr_setrobust.c
-  ${MUSLSRC}/thread/pthread_mutexattr_settype.c
+  #${MUSLSRC}/thread/pthread_mutexattr_settype.c
   ${MUSLSRC}/thread/pthread_once.c
   ${MUSLSRC}/thread/pthread_rwlock_destroy.c
   ${MUSLSRC}/thread/pthread_rwlock_init.c

@@ -257,6 +257,13 @@ static void _test_exit()
     OE_TEST(ret == 2);
 }
 
+static void _test_mutexattr()
+{
+    pthread_mutexattr_t attr{};
+    OE_TEST(pthread_mutexattr_init(&attr) == 0);
+    OE_TEST(pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ADAPTIVE_NP) == 0);
+}
+
 void test_ecall()
 {
     _test_invalid_arguments();
@@ -268,6 +275,7 @@ void test_ecall()
     _test_detach();
     _test_detached();
     _test_exit();
+    _test_mutexattr();
 }
 
 OE_SET_ENCLAVE_SGX(
