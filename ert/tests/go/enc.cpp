@@ -2,13 +2,18 @@
 #include <iostream>
 #include "test_t.h"
 
+#include <openenclave/internal/sgx/td.h>
+
 using namespace std;
 
-extern "C" int gotest();
+extern "C" const bool ert_enable_signals = true;
+extern "C" const bool ert_enable_sigsegv = true;
+
+extern "C" int gotest(bool simulate);
 
 void test_ecall()
 {
-    const int r = gotest();
+    const int r = gotest(oe_sgx_get_td()->simulate);
     cout << "gotest() returned " << r << '\n';
     OE_TEST(r == 42);
 }

@@ -4,6 +4,9 @@
 using namespace std;
 using namespace ert;
 
+// defined in enclave/core/sgx/exception.c
+extern "C" __thread uint64_t ert_sigaltstack_sp;
+
 // currently only SIGSEGV is implemented
 static constexpr array _code_to_sig{
     0,      // OE_EXCEPTION_DIVIDE_BY_ZERO
@@ -46,6 +49,8 @@ static_assert(_ureg_to_ereg[REG_RAX] == &oe_context_t::rax);
 static_assert(_ureg_to_ereg[REG_RCX] == &oe_context_t::rcx);
 static_assert(_ureg_to_ereg[REG_RSP] == &oe_context_t::rsp);
 static_assert(_ureg_to_ereg[REG_RIP] == &oe_context_t::rip);
+
+thread_local SignalManager::StackBuffer SignalManager::stack_;
 
 SignalManager& SignalManager::get_instance() noexcept
 {
@@ -102,6 +107,31 @@ bool SignalManager::vectored_exception_handler(
             static_cast<uint64_t>(uctx.uc_mcontext.gregs[i]);
 
     return true;
+}
+
+SignalManager::StackBuffer SignalManager::get_stack() const noexcept
+{
+    return stack_;
+}
+
+void SignalManager::set_stack(StackBuffer buffer)
+{
+    if (buffer.empty())
+    {
+        stack_ = buffer;
+        ert_sigaltstack_sp = 0;
+        return;
+    }
+
+    // This should actually be MINSIGSTKSZ, but it's too small for the enclave
+    // exception handling.
+    if (buffer.size() < SIGSTKSZ)
+        throw system_error(
+            ENOMEM, system_category(), "sigaltstack: buffer too small");
+
+    stack_ = buffer;
+    ert_sigaltstack_sp =
+        reinterpret_cast<uint64_t>(buffer.data()) + buffer.size();
 }
 
 SignalManager::SignalManager() noexcept : actions_(), spinlock_()

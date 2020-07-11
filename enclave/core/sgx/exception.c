@@ -26,6 +26,9 @@ oe_vectored_exception_handler_t
 // EDG: enclave dev can enable SIGSEGV by overriding this symbol
 OE_WEAK bool ert_enable_sigsegv;
 
+__thread uint64_t ert_sigaltstack_sp;
+static __thread uint64_t _original_sp;
+
 oe_result_t oe_add_vectored_exception_handler(
     bool is_first_handler,
     oe_vectored_exception_handler_t vectored_handler)
@@ -240,6 +243,10 @@ int _emulate_illegal_instruction(sgx_ssa_gpr_t* ssa_gpr)
 */
 void oe_real_exception_dispatcher(oe_context_t* oe_context)
 {
+    // EDG: restore sp if sigaltstack has been used
+    if (ert_sigaltstack_sp)
+        oe_context->rsp = _original_sp;
+
     oe_sgx_td_t* td = oe_sgx_get_td();
 
     // Change the rip of oe_context to the real exception address.
@@ -377,6 +384,13 @@ void oe_virtual_exception_dispatcher(
         // Modify the ssa_gpr so that e_resume will go to second pass exception
         // handler.
         ssa_gpr->rip = (uint64_t)oe_exception_dispatcher;
+
+        // EDG: use alternative sp if sigaltstack has been used
+        if (ert_sigaltstack_sp)
+        {
+            _original_sp = ssa_gpr->rsp;
+            ssa_gpr->rsp = ert_sigaltstack_sp;
+        }
     }
 
     // Cleanup the exception flag to avoid the exception handler is called

@@ -3,6 +3,8 @@
 #include <openenclave/enclave.h>
 #include <array>
 #include <csignal>
+#include <cstdint>
+#include "span.h"
 #include "spinlock.h"
 
 #define hidden
@@ -13,6 +15,8 @@ namespace ert
 {
 class SignalManager final
 {
+    typedef tcb::span<uint8_t> StackBuffer;
+
   public:
     SignalManager(const SignalManager&) = delete;
     SignalManager& operator=(const SignalManager&) = delete;
@@ -26,7 +30,13 @@ class SignalManager final
     bool vectored_exception_handler(
         const oe_exception_record_t& exception_context) noexcept;
 
+    // used by sigaltstack
+    StackBuffer get_stack() const noexcept;
+    void set_stack(StackBuffer buffer);
+
   private:
+    static thread_local StackBuffer stack_;
+
     std::array<k_sigaction, NSIG> actions_;
     Spinlock spinlock_;
 

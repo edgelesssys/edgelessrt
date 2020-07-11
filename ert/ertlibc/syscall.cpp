@@ -64,8 +64,13 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
                 return 0;
 
             case SYS_rt_sigprocmask:
-            case SYS_sigaltstack:
                 return 0; // Not supported. Silently ignore and return success.
+
+            case SYS_sigaltstack:
+                sc::sigaltstack(
+                    reinterpret_cast<stack_t*>(x1),
+                    reinterpret_cast<stack_t*>(x2));
+                return 0;
         }
     }
     catch (const system_error& e)

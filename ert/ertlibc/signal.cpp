@@ -36,3 +36,35 @@ void sc::rt_sigaction(int signum, const k_sigaction* act, k_sigaction* oldact)
             false,
             _vectored_exception_handler);
 }
+
+void sc::sigaltstack(const stack_t* ss, stack_t* oss)
+{
+    auto& manager = SignalManager::get_instance();
+
+    if (oss)
+    {
+        const auto stack = manager.get_stack();
+        *oss = {};
+        if (stack.empty())
+            oss->ss_flags = SS_DISABLE;
+        else
+        {
+            oss->ss_sp = stack.data();
+            oss->ss_size = stack.size();
+        }
+    }
+
+    if (!ss)
+        return;
+
+    if (ss->ss_flags == SS_DISABLE)
+    {
+        manager.set_stack({});
+        return;
+    }
+
+    if (ss->ss_flags)
+        throw system_error(EINVAL, system_category(), "sigaltstack: ss_flags");
+
+    manager.set_stack({static_cast<uint8_t*>(ss->ss_sp), ss->ss_size});
+}
