@@ -23,6 +23,9 @@ uint32_t g_current_exception_handler_count = 0;
 oe_vectored_exception_handler_t
     g_exception_handler_arr[MAX_EXCEPTION_HANDLER_COUNT];
 
+// EDG: enclave dev can enable SIGSEGV by overriding this symbol
+OE_WEAK bool ert_enable_sigsegv;
+
 oe_result_t oe_add_vectored_exception_handler(
     bool is_first_handler,
     oe_vectored_exception_handler_t vectored_handler)
@@ -322,8 +325,15 @@ void oe_virtual_exception_dispatcher(
     if (!ssa_gpr->exit_info.as_fields.valid)
     {
         // Not a valid/expected enclave exception;
-        *arg_out = OE_EXCEPTION_CONTINUE_SEARCH;
-        return;
+        if (!(ert_enable_sigsegv && arg_in == 11)) // EDG: allow SIGSEGV
+        {
+            *arg_out = OE_EXCEPTION_CONTINUE_SEARCH;
+            return;
+        }
+        sgx_exit_info* const ei = &ssa_gpr->exit_info;
+        ei->as_fields.vector = 13; // #GP
+        ei->as_fields.exit_type = SGX_EXIT_TYPE_HARDWARE;
+        ei->as_fields.valid = 1;
     }
 
     // Get the exception address, code, and flags.
