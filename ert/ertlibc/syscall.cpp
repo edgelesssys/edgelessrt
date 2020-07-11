@@ -56,11 +56,16 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
                 // These can all be noops.
                 return 0;
 
+            case SYS_rt_sigaction:
+                sc::rt_sigaction(
+                    static_cast<int>(x1),                // signum
+                    reinterpret_cast<k_sigaction*>(x2),  // act
+                    reinterpret_cast<k_sigaction*>(x3)); // oldact
+                return 0;
+
             case SYS_rt_sigprocmask:
             case SYS_sigaltstack:
-                // Signals are not supported. Silently ignore and return
-                // success.
-                return 0;
+                return 0; // Not supported. Silently ignore and return success.
         }
     }
     catch (const system_error& e)

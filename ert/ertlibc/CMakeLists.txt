@@ -10,6 +10,8 @@ add_enclave_library(
   new_thread.cpp
   pthread.cpp
   sched.cpp
+  signal.cpp
+  signal_manager.cpp
   stdio.cpp
   stdlib.cpp
   stubs.cpp

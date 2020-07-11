@@ -84,7 +84,7 @@ add_enclave_library(
   ../../libc/malloc.c
   pthread.c
   ../../libc/sched_yield.c
-  ../../libc/sigaction.c
+  #../../libc/sigaction.c
   ../../libc/signal.c
   ../../libc/stdlib.c
   ../../libc/strerror.c
