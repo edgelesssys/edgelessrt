@@ -13,7 +13,11 @@ cmake ..
 make
 ertdevhost enclave.signed
 ```
-
+When using simulation mode, use 
+```sh
+OE_SIMULATION=1 ertdevhost enclave.signed
+```
+to run the sample.
 ## custom host
 As stated [here](../README.md#ertdevhost) `ertdevhost` must not be used in production. For modern distributed applications, it is recommended to use [Edgeless Mesh](../README.md#edgeless-mesh). Alternatively, for a standalone application, you can write a custom host application. An example is given in the directory `custom_host`. It can be built and run as follows:
 ```sh

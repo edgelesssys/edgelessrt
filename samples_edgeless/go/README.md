@@ -17,3 +17,8 @@ cmake ..
 make
 ertdevhost enclave.signed
 ```
+When using simulation mode, use 
+```sh
+OE_SIMULATION=1 ertdevhost enclave.signed
+```
+to run the sample.
