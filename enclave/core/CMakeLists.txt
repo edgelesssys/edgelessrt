@@ -91,7 +91,6 @@ if (OE_SGX)
     sgx/keys.c
     sgx/longjmp.S
     sgx/memory.c
-    sgx/new_thread.c
     sgx/properties.c
     sgx/random_internal.c
     sgx/reloc.c

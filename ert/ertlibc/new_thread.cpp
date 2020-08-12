@@ -9,7 +9,7 @@ static struct
     oe_new_thread_t* front;
     oe_new_thread_t* back;
     oe_spinlock_t lock;
-} _queue = {.lock = OE_SPINLOCK_INITIALIZER};
+} _queue;
 
 static void _check(oe_result_t result)
 {

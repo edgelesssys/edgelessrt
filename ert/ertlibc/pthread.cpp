@@ -13,10 +13,7 @@
 #include <system_error>
 #include "ertlibc_t.h"
 #include "ertthread.h"
-
-// TODO integrate into ertlibc
-#define OE_BUILD_ENCLAVE
-#include "../enclave/core/sgx/new_thread.h"
+#include "new_thread.h"
 
 using namespace std;
 

@@ -6,6 +6,7 @@ add_enclave_library(
   ertlibc
   locale.cpp
   misc.cpp
+  new_thread.cpp
   pthread.cpp
   sched.cpp
   stdio.cpp
@@ -18,6 +19,7 @@ add_enclave_library(
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
 enclave_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+enclave_compile_definitions(ertlibc PRIVATE OE_BUILD_ENCLAVE)
 enclave_link_libraries(
   ertlibc
   INTERFACE
