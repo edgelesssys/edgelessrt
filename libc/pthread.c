@@ -11,7 +11,6 @@
 #include <openenclave/internal/sgx/td.h>
 #include <openenclave/internal/thread.h>
 #include <pthread.h>
-#include "threaded.h"
 
 #ifdef pthread_equal
 #undef pthread_equal
@@ -25,7 +24,6 @@
 #undef OE_INLINE
 #define OE_INLINE
 #endif
-#include <openenclave/corelibc/bits/pthread_attr.h>
 #include <openenclave/corelibc/bits/pthread_cond.h>
 #include <openenclave/corelibc/bits/pthread_equal.h>
 #include <openenclave/corelibc/bits/pthread_key.h>
@@ -50,18 +48,12 @@ OE_STATIC_ASSERT(sizeof(pthread_once_t) == sizeof(oe_once_t));
 OE_STATIC_ASSERT(sizeof(pthread_spinlock_t) == sizeof(oe_spinlock_t));
 OE_STATIC_ASSERT(sizeof(pthread_mutex_t) >= sizeof(oe_mutex_t));
 OE_STATIC_ASSERT(sizeof(pthread_cond_t) >= sizeof(oe_cond_t));
-OE_STATIC_ASSERT(sizeof(pthread_condattr_t) >= sizeof(oe_condattr_t));
 OE_STATIC_ASSERT(sizeof(pthread_rwlock_t) >= sizeof(oe_rwlock_t));
 
 static __thread struct __pthread _pthread_self = {.locale = C_LOCALE};
 
 pthread_t __pthread_self()
 {
-    // EDG: musl needs a tid for thread locking
-    static int tid;
-    if (!_pthread_self.tid)
-        _pthread_self.tid = __atomic_add_fetch(&tid, 1, __ATOMIC_SEQ_CST);
-
     return &_pthread_self;
 }
 
@@ -82,12 +74,8 @@ int pthread_create(
 {
     if (!_pthread_hooks || !_pthread_hooks->create)
     {
-        musl_init_threaded();
-        return oe_pthread_create(
-            (oe_pthread_t*)thread,
-            (const oe_pthread_attr_t*)attr,
-            start_routine,
-            arg);
+        oe_assert("pthread_create(): panic" == NULL);
+        return -1;
     }
 
     return _pthread_hooks->create(thread, attr, start_routine, arg);
@@ -97,7 +85,8 @@ int pthread_join(pthread_t thread, void** retval)
 {
     if (!_pthread_hooks || !_pthread_hooks->join)
     {
-        return oe_pthread_join((oe_pthread_t)thread, retval);
+        oe_assert("pthread_join(): panic" == NULL);
+        return -1;
     }
 
     return _pthread_hooks->join(thread, retval);
@@ -107,28 +96,9 @@ int pthread_detach(pthread_t thread)
 {
     if (!_pthread_hooks || !_pthread_hooks->detach)
     {
-        return oe_pthread_detach((oe_pthread_t)thread);
+        oe_assert("pthread_detach(): panic" == NULL);
+        return -1;
     }
 
     return _pthread_hooks->detach(thread);
-}
-
-void pthread_exit(void* retval)
-{
-    oe_pthread_exit(retval);
-}
-
-int pthread_condattr_init(pthread_condattr_t* attr)
-{
-    return oe_pthread_condattr_init((oe_pthread_condattr_t*)attr);
-}
-
-int pthread_condattr_setclock(pthread_condattr_t* attr, clockid_t clockid)
-{
-    return oe_pthread_condattr_setclock((oe_pthread_condattr_t*)attr, clockid);
-}
-
-int pthread_setcancelstate(int state, int* oldstate)
-{
-    return 0; // noop, return success
 }

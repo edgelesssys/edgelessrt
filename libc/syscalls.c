@@ -8,13 +8,11 @@
 #include <openenclave/corelibc/errno.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/calls.h>
-#include <openenclave/internal/random.h>
 #include <openenclave/internal/syscall.h>
 #include <openenclave/internal/syscall/sys/stat.h>
 #include <openenclave/internal/syscall/sys/syscall.h>
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/time.h>
-#include <openenclave/internal/trace.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +27,7 @@ static oe_spinlock_t _lock;
 
 static const uint64_t _SEC_TO_MSEC = 1000UL;
 static const uint64_t _MSEC_TO_USEC = 1000UL;
+static const uint64_t _MSEC_TO_NSEC = 1000000UL;
 
 static long _syscall_mmap(long n, ...)
 {
@@ -39,8 +38,34 @@ static long _syscall_mmap(long n, ...)
 
 static long _syscall_clock_gettime(long n, long x1, long x2)
 {
+    clockid_t clk_id = (clockid_t)x1;
+    struct timespec* tp = (struct timespec*)x2;
+    int ret = -1;
+    uint64_t msec;
+
     OE_UNUSED(n);
-    return oe_clock_gettime((clockid_t)x1, (struct oe_timespec*)x2);
+
+    if (!tp)
+        goto done;
+
+    if (clk_id != CLOCK_REALTIME)
+    {
+        /* Only supporting CLOCK_REALTIME */
+        oe_assert("clock_gettime(): panic" == NULL);
+        goto done;
+    }
+
+    if ((msec = oe_get_time()) == (uint64_t)-1)
+        goto done;
+
+    tp->tv_sec = msec / _SEC_TO_MSEC;
+    tp->tv_nsec = (msec % _SEC_TO_MSEC) * _MSEC_TO_NSEC;
+
+    ret = 0;
+
+done:
+
+    return ret;
 }
 
 static long _syscall_gettimeofday(long n, long x1, long x2)
@@ -71,18 +96,6 @@ static long _syscall_gettimeofday(long n, long x1, long x2)
 
 done:
     return ret;
-}
-
-static ssize_t _syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
-{
-    oe_assert(buf);
-    oe_assert(buflen <= OE_SSIZE_MAX);
-    OE_UNUSED(flags);
-
-    if (oe_random_internal(buf, buflen) != OE_OK)
-        return -1;
-
-    return buflen;
 }
 
 static void _stat_to_oe_stat(struct stat* stat, struct oe_stat_t* oe_stat)
@@ -204,17 +217,6 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return _syscall_clock_gettime(n, x1, x2);
         case SYS_mmap:
             return _syscall_mmap(n, x1, x2, x3, x4, x5, x6);
-        case SYS_getrandom:
-            return _syscall_getrandom((void*)x1, x2, x3);
-        case SYS_madvise:
-            return 0; // noop, return success
-        case SYS_sched_yield:
-            __builtin_ia32_pause();
-            return 0;
-        case SYS_rt_sigprocmask:
-        case SYS_sigaltstack:
-            // Signals are not supported. Silently ignore and return success.
-            return 0;
         default:
             /* Drop through and let the code below handle the syscall. */
             break;
@@ -235,11 +237,8 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     }
 
     /* All other MUSL-initiated syscalls are aborted. */
-    // fprintf(stderr, "error: unhandled syscall: n=%lu\n", n);
-    // abort();
-    OE_TRACE_WARNING("unhandled syscall: n=%lu", n);
-    errno = ENOSYS;
-    return -1;
+    fprintf(stderr, "error: unhandled syscall: n=%lu\n", n);
+    abort();
 }
 
 /* Intercept __syscalls_cp() from MUSL */
