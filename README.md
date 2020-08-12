@@ -127,6 +127,9 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
               "description": "Enable pretty-printing for gdb",
               "text": "-enable-pretty-printing",
               "ignoreFailures": true
+          },
+          {
+              "text": "handle SIGILL nostop"
           }
       ]
     }
