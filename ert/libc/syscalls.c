@@ -51,7 +51,7 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
     // oe_syscall returns result and errno like libc syscall(), but musl expects
     // them like raw syscall, so we must adjust the values.
-    if (ret > 0 || (ret == 0 && errno == 0))
+    if (ret >= 0)
         return ret;
     if (ret == -1 && errno > 0)
     {
