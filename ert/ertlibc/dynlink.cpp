@@ -16,6 +16,8 @@ dynamic linking. If an app tries to load a shared object, we pretend success and
 try to find all symbols in the statically linked enclave.
 */
 
+extern "C" void __dl_seterr(const char*, ...);
+
 void* dlopen(const char* file, int mode)
 {
     (void)file;
@@ -26,7 +28,7 @@ void* dlopen(const char* file, int mode)
 // copied from musl/ldso/dynlink.c
 static uint32_t gnu_hash(const char* s0)
 {
-    const unsigned char* s = (void*)s0;
+    const unsigned char* s = reinterpret_cast<const unsigned char*>(s0);
     uint_fast32_t h = 5381;
     for (; *s; s++)
         h += h * 32 + *s;
@@ -62,16 +64,17 @@ static const Elf64_Sym* gnu_lookup(
     return 0;
 }
 
-const void* __dlsym(void* handle, const char* symbol)
+extern "C" const void* __dlsym(void* handle, const char* symbol)
 {
     (void)handle;
 
     if (!symbol)
         abort();
 
-    const uint8_t* const base = __oe_get_enclave_base();
+    const auto base = static_cast<const uint8_t*>(__oe_get_enclave_base());
     assert(base);
-    const Elf64_Ehdr* const ehdr = __oe_get_enclave_elf_header();
+    const auto ehdr =
+        static_cast<const Elf64_Ehdr*>(__oe_get_enclave_elf_header());
     assert(ehdr);
     assert(ehdr->e_phoff);
     const Elf64_Phdr* const phdr = (Elf64_Phdr*)(base + ehdr->e_phoff);
@@ -119,8 +122,6 @@ const void* __dlsym(void* handle, const char* symbol)
         return base + sym->st_value;
 
     OE_TRACE_WARNING("Symbol not found: %s", symbol);
-
-    void __dl_seterr(const char*, ...);
     __dl_seterr("Symbol not found: %s", symbol);
 
     return NULL;

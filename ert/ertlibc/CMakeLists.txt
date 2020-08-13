@@ -4,6 +4,7 @@ enclave_link_libraries(ertlibunwind PRIVATE libunwind)
 
 add_enclave_library(
   ertlibc
+  dynlink.cpp
   locale.cpp
   misc.cpp
   new_thread.cpp
@@ -13,9 +14,7 @@ add_enclave_library(
   stdlib.cpp
   stubs.cpp
   syscall.cpp
-  # TODO integrate into ertlibc
-  ../../libc/__vasprintf_chk.c
-  ../../libc/dynlink.c)
+  __vasprintf_chk.c)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
 enclave_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
