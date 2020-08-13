@@ -14,6 +14,7 @@ add_enclave_library(
   stdlib.cpp
   stubs.cpp
   syscall.cpp
+  time.cpp
   __vasprintf_chk.c)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)

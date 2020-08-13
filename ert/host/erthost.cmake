@@ -6,7 +6,8 @@ list(
   ${ERTHOSTDIR}/calls.cpp
   ${ERTHOSTDIR}/core.c
   ${ERTHOSTDIR}/enclave_thread_manager.cpp
-  ${ERTHOSTDIR}/thread.cpp)
+  ${ERTHOSTDIR}/thread.cpp
+  ${ERTHOSTDIR}/vdso.cpp)
 
 set(ERT_EDL_FILE ${CMAKE_SOURCE_DIR}/include/openenclave/edl/ertlibc.edl)
 add_custom_command(

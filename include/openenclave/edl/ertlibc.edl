@@ -1,9 +1,24 @@
 enclave {
+    struct ert_clock_gettime_ocall_timespec
+    {
+        time_t tv_sec;
+        long tv_nsec;
+    };
+
     trusted {
         public void ert_create_thread_ecall();
     };
 
     untrusted {
         bool ert_create_thread_ocall([user_check] oe_enclave_t* enclave);
+
+        int ert_clock_gettime_ocall(
+            int clk_id,
+            [out] struct ert_clock_gettime_ocall_timespec* tp);
+
+        oe_result_t oe_get_clock_vdso_pointers_ocall(
+            [out] uint32_t** seq,
+            [out] void** clock_realtime_coarse,
+            [out] void** clock_monotonic_coarse);
     };
 }

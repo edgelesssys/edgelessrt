@@ -5,7 +5,6 @@
 #define _OE_INCLUDE_TIME_H
 
 #include <openenclave/bits/types.h>
-#include <openenclave/corelibc/time.h>
 
 OE_EXTERNC_BEGIN
 
@@ -22,17 +21,6 @@ OE_EXTERNC_BEGIN
 */
 
 uint64_t oe_get_time(void);
-
-/*
-**==============================================================================
-**
-** oe_clock_gettime()
-**
-**     Get the time of the specified clock. Like clock_gettime.
-**
-**==============================================================================
-*/
-int oe_clock_gettime(int clk_id, struct oe_timespec* tp);
 
 OE_EXTERNC_END
 

@@ -14,8 +14,6 @@
 
 enclave
 {
-    // EDG: quick fix to be included everywhere
-    from "openenclave/edl/edgeless.edl" import *;
 
     trusted
     {

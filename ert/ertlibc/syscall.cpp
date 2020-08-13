@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 #include "syscall.h"
-#include <openenclave/internal/time.h>
 #include <openenclave/internal/trace.h>
 #include <sys/syscall.h>
 #include <cerrno>
@@ -29,8 +28,8 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
                 __builtin_ia32_pause();
                 return 0;
             case SYS_clock_gettime:
-                return oe_clock_gettime(
-                    static_cast<int>(x1), reinterpret_cast<oe_timespec*>(x2));
+                return sc::clock_gettime(
+                    static_cast<int>(x1), reinterpret_cast<timespec*>(x2));
             case SYS_gettid:
                 return ert_thread_self()->tid;
 

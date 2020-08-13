@@ -1,8 +1,8 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+#include "../common/vdso.h"
 #include <openenclave/internal/trace.h>
-#include <openenclave/internal/vdso.h>
 #include <sys/utsname.h>
 #include <cassert>
 #include <cstddef>

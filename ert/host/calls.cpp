@@ -34,3 +34,10 @@ bool ert_create_thread_ocall(oe_enclave_t* enclave)
 
     return true;
 }
+
+int ert_clock_gettime_ocall(
+    clockid_t clk_id,
+    ert_clock_gettime_ocall_timespec* tp)
+{
+    return clock_gettime(clk_id, reinterpret_cast<timespec*>(tp));
+}
