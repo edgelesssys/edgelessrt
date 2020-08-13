@@ -147,7 +147,6 @@ add_enclave_library(
   STATIC
   ../../common/safecrt.c
   ../../common/argv.c
-  ../../common/bitset.c
   ../../common/ringbuffer.c
   ${MUSL_SRC_DIR}/prng/rand.c
   ${MUSL_SRC_DIR}/string/memcmp.c
@@ -168,7 +167,6 @@ add_enclave_library(
   hostcalls.c
   intstr.c
   malloc.c
-  mman.c
   once.c
   printf.c
   pthread.c

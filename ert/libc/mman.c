@@ -8,14 +8,16 @@ is in use, 0 otherwise.
 malloc calls mmap to reserve enclave heap space.
 */
 
-#include <openenclave/corelibc/assert.h>
-#include <openenclave/corelibc/errno.h>
-#include <openenclave/corelibc/mman.h>
-#include <openenclave/corelibc/string.h>
+#include "mman.h"
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <openenclave/internal/bitset.h>
 #include <openenclave/internal/globals.h>
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/utils.h>
+#include <stdint.h>
+#include <string.h>
 
 static oe_spinlock_t _lock = OE_SPINLOCK_INITIALIZER;
 static void* _bitset;
@@ -26,7 +28,7 @@ static void _init()
 {
     const size_t full_size = __oe_get_heap_size();
     const size_t bitmap_size =
-        oe_round_up_to_page_size(full_size / (OE_CHAR_BIT * OE_PAGE_SIZE));
+        oe_round_up_to_page_size(full_size / (CHAR_BIT * OE_PAGE_SIZE));
     _bitset = (void*)__oe_get_heap_base();
     _base = (uint8_t*)_bitset + bitmap_size;
     _size = full_size - bitmap_size;
@@ -50,7 +52,7 @@ static size_t _to_pos(const void* addr)
 
 static void* _map(size_t length)
 {
-    oe_assert(length && length % OE_PAGE_SIZE == 0);
+    assert(length && length % OE_PAGE_SIZE == 0);
 
     // Naive approach: reserve the first unset range we can find.
 
@@ -58,8 +60,8 @@ static void* _map(size_t length)
     const size_t pos =
         oe_bitset_find_unset_range(_bitset, _size / OE_PAGE_SIZE, count);
 
-    if (pos == OE_SIZE_MAX)
-        return (void*)-OE_ENOMEM;
+    if (pos == SIZE_MAX)
+        return (void*)-ENOMEM;
 
     oe_bitset_set_range(_bitset, pos, count);
     void* const result = (uint8_t*)_base + pos * OE_PAGE_SIZE;
@@ -70,7 +72,7 @@ static void* _map(size_t length)
 static void* _map_fixed(void* addr, size_t length)
 {
     if (!_addr_in_range(addr, length))
-        return (void*)-OE_ENOMEM;
+        return (void*)-ENOMEM;
 
     // MAP_FIXED discards overlapped part of existing mappings
     oe_bitset_set_range(_bitset, _to_pos(addr), length / OE_PAGE_SIZE);
@@ -78,27 +80,26 @@ static void* _map_fixed(void* addr, size_t length)
     return addr;
 }
 
-void* oe_mmap(
+void* ert_mmap(
     void* addr,
     size_t length,
     int prot,
     int flags,
     int fd,
-    oe_off_t offset)
+    off_t offset)
 {
     // check for invalid args
     if ((uintptr_t)addr % OE_PAGE_SIZE || !length)
-        return (void*)-OE_EINVAL;
+        return (void*)-EINVAL;
 
     // check for unsupported args
     // Accept PROT_EXEC even though the memory is not executable. Python ctypes
     // will allocate such memory, but not necessarily make use of it.
-    if ((prot & ~(OE_PROT_READ | OE_PROT_WRITE | OE_PROT_EXEC)) || fd != -1 ||
-        offset)
-        return (void*)-OE_ENOSYS;
+    if ((prot & ~(PROT_READ | PROT_WRITE | PROT_EXEC)) || fd != -1 || offset)
+        return (void*)-ENOSYS;
 
     length = oe_round_up_to_page_size(length);
-    void* result = OE_MAP_FAILED;
+    void* result = MAP_FAILED;
 
     oe_spin_lock(&_lock);
 
@@ -108,24 +109,24 @@ void* oe_mmap(
     if (!_length_in_range(length))
     {
         oe_spin_unlock(&_lock);
-        return (void*)-OE_ENOMEM;
+        return (void*)-ENOMEM;
     }
 
-    if (!addr && flags == (OE_MAP_ANON | OE_MAP_PRIVATE))
+    if (!addr && flags == (MAP_ANON | MAP_PRIVATE))
         result = _map(length);
-    else if (addr && flags == (OE_MAP_ANON | OE_MAP_FIXED | OE_MAP_PRIVATE))
+    else if (addr && flags == (MAP_ANON | MAP_FIXED | MAP_PRIVATE))
         result = _map_fixed(addr, length);
     else
-        result = (void*)-OE_EINVAL;
+        result = (void*)-EINVAL;
 
     oe_spin_unlock(&_lock);
 
     return result;
 }
 
-int oe_munmap(void* addr, size_t length)
+int ert_munmap(void* addr, size_t length)
 {
-    int result = -OE_EINVAL;
+    int result = -EINVAL;
     length = oe_round_up_to_page_size(length);
 
     oe_spin_lock(&_lock);
