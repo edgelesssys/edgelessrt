@@ -1,9 +1,12 @@
 add_subdirectory(ertlibc)
 add_subdirectory(libc)
+add_subdirectory(tools/devhost)
+add_subdirectory(tools/ertgo)
 
 set(PLATFORM_EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl/sgx)
 
 add_subdirectory(tests/concurrent_stdout)
+add_subdirectory(tests/devhost)
 add_subdirectory(tests/go)
 add_subdirectory(tests/go_seal)
 add_subdirectory(tests/host)

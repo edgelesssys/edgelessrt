@@ -4,7 +4,6 @@
 #include <openenclave/enclave_args.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/final_action.h>
-#include <openenclave/internal/sgx/enclave_thread_manager.h>
 #include <openenclave/internal/trace.h>
 #include <semaphore.h>
 #include <cassert>
@@ -15,9 +14,11 @@
 #include <iostream>
 #include <stdexcept>
 #include <system_error>
+#include "../../host/enclave_thread_manager.h"
 #include "emain_u.h"
 
 using namespace std;
+using namespace ert;
 using namespace open_enclave;
 
 static oe_args_t _args;
