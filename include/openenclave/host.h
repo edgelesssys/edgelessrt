@@ -192,7 +192,7 @@ oe_result_t oe_create_enclave(
  * @returns Returns OE_OK on success.
  *
  */
-oe_result_t oe_join_threads_created_inside_enclave(oe_enclave_t* enclave);
+oe_result_t ert_join_threads_created_inside_enclave(oe_enclave_t* enclave);
 
 /**
  * Terminate an enclave and reclaims its resources.

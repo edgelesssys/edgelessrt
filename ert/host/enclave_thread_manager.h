@@ -10,7 +10,7 @@
 #include <mutex>
 #include <thread>
 
-namespace open_enclave::host
+namespace ert::host
 {
 class EnclaveThreadManager final
 {
@@ -45,4 +45,4 @@ class EnclaveThreadManager final
     std::map<const oe_enclave_t*, std::list<Thread>> threads_;
     std::mutex mutex_;
 };
-} // namespace open_enclave::host
+} // namespace ert::host

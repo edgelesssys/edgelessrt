@@ -53,6 +53,7 @@ static char* get_fullpath(const char* path)
 #include <openenclave/internal/trace.h>
 #include <openenclave/internal/utils.h>
 #include <string.h>
+#include "../ert/host/thread.h"
 #include "../memalign.h"
 #include "../signkey.h"
 #include "cpuid.h"
@@ -60,7 +61,6 @@ static char* get_fullpath(const char* path)
 #include "exception.h"
 #include "platform_u.h"
 #include "sgxload.h"
-#include "thread.h"
 
 #if !defined(OEHOSTMR)
 static oe_once_type _enclave_init_once;
@@ -1048,7 +1048,7 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
     OE_CHECK(oe_ecall(enclave, OE_ECALL_DESTRUCTOR, 0, NULL));
 
     // EDG: cancel lingering threads (if any)
-    OE_CHECK(oe_cancel_threads_created_inside_enclave(enclave));
+    OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
 
     if (enclave->debug_enclave)
     {

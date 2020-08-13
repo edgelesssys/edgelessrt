@@ -1,6 +1,12 @@
 set(ERTHOSTDIR ${CMAKE_SOURCE_DIR}/ert/host)
 
-list(APPEND PLATFORM_SDK_ONLY_SRC ${ERTHOSTDIR}/calls.cpp ${ERTHOSTDIR}/core.c)
+list(
+  APPEND
+  PLATFORM_SDK_ONLY_SRC
+  ${ERTHOSTDIR}/calls.cpp
+  ${ERTHOSTDIR}/core.c
+  ${ERTHOSTDIR}/enclave_thread_manager.cpp
+  ${ERTHOSTDIR}/thread.cpp)
 
 set(ERT_EDL_FILE ${CMAKE_SOURCE_DIR}/include/openenclave/edl/ertlibc.edl)
 add_custom_command(

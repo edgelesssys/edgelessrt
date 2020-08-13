@@ -3,16 +3,16 @@
 
 #include "thread.h"
 #include <openenclave/host.h>
-#include <openenclave/internal/sgx/enclave_thread_manager.h>
 #include <openenclave/internal/trace.h>
 #include <cassert>
 #include <exception>
+#include "enclave_thread_manager.h"
 #include "platform_u.h"
 
 using namespace std;
-using namespace open_enclave;
+using namespace ert;
 
-extern "C" oe_result_t oe_join_threads_created_inside_enclave(
+extern "C" oe_result_t ert_join_threads_created_inside_enclave(
     oe_enclave_t* enclave)
 {
     assert(enclave);
@@ -34,7 +34,7 @@ extern "C" oe_result_t oe_join_threads_created_inside_enclave(
     return OE_OK;
 }
 
-extern "C" oe_result_t oe_cancel_threads_created_inside_enclave(
+extern "C" oe_result_t ert_cancel_threads_created_inside_enclave(
     oe_enclave_t* enclave)
 {
     assert(enclave);

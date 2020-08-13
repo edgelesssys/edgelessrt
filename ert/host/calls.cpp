@@ -1,14 +1,14 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/internal/sgx/enclave_thread_manager.h>
 #include <openenclave/internal/trace.h>
 #include <cassert>
 #include <exception>
+#include "enclave_thread_manager.h"
 #include "ertlibc_u.h"
 
 using namespace std;
-using namespace open_enclave;
+using namespace ert;
 
 static void _invoke_create_thread_ecall(oe_enclave_t* enclave) noexcept
 {

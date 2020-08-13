@@ -1,17 +1,17 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/internal/sgx/enclave_thread_manager.h>
+#include "enclave_thread_manager.h"
 #include <openenclave/internal/trace.h>
 #include <pthread.h>
 #include <cassert>
-#include "../hostthread.h"
-#include "enclave.h"
-#include "ocalls.h"
+#include "../host/hostthread.h"
+#include "../host/sgx/enclave.h"
+#include "../host/sgx/ocalls.h"
 
 using namespace std;
 
-namespace open_enclave::host
+namespace ert::host
 {
 EnclaveThreadManager::~EnclaveThreadManager()
 {
@@ -123,4 +123,4 @@ void EnclaveThreadManager::cancel_all_threads(oe_enclave_t* enclave)
 
     threads.clear();
 }
-} // namespace open_enclave::host
+} // namespace ert::host

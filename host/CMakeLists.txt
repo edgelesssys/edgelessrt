@@ -263,7 +263,6 @@ if (OE_SGX)
     sgx/elf.c
     sgx/enclave.c
     sgx/enclavemanager.c
-    sgx/enclave_thread_manager.cpp
     sgx/exception.c
     sgx/load.c
     sgx/loadelf.c
@@ -276,8 +275,7 @@ if (OE_SGX)
     sgx/sgxquote.c
     sgx/sgxsign.c
     sgx/sgxtypes.c
-    sgx/switchless.c
-    sgx/thread.cpp)
+    sgx/switchless.c)
 
   # OS specific as well.
   if (UNIX)
