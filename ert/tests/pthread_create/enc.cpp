@@ -257,6 +257,27 @@ static void _test_exit()
     OE_TEST(ret == 2);
 }
 
+static void _test_attr()
+{
+    pthread_attr_t attr{};
+    OE_TEST(pthread_getattr_np(pthread_self(), &attr) == 0);
+
+    size_t guardsize = 0;
+    OE_TEST(pthread_attr_getguardsize(&attr, &guardsize) == 0);
+    OE_TEST(guardsize == OE_PAGE_SIZE);
+
+    void* stackaddr = nullptr;
+    size_t stacksize = 0;
+    OE_TEST(pthread_attr_getstack(&attr, &stackaddr, &stacksize) == 0);
+
+    // see NumStackPages at the end of this file
+    OE_TEST(stacksize == 64 * OE_PAGE_SIZE);
+
+    const auto stackptr = static_cast<const uint8_t*>(stackaddr);
+    const uint8_t stackvar = 0;
+    OE_TEST(stackptr < &stackvar && &stackvar < stackptr + stacksize);
+}
+
 static void _test_mutexattr()
 {
     pthread_mutexattr_t attr{};
@@ -275,6 +296,7 @@ void test_ecall()
     _test_detach();
     _test_detached();
     _test_exit();
+    _test_attr();
     _test_mutexattr();
 }
 

@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 #include <openenclave/corelibc/pthread.h>
+#include <openenclave/internal/globals.h>
+#include <openenclave/internal/sgx/td.h>
 #include "../ertlibc/ertthread.h"
 #include "pthread_impl.h"
 
@@ -18,6 +20,17 @@ pthread_t __pthread_self()
     if (!self.pt.self)
     {
         __init_tp(&self.pt);
+
+        const unsigned int guard_size = OE_PAGE_SIZE;
+
+        // Stack is located immediately before TCS. See _add_data_pages() in
+        // host/sgx/create.c.
+        // pt.stack must point to the end of the stack, i.e., the guard page.
+        uint8_t* td_to_tcs(const oe_sgx_td_t* td);
+        self.pt.stack = td_to_tcs(oe_sgx_get_td()) - guard_size;
+
+        self.pt.stack_size = oe_get_stack_size();
+        self.pt.guard_size = guard_size;
         self.et.tid = self.pt.tid;
     }
 
