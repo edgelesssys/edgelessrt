@@ -1,0 +1,8 @@
+[package]
+name = "app"
+version = "0.1.0"
+authors = ["Edgeless Systems GmbH"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]

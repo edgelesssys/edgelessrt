@@ -6,6 +6,7 @@ These samples show how to write a new application or port an existing one to `Ed
 * [go](go/README.md) is a minimal example of an enclave application written in Go.
 * [go_ra](go_ra/README.md) shows how to do remote attestation of a Go enclave.
 * [vault](vault/README.md) demonstrates how to port a Go application exemplified by Hashicorp Vault.
+* [rust](rust/README.md) is a minimal example of an enclave application written in Rust.
 
 ## erthost
 `erthost` is a tool that is used to run enclaves. The samples show how to use it.
