@@ -31,6 +31,22 @@ static oe_result_t _get_key_imp(
     sgx_key_request_t tmp_key_request = *sgx_key_request;
     OE_ALIGNED(SGX_KEY_ALIGNMENT) sgx_key_t tmp_sgx_key;
 
+    // EDG: return test key in simulation mode
+    if (oe_sgx_get_td()->simulate)
+    {
+        // satisfy unit test
+        if (tmp_key_request.key_name != SGX_KEYSELECT_REPORT &&
+            tmp_key_request.key_name != SGX_KEYSELECT_SEAL)
+            return OE_INVALID_KEYNAME;
+        if (tmp_key_request.isv_svn)
+            return OE_INVALID_ISVSVN;
+        if (*tmp_key_request.cpu_svn)
+            return OE_INVALID_CPUSVN;
+
+        *sgx_key = (sgx_key_t){0};
+        return OE_OK;
+    }
+
     // Execute EGETKEY instruction.
     egetkey_result = oe_egetkey(&tmp_key_request, &tmp_sgx_key);
 
@@ -193,10 +209,11 @@ static oe_result_t _get_default_key_request_attributes(
 {
     sgx_report_t sgx_report = {{{0}}};
 
-    oe_result_t result;
+    oe_result_t result = OE_OK;
 
     // Get a local report of current enclave.
-    result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
+    if (!oe_sgx_get_td()->simulate) // EDG: skip in simulation mode
+        result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
 
     if (result != OE_OK)
     {
