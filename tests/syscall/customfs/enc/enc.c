@@ -5,46 +5,54 @@
 
 static char _filebuf[27];
 
-static uintptr_t _fs_open(const char* path, bool must_exist)
+static uintptr_t _fs_open(void* context, const char* path, bool must_exist)
 {
     (void)must_exist;
+    OE_TEST(context);
     OE_TEST(strcmp(path, "/foo") == 0);
     return 1;
 }
 
-static void _fs_close(uintptr_t handle)
+static void _fs_close(void* context, uintptr_t handle)
 {
+    OE_TEST(context);
     OE_TEST(handle == 1);
 }
 
-static uint64_t _fs_get_size(uintptr_t handle)
+static uint64_t _fs_get_size(void* context, uintptr_t handle)
 {
+    OE_TEST(context);
     OE_TEST(handle == 1);
     return sizeof _filebuf;
 }
 
-static void _fs_unlink(const char* path)
+static void _fs_unlink(void* context, const char* path)
 {
+    OE_TEST(context);
     OE_TEST(strcmp(path, "/foo") == 0);
 }
 
 static void _fs_read(
+    void* context,
     uintptr_t handle,
     void* buf,
     uint64_t count,
     uint64_t offset)
 {
+    OE_TEST(context);
     OE_TEST(handle == 1);
     OE_TEST(offset + count <= sizeof _filebuf);
     memcpy(buf, _filebuf + offset, count);
 }
 
 static bool _fs_write(
+    void* context,
     uintptr_t handle,
     const void* buf,
     uint64_t count,
     uint64_t offset)
 {
+    OE_TEST(context);
     OE_TEST(handle == 1);
     OE_TEST(offset + count <= sizeof _filebuf);
     memcpy(_filebuf + offset, buf, count);
@@ -74,9 +82,9 @@ void test_customfs(void)
         .write = _fs_write,
     };
 
-    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs) == OE_OK);
+    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs, (void*)2) == OE_OK);
     OE_TEST(mount("/", "/ro", rodev, MS_RDONLY, NULL) == 0);
-    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs) == OE_OK);
+    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs, (void*)3) == OE_OK);
     OE_TEST(mount("/", "/rw", rwdev, 0, NULL) == 0);
     OE_TEST(run_main("/rw/foo", false) == 0);
     OE_TEST(run_main("/ro/foo", true) == 0);

@@ -46,6 +46,9 @@ typedef struct _device
         unsigned long flags;
         char target[OE_PATH_MAX];
     } mount;
+
+    /* arbitrary value that is passed to the file operation functions */
+    void* context;
 } device_t;
 
 /* Create by open(). */
@@ -103,6 +106,12 @@ done:
     return ret;
 }
 
+static void* _get_context(const file_t* file)
+{
+    oe_assert(file);
+    return ((device_t*)file->device)->context;
+}
+
 // caller must hold the file lock
 static ssize_t _read(
     const file_t* file,
@@ -113,7 +122,9 @@ static ssize_t _read(
     oe_assert(file);
     oe_assert(buf);
 
-    const uint64_t size = file->device->get_size(file->handle);
+    void* const context = _get_context(file);
+
+    const uint64_t size = file->device->get_size(context, file->handle);
     if (offset >= size)
         return 0;
 
@@ -123,7 +134,7 @@ static ssize_t _read(
     if (count > OE_SSIZE_MAX)
         count = OE_SSIZE_MAX;
 
-    file->device->read(file->handle, buf, count, offset);
+    file->device->read(context, file->handle, buf, count, offset);
     return (ssize_t)count;
 }
 
@@ -274,10 +285,11 @@ static oe_fd_t* _fs_open_file(
 
     oe_spin_lock(&_lock);
     if (flags & OE_O_TRUNC)
-        file->device->unlink(pathname);
+        file->device->unlink(fs->context, pathname);
 
     /* Ask the host to open the file. */
-    file->handle = file->device->open(pathname, !(flags & OE_O_CREAT));
+    file->handle =
+        file->device->open(fs->context, pathname, !(flags & OE_O_CREAT));
     oe_spin_unlock(&_lock);
     if (!file->handle)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -387,7 +399,8 @@ static ssize_t _fs_write(oe_fd_t* desc, const void* buf, size_t count)
     locked = true;
     oe_spin_lock(&file->lock);
 
-    if (!file->device->write(file->handle, buf, count, file->offset))
+    if (!file->device->write(
+            _get_context(file), file->handle, buf, count, file->offset))
         OE_RAISE_ERRNO(OE_ENOSPC);
     file->offset += count;
     ret = (ssize_t)count;
@@ -406,11 +419,12 @@ static ssize_t _fs_readv(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
     if (!file || (!iov && iovcnt) || iovcnt < 0 || iovcnt > OE_IOV_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    void* const context = _get_context(file);
     uint64_t bytes_read = 0;
 
     oe_spin_lock(&file->lock);
 
-    const uint64_t size = file->device->get_size(file->handle);
+    const uint64_t size = file->device->get_size(context, file->handle);
     if (file->offset >= size)
     {
         oe_spin_unlock(&file->lock);
@@ -432,7 +446,11 @@ static ssize_t _fs_readv(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
         }
 
         file->device->read(
-            file->handle, iov[i].iov_base, len, file->offset + bytes_read);
+            context,
+            file->handle,
+            iov[i].iov_base,
+            len,
+            file->offset + bytes_read);
         bytes_read += len;
     }
 
@@ -458,6 +476,7 @@ static ssize_t _fs_writev(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
     if (file->readonly)
         OE_RAISE_ERRNO(OE_EBADF);
 
+    void* const context = _get_context(file);
     uint64_t bytes_written = 0;
 
     locked = true;
@@ -474,6 +493,7 @@ static ssize_t _fs_writev(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
         }
 
         if (!file->device->write(
+                context,
                 file->handle,
                 iov[i].iov_base,
                 len,
@@ -516,7 +536,8 @@ static oe_off_t _fs_lseek_file(oe_fd_t* desc, oe_off_t offset, int whence)
             offset += (oe_off_t)file->offset;
             break;
         case OE_SEEK_END:
-            offset += (oe_off_t)file->device->get_size(file->handle);
+            offset += (oe_off_t)file->device->get_size(
+                _get_context(file), file->handle);
             break;
         default:
             OE_RAISE_ERRNO(OE_EINVAL);
@@ -574,7 +595,8 @@ static ssize_t _fs_pwrite(
     locked = true;
     oe_spin_lock(&file->lock);
 
-    if (!file->device->write(file->handle, buf, count, (uint64_t)offset))
+    if (!file->device->write(
+            _get_context(file), file->handle, buf, count, (uint64_t)offset))
         OE_RAISE_ERRNO(OE_ENOSPC);
     ret = (ssize_t)count;
 
@@ -592,7 +614,7 @@ static int _fs_close_file(oe_fd_t* desc)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    file->device->close(file->handle);
+    file->device->close(_get_context(file), file->handle);
     oe_free(file);
 
     ret = 0;
@@ -659,7 +681,7 @@ static void _stat(const oe_customfs_t* fs, uintptr_t handle, oe_stat_t* buf)
     oe_assert(fs);
     oe_assert(handle);
     oe_assert(buf);
-    const uint64_t size = fs->get_size(handle);
+    const uint64_t size = fs->get_size(((device_t*)fs)->context, handle);
     buf->st_size = size < OE_SSIZE_MAX ? (oe_off_t)size : OE_SSIZE_MAX;
     buf->st_mode = OE_S_IFREG;
 }
@@ -678,11 +700,11 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
 
     const oe_customfs_t* const customfs = (oe_customfs_t*)device;
 
-    const uintptr_t handle = customfs->open(pathname, true);
+    const uintptr_t handle = customfs->open(fs->context, pathname, true);
     if (handle)
     {
         _stat(customfs, handle, buf);
-        customfs->close(handle);
+        customfs->close(fs->context, handle);
         retval = 0;
     }
     else
@@ -765,7 +787,7 @@ static int _fs_unlink(oe_device_t* device, const char* pathname)
         OE_RAISE_ERRNO(OE_EPERM);
 
     oe_spin_lock(&_lock);
-    ((oe_customfs_t*)device)->unlink(pathname);
+    ((oe_customfs_t*)device)->unlink(fs->context, pathname);
     oe_spin_unlock(&_lock);
 
     ret = 0;
@@ -891,9 +913,10 @@ static oe_file_ops_t _get_file_ops(void)
     return _file_ops;
 };
 
-oe_result_t oe_load_module_custom_file_system(
+uint64_t oe_load_module_custom_file_system(
     const char* devname,
-    oe_customfs_t* ops)
+    oe_customfs_t* ops,
+    void* context)
 {
     oe_assert(devname && *devname);
     oe_assert(ops);
@@ -919,6 +942,7 @@ oe_result_t oe_load_module_custom_file_system(
     dev->base.ops.fs.mkdir = _fs_mkdir;
     dev->base.ops.fs.rmdir = _fs_rmdir;
 
+    dev->context = context;
     dev->magic = FS_MAGIC;
 
     if (oe_device_table_set(oe_device_table_get_custom_devid(), &dev->base) !=

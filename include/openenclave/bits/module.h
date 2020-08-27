@@ -77,13 +77,19 @@ oe_result_t oe_load_module_host_epoll(void);
 
 typedef struct _oe_customfs
 {
-    uint8_t reserved[4232];
-    uintptr_t (*open)(const char* path, bool must_exist);
-    void (*close)(uintptr_t handle);
-    uint64_t (*get_size)(uintptr_t handle);
-    void (*unlink)(const char* path);
-    void (*read)(uintptr_t handle, void* buf, uint64_t count, uint64_t offset);
+    uint8_t reserved[4240];
+    uintptr_t (*open)(void* context, const char* path, bool must_exist);
+    void (*close)(void* context, uintptr_t handle);
+    uint64_t (*get_size)(void* context, uintptr_t handle);
+    void (*unlink)(void* context, const char* path);
+    void (*read)(
+        void* context,
+        uintptr_t handle,
+        void* buf,
+        uint64_t count,
+        uint64_t offset);
     bool (*write)(
+        void* context,
         uintptr_t handle,
         const void* buf,
         uint64_t count,
@@ -100,6 +106,8 @@ typedef struct _oe_customfs
  * passed to mount().
  * @param ops Pointer to a struct that contains the file operation function
  * pointers. Its memory must not be modified or freed.
+ * @param context An arbitrary value that is passed to the file operation
+ * functions.
  *
  * @retval OE_OK The module was successfully loaded.
  * @retval OE_FAILURE Module failed to load.
@@ -107,7 +115,8 @@ typedef struct _oe_customfs
  */
 oe_result_t oe_load_module_custom_file_system(
     const char* devname,
-    oe_customfs_t* ops);
+    oe_customfs_t* ops,
+    void* context);
 
 OE_EXTERNC_END
 
