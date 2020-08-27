@@ -15,7 +15,10 @@ add_enclave_library(
   stubs.cpp
   syscall.cpp
   time.cpp
-  __vasprintf_chk.c)
+  __vasprintf_chk.c
+  memfs/file.cpp
+  memfs/filesystem.cpp
+  memfs/memfs.cpp)
 
 set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
 enclave_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

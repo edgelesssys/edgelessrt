@@ -3,6 +3,9 @@ add_subdirectory(libc)
 add_subdirectory(tools/devhost)
 add_subdirectory(tools/ertgo)
 
+install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
+
 # Define the `OE_SGX` macro used by the oeedger8r on the SGX build.
 if (OE_SGX)
   set(DEFINE_OE_SGX "-DOE_SGX")
@@ -15,6 +18,7 @@ add_subdirectory(tests/go_seal)
 add_subdirectory(tests/host)
 add_subdirectory(tests/libc)
 add_subdirectory(tests/lingering_threads)
+add_subdirectory(tests/memfs)
 add_subdirectory(tests/misc_syscalls)
 add_subdirectory(tests/pthread_create)
 add_subdirectory(tests/sem)
