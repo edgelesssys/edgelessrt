@@ -47,6 +47,9 @@ typedef struct _device
         char target[OE_PATH_MAX];
     } mount;
 
+    /* True if this device has been created by _fs_clone. */
+    bool cloned;
+
     /* arbitrary value that is passed to the file operation functions */
     void* context;
 } device_t;
@@ -226,6 +229,7 @@ static int _fs_clone(oe_device_t* device, oe_device_t** new_device)
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     *new_fs = *(oe_customfs_t*)device;
+    ((device_t*)new_fs)->cloned = true;
     *new_device = (oe_device_t*)new_fs;
 
     ret = 0;
@@ -243,7 +247,8 @@ static int _fs_release(oe_device_t* device)
     if (!fs)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    oe_free(fs);
+    if (fs->cloned)
+        oe_free(fs);
     ret = 0;
 
 done:
@@ -945,9 +950,9 @@ uint64_t oe_load_module_custom_file_system(
     dev->context = context;
     dev->magic = FS_MAGIC;
 
-    if (oe_device_table_set(oe_device_table_get_custom_devid(), &dev->base) !=
-        0)
-        return OE_FAILURE;
+    const uint64_t devid = oe_device_table_get_custom_devid();
+    if (oe_device_table_set(devid, &dev->base) != 0)
+        return 0;
 
-    return OE_OK;
+    return devid;
 }

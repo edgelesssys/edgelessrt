@@ -82,9 +82,9 @@ void test_customfs(void)
         .write = _fs_write,
     };
 
-    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs, (void*)2) == OE_OK);
+    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs, (void*)2) > 0);
     OE_TEST(mount("/", "/ro", rodev, MS_RDONLY, NULL) == 0);
-    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs, (void*)3) == OE_OK);
+    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs, (void*)3) > 0);
     OE_TEST(mount("/", "/rw", rwdev, 0, NULL) == 0);
     OE_TEST(run_main("/rw/foo", false) == 0);
     OE_TEST(run_main("/ro/foo", true) == 0);

@@ -77,7 +77,7 @@ oe_result_t oe_load_module_host_epoll(void);
 
 typedef struct _oe_customfs
 {
-    uint8_t reserved[4240];
+    uint8_t reserved[4248];
     uintptr_t (*open)(void* context, const char* path, bool must_exist);
     void (*close)(void* context, uintptr_t handle);
     uint64_t (*get_size)(void* context, uintptr_t handle);
@@ -109,11 +109,11 @@ typedef struct _oe_customfs
  * @param context An arbitrary value that is passed to the file operation
  * functions.
  *
- * @retval OE_OK The module was successfully loaded.
- * @retval OE_FAILURE Module failed to load.
+ * @retval device_id The module was successfully loaded.
+ * @retval 0 Module failed to load.
  *
  */
-oe_result_t oe_load_module_custom_file_system(
+uint64_t oe_load_module_custom_file_system(
     const char* devname,
     oe_customfs_t* ops,
     void* context);
