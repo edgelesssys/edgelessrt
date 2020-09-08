@@ -426,15 +426,14 @@ static oe_fd_t* _hostfs_open(
     int flags,
     oe_mode_t mode)
 {
-    if ((flags & OE_O_DIRECTORY))
-    {
-        /* Only existing directories can be opened, so mode is ignored. */
-        return _hostfs_open_directory(fs, pathname, flags);
-    }
-    else
-    {
-        return _hostfs_open_file(fs, pathname, flags, mode);
-    }
+    // EDG: It is valid to open a directory without O_DIRECTORY flag, so we
+    // cannot know if pathname is a directory or a file. Try to open pathname as
+    // a directory first.
+    oe_fd_t* result =
+        _hostfs_open_directory(fs, pathname, flags | OE_O_DIRECTORY);
+    if (!result && !(flags & OE_O_DIRECTORY))
+        result = _hostfs_open_file(fs, pathname, flags, mode);
+    return result;
 }
 
 static int _hostfs_flock(oe_fd_t* desc, int operation)
@@ -460,6 +459,10 @@ static int _hostfs_fsync(oe_fd_t* desc)
 
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
+
+    if (file->dir)
+        // EDG: fsync on directory not supported yet, ignore and return success
+        return 0;
 
     if (oe_syscall_fsync_ocall(&ret, file->host_fd) != OE_OK)
         OE_RAISE_ERRNO(OE_EINVAL);
