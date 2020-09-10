@@ -2,44 +2,34 @@ name: Unit Tests
 
 on:
   push:
-    branches:
-    - master
+    branches: [ master ]
   pull_request:
-    branches:
-    - master
+    branches: [ master ]
 
 jobs:
-  Build:
+  run:
     runs-on: ubuntu-latest
     container:
-      image: edgsys/oetools-full-18.04
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout edgelessrt
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+        path: edgelessrt
 
     - name: Setup directories
       run: |
-        mkdir build
-        mkdir build_zip
+        mkdir edgelessrt/build
 
-    - name: CMake and Ninja
+    - name: Build edgelessrt
       run: |
         cmake -GNinja ..
         ninja
-      working-directory: build
+      working-directory: edgelessrt/build
 
-    - name: CTest
+    - name: Test edgelessrt
       run: |
         OE_SIMULATION=1 ctest --output-on-failure
-      working-directory: build
-
-    - name: Zip Build
-      uses: montudor/action-zip@v0.1.0
-      with:
-        args: zip -qq -r ./build_zip/build.zip build
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: build_zip
-        path: build_zip
+      working-directory: edgelessrt/build
