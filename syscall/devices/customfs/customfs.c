@@ -890,7 +890,8 @@ static oe_host_fd_t _fs_get_host_fd(oe_fd_t* desc)
 {
     // currently only called by epoll
     (void)desc;
-    OE_TRACE_ERROR("not implemented");
+    OE_RAISE_ERRNO(OE_ENOSYS);
+done:
     return -1;
 }
 

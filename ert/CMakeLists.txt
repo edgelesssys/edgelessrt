@@ -1,5 +1,6 @@
 add_subdirectory(ertlibc)
 add_subdirectory(libc)
+add_subdirectory(meshentry)
 add_subdirectory(tools/devhost)
 add_subdirectory(tools/ertgo)
 
