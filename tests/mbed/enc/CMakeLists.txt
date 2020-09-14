@@ -11,7 +11,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 # This function creates an enclave for a specific mbedTLS test.
 function (add_mbed_test_enclave NAME)
@@ -65,6 +65,9 @@ function (add_mbed_test_enclave NAME)
   enclave_compile_options(mbedtest_suite_${NAME} PRIVATE -Wno-error)
   enclave_compile_definitions(mbedtest_suite_${NAME} PRIVATE
                               -D__TEST__="${NAME}")
+  if (CODE_COVERAGE)
+    enclave_compile_definitions(mbedtest_suite_${NAME} PRIVATE CODE_COVERAGE)
+  endif ()
   enclave_include_directories(
     mbedtest_suite_${NAME}
     PRIVATE
@@ -138,6 +141,9 @@ function (add_mbed_selftest_enclave)
   enclave_compile_options(mbedtest_selftest PRIVATE -Wno-conversion
                           -Wno-pointer-arith)
   enclave_compile_definitions(mbedtest_selftest PRIVATE -D__TEST__="selftest")
+  if (CODE_COVERAGE)
+    enclave_compile_definitions(mbedtest_selftest PRIVATE CODE_COVERAGE)
+  endif ()
   enclave_include_directories(
     mbedtest_selftest
     PRIVATE

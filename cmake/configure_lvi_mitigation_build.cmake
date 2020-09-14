@@ -13,29 +13,28 @@ macro (detect_compiler BINDIR CC)
   set(COMPILER "${CC}_COMPILER")
 
   # Use the second level of unwrapping on COMPILER to get the compiler name.
-  # If the default compiler is found, return.
-  if (EXISTS "${BINDIR}/${${COMPILER}}")
-    return()
-  endif ()
-
-  if (NOT OE_IN_PACKAGE)
-    # Build OE. Fallback to gcc/g++.
-    set(${COMPILER} ${GCC})
-  else ()
-    # Build enclave applications. Try to search newer versions of clang/clang++.
-    # Be consistent to the logic implemented by samples/config.mk.
-    foreach (VERSION 9 8 7)
-      set(CLANG_VERSION "")
-      if (EXISTS "${BINDIR}/${${COMPILER}}-${VERSION}")
-        set(CLANG_VERSION ${VERSION})
-        break()
-      endif ()
-    endforeach ()
-    # Set the compiler if a version of clang/clang++ is found.
-    if (CLANG_VERSION)
-      set(${COMPILER} ${CLANG}-${CLANG_VERSION})
-    else ()
+  # If the default compiler is not found, use the following logic to detect
+  # the compiler.
+  if (NOT EXISTS "${BINDIR}/${${COMPILER}}")
+    if (NOT OE_IN_PACKAGE)
+      # Build OE. Fallback to gcc/g++.
       set(${COMPILER} ${GCC})
+    else ()
+      # Build enclave applications. Try to search newer versions of clang/clang++.
+      # Be consistent to the logic implemented by samples/config.mk.
+      foreach (VERSION 9 8 7)
+        set(CLANG_VERSION "")
+        if (EXISTS "${BINDIR}/${${COMPILER}}-${VERSION}")
+          set(CLANG_VERSION ${VERSION})
+          break()
+        endif ()
+      endforeach ()
+      # Set the compiler if a version of clang/clang++ is found.
+      if (CLANG_VERSION)
+        set(${COMPILER} ${CLANG}-${CLANG_VERSION})
+      else ()
+        set(${COMPILER} ${GCC})
+      endif ()
     endif ()
   endif ()
 endmacro ()
@@ -61,7 +60,7 @@ function (configure_lvi_mitigation_build)
   # Overwrite the default C compiler if CC is explicitly specified.
   # Otherwise, select the compiler based on the detection logic.
   if (DEFINED ENV{CC})
-    set(C_COMPILER $ENV{CC})
+    get_filename_component(C_COMPILER $ENV{CC} NAME)
   else ()
     detect_compiler(${OE_BINDIR} C)
   endif ()
@@ -71,13 +70,13 @@ function (configure_lvi_mitigation_build)
         ${OE_BINDIR}/${C_COMPILER}
         PARENT_SCOPE)
   else ()
-    message(FATAL_ERROR "-- ${C_COMPILER} is not found.")
+    message(FATAL_ERROR "-- ${OE_BINDIR}/${C_COMPILER} is not found.")
   endif ()
 
   # Overwrite the default C++ compiler if CXX is explicitly specified.
   # Otherwise, select the compiler based on the detection logic.
   if (DEFINED ENV{CXX})
-    set(CXX_COMPILER $ENV{CXX})
+    get_filename_component(CXX_COMPILER $ENV{CXX} NAME)
   else ()
     detect_compiler(${OE_BINDIR} CXX)
   endif ()
@@ -87,6 +86,6 @@ function (configure_lvi_mitigation_build)
         ${OE_BINDIR}/${CXX_COMPILER}
         PARENT_SCOPE)
   else ()
-    message(FATAL_ERROR "-- ${CXX_COMPILER} is not supported.")
+    message(FATAL_ERROR "-- ${OE_BINDIR}/${CXX_COMPILER} is not supported.")
   endif ()
 endfunction ()

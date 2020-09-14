@@ -1,8 +1,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <openenclave/advanced/allocator.h>
 #include <openenclave/enclave.h>
-#include <openenclave/internal/allocator.h>
 
 // EDG: use mmap instead of morecore
 #define HAVE_MMAP 1

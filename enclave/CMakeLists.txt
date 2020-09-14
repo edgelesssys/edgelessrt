@@ -35,6 +35,7 @@ add_enclave_library(
   STATIC
   attest_plugin.c
   ../common/attest_plugin.c
+  ../common/custom_claims.c
   ../common/datetime.c
   ../common/sha.c
   asym_keys.c
@@ -51,6 +52,8 @@ if (CMAKE_C_COMPILER_ID MATCHES GNU)
     target_compile_options(oeenclave PUBLIC ${OE_TZ_TA_C_FLAGS})
   endif ()
 endif ()
+
+enclave_enable_code_coverage(oeenclave)
 
 # Add location of the oeedger8r-generated trusted headers for internal
 # functions implemented via EDL files.
@@ -73,5 +76,5 @@ install_enclaves(
   ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
 if (WITH_EEID)
-  target_compile_definitions(oeenclave PRIVATE OE_WITH_EXPERIMENTAL_EEID)
+  enclave_compile_definitions(oeenclave PRIVATE OE_WITH_EXPERIMENTAL_EEID)
 endif ()

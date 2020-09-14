@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/report.h>
+#include <openenclave/internal/sgx/tests.h>
 #include <openenclave/internal/sgxcertextensions.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
@@ -11,16 +12,7 @@
 #include <string.h>
 #include "oecertdump_u.h"
 
-#if defined(__linux__)
-#include <dlfcn.h>
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#endif
-
 #include "sgx_quote.h"
-
-#ifdef OE_LINK_SGX_DCAP_QL
 
 #define INPUT_PARAM_USAGE "--help"
 #define INPUT_PARAM_OUT_FILE "--out"
@@ -138,6 +130,7 @@ oe_result_t generate_certificate(oe_enclave_t* enclave, bool verbose)
 
         if (verbose)
         {
+            printf("\n");
             output_certificate(certificate, certificate_size);
 
             if (get_sgx_report_from_certificate(
@@ -278,13 +271,17 @@ static oe_result_t _process_params(oe_enclave_t* enclave)
     return result;
 }
 
-#endif // OE_LINK_SGX_DCAP_QL
-
 int main(int argc, const char* argv[])
 {
     int ret = 0;
 
-#ifdef OE_LINK_SGX_DCAP_QL
+    if (!oe_has_sgx_quote_provider())
+    {
+        fprintf(
+            stderr, "FAILURE: DCAP libraries must be present for this test.\n");
+        return -1;
+    }
+
     oe_result_t result;
     oe_enclave_t* enclave = nullptr;
 
@@ -353,12 +350,5 @@ exit:
         fclose(log_file);
     }
 
-#else
-#pragma message( \
-    "OE_LINK_SGX_DCAP_QL is not set to ON.  This tool requires DCAP libraries.")
-    OE_UNUSED(argc);
-    OE_UNUSED(argv);
-    printf("oecertdump requires DCAP libraries.\n");
-#endif
     return ret;
 }

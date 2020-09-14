@@ -28,6 +28,10 @@ typedef struct _oe_syscall_path
     char buf[OE_PATH_MAX];
 } oe_syscall_path_t;
 
+extern bool oe_use_debug_malloc;
+
+extern bool oe_use_debug_malloc_memset;
+
 void* oe_malloc(size_t size);
 
 void oe_free(void* ptr);
@@ -45,8 +49,6 @@ int oe_posix_memalign(void** memptr, size_t alignment, size_t size);
 size_t oe_malloc_usable_size(void* ptr);
 
 unsigned long int oe_strtoul(const char* nptr, char** endptr, int base);
-
-long int oe_strtol(const char* nptr, char** endptr, int base);
 
 int oe_atexit(void (*function)(void));
 
@@ -71,11 +73,6 @@ int oe_atoi(const char* nptr);
 #include <openenclave/corelibc/bits/atexit.h>
 #include <openenclave/corelibc/bits/malloc.h>
 #include <openenclave/corelibc/bits/strtoul.h>
-
-OE_INLINE long int strtol(const char* nptr, char** endptr, int base)
-{
-    return oe_strtol(nptr, endptr, base);
-}
 
 OE_INLINE char* realpath(const char* path, char* resolved_path)
 {

@@ -1,11 +1,13 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <openenclave/attestation/sgx/evidence.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/datetime.h>
 #include <openenclave/internal/error.h>
 #include <openenclave/internal/hexdump.h>
 #include <openenclave/internal/sgx/plugin.h>
+#include <openenclave/internal/sgx/tests.h>
 #include <openenclave/internal/tests.h>
 #include <openenclave/internal/utils.h>
 #include <ctime>
@@ -35,7 +37,9 @@ extern int FileToBytes(const char* path, std::vector<uint8_t>* output);
 
 void generate_and_save_report(oe_enclave_t* enclave)
 {
-#ifdef OE_LINK_SGX_DCAP_QL
+    if (!oe_has_sgx_quote_provider())
+        return;
+
     static uint8_t* report;
     size_t report_size;
     OE_TEST_CODE(
@@ -56,9 +60,6 @@ void generate_and_save_report(oe_enclave_t* enclave)
     fwrite(report, 1, report_size, file);
     fclose(file);
     oe_free_report(report);
-#else
-    OE_UNUSED(enclave);
-#endif
 }
 
 int load_and_verify_report()
@@ -158,64 +159,67 @@ int main(int argc, const char* argv[])
      */
     g_enclave = enclave;
 
-#ifdef OE_LINK_SGX_DCAP_QL
-
-    static oe_uuid_t sgx_ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA_P256};
-
-    /* Initialize the target info */
+    if (oe_has_sgx_quote_provider())
     {
-        if ((result = sgx_get_qetarget_info(
-                 &sgx_ecdsa_uuid, NULL, 0, &target_info)) != OE_OK)
+        static oe_uuid_t sgx_ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
+
+        /* Initialize the target info */
         {
-            oe_put_err("sgx_get_qetarget_info(): result=%u", result);
+            if ((result = sgx_get_qetarget_info(
+                     &sgx_ecdsa_uuid, NULL, 0, &target_info)) != OE_OK)
+            {
+                oe_put_err("sgx_get_qetarget_info(): result=%u", result);
+            }
         }
+
+        test_local_report(&target_info);
+        test_remote_report();
+        test_parse_report_negative();
+        test_local_verify_report();
+
+        test_remote_verify_report();
+
+        test_verify_report_with_collaterals();
+
+        OE_TEST(test_iso8601_time(enclave) == OE_OK);
+        OE_TEST(test_iso8601_time_negative(enclave) == OE_OK);
+
+        /*
+         * Enclave API tests.
+         */
+        OE_TEST_CODE(enclave_test_local_report(enclave, &target_info), OE_OK);
+        OE_TEST_CODE(enclave_test_remote_report(enclave), OE_OK);
+
+        OE_TEST_CODE(enclave_test_parse_report_negative(enclave), OE_OK);
+
+        OE_TEST_CODE(enclave_test_local_verify_report(enclave), OE_OK);
+
+        OE_TEST_CODE(enclave_test_remote_verify_report(enclave), OE_OK);
+
+        OE_TEST_CODE(
+            enclave_test_verify_report_with_collaterals(enclave), OE_OK);
+
+        TestVerifyTCBInfo(enclave, "./data/tcbInfo.json");
+        TestVerifyTCBInfo(enclave, "./data/tcbInfo_with_pceid.json");
+
+        TestVerifyTCBInfoV2(enclave, "./data_v2/tcbInfo.json");
+        TestVerifyTCBInfoV2(enclave, "./data_v2/tcbInfo_with_pceid.json");
+        TestVerifyTCBInfoV2_AdvisoryIDs(
+            enclave, "./data_v2/tcbInfoAdvisoryIds.json");
     }
+    else
+    {
+        test_local_report(&target_info);
+        test_parse_report_negative();
+        test_local_verify_report();
 
-    test_local_report(&target_info);
-    test_remote_report();
-    test_parse_report_negative();
-    test_local_verify_report();
+        OE_TEST(test_iso8601_time(enclave) == OE_OK);
+        OE_TEST(test_iso8601_time_negative(enclave) == OE_OK);
 
-    test_remote_verify_report();
-
-    test_verify_report_with_collaterals();
-
-    OE_TEST(test_iso8601_time(enclave) == OE_OK);
-    OE_TEST(test_iso8601_time_negative(enclave) == OE_OK);
-
-    /*
-     * Enclave API tests.
-     */
-    OE_TEST_CODE(enclave_test_local_report(enclave, &target_info), OE_OK);
-    OE_TEST_CODE(enclave_test_remote_report(enclave), OE_OK);
-
-    OE_TEST_CODE(enclave_test_parse_report_negative(enclave), OE_OK);
-
-    OE_TEST_CODE(enclave_test_local_verify_report(enclave), OE_OK);
-
-    OE_TEST_CODE(enclave_test_remote_verify_report(enclave), OE_OK);
-
-    OE_TEST_CODE(enclave_test_verify_report_with_collaterals(enclave), OE_OK);
-
-    TestVerifyTCBInfo(enclave, "./data/tcbInfo.json");
-    TestVerifyTCBInfo(enclave, "./data/tcbInfo_with_pceid.json");
-
-    TestVerifyTCBInfoV2(enclave, "./data_v2/tcbInfo.json");
-    TestVerifyTCBInfoV2(enclave, "./data_v2/tcbInfo_with_pceid.json");
-    TestVerifyTCBInfoV2_AdvisoryIDs(
-        enclave, "./data_v2/tcbInfoAdvisoryIds.json");
-#else
-    test_local_report(&target_info);
-    test_parse_report_negative();
-    test_local_verify_report();
-
-    OE_TEST(test_iso8601_time(enclave) == OE_OK);
-    OE_TEST(test_iso8601_time_negative(enclave) == OE_OK);
-
-    OE_TEST(enclave_test_local_report(enclave, &target_info) == OE_OK);
-    OE_TEST(enclave_test_parse_report_negative(enclave) == OE_OK);
-    OE_TEST(enclave_test_local_verify_report(enclave) == OE_OK);
-#endif
+        OE_TEST(enclave_test_local_report(enclave, &target_info) == OE_OK);
+        OE_TEST(enclave_test_parse_report_negative(enclave) == OE_OK);
+        OE_TEST(enclave_test_local_verify_report(enclave) == OE_OK);
+    }
 
     test_get_signer_id_from_public_key();
     OE_TEST(enclave_test_get_signer_id_from_public_key(enclave) == OE_OK);

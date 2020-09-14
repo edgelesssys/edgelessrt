@@ -20,6 +20,8 @@ add_enclave_library(
 
 maybe_build_using_clangw(oecryptombed)
 
+enclave_enable_code_coverage(oecryptombed)
+
 enclave_link_libraries(oecryptombed PUBLIC mbedcrypto)
 
 set_enclave_property(TARGET oecryptombed PROPERTY ARCHIVE_OUTPUT_DIRECTORY
@@ -34,5 +36,5 @@ install_enclaves(
   ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
 if (WITH_EEID)
-  target_compile_definitions(oecryptombed PRIVATE OE_WITH_EXPERIMENTAL_EEID)
+  enclave_compile_definitions(oecryptombed PRIVATE OE_WITH_EXPERIMENTAL_EEID)
 endif ()

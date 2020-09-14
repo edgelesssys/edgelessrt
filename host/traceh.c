@@ -4,8 +4,10 @@
 #include <openenclave/corelibc/limits.h>
 #include <openenclave/internal/calls.h>
 #include <openenclave/internal/datetime.h>
+#include <openenclave/internal/localtime.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
+#include <openenclave/internal/time.h>
 #include <openenclave/internal/trace.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -314,6 +316,23 @@ done:
     return result;
 }
 
+void* oe_log_context = NULL;
+oe_log_callback_t oe_log_callback = NULL;
+
+oe_result_t oe_log_set_callback(void* context, oe_log_callback_t callback)
+{
+    if (oe_mutex_lock(&_log_lock) == OE_OK)
+    {
+        oe_log_context = context;
+        oe_log_callback = callback;
+        oe_mutex_unlock(&_log_lock);
+
+        return OE_OK;
+    }
+
+    return OE_UNEXPECTED;
+}
+
 // This is an expensive operation, it involves acquiring lock
 // and file operation.
 void oe_log_message(bool is_enclave, oe_log_level_t level, const char* message)
@@ -321,25 +340,44 @@ void oe_log_message(bool is_enclave, oe_log_level_t level, const char* message)
     // get timestamp for log
     struct tm t;
     time_t lt = time(NULL);
-    gmtime_r(&lt, &t);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    lt = tv.tv_sec;
+    oe_localtime(&lt, &t);
 
-    char time[20];
-    strftime(time, sizeof(time), "%Y-%m-%dT%H:%M:%S", &t);
-    long int usecs = 0;
+    char time[25];
+    strftime(time, sizeof(time), "%Y-%m-%dT%H:%M:%S%z", &t);
+    long int usecs = tv.tv_usec;
 
     if (!_initialized)
     {
         initialize_log_config();
     }
-    if (_initialized)
-    {
-        if (level > _log_level)
-            return;
-    }
 
     // Take the log file lock.
     if (oe_mutex_lock(&_log_lock) == OE_OK)
     {
+        if (oe_log_callback)
+        {
+            (oe_log_callback)(
+                oe_log_context,
+                is_enclave,
+                time,
+                usecs,
+                level,
+                (uint64_t)oe_thread_self(),
+                message);
+            goto done;
+        }
+
+        if (_initialized)
+        {
+            if (level > _log_level)
+            {
+                goto done;
+            }
+        }
+
         if (_log_all_streams || !_use_log_file)
         {
             _write_message_to_stream(
@@ -441,6 +479,7 @@ void oe_log_message(bool is_enclave, oe_log_level_t level, const char* message)
             fflush(log_file);
             fclose(log_file);
         }
+    done:
         // Release the log file lock.
         oe_mutex_unlock(&_log_lock);
     }

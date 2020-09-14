@@ -8,7 +8,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_enclave(
   TARGET
@@ -18,10 +18,6 @@ add_enclave(
   ${CMAKE_CURRENT_BINARY_DIR}/tls_e2e_t.c
   ../common/utility.cpp
   tls_e2e_t.c)
-
-if (HAS_QUOTE_PROVIDER)
-  enclave_compile_definitions(tls_client_enc PRIVATE OE_LINK_SGX_DCAP_QL)
-endif ()
 
 set_source_files_properties(tls_e2e_t.c PROPERTIES COMPILE_FLAGS
                                                    "-Wno-conversion")

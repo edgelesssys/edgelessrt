@@ -37,8 +37,4 @@ enclave {
             int flags)
             propagate_errno;
     };
-
-    trusted {
-        public void oe_syscall_stub_ecall();
-    };
 };

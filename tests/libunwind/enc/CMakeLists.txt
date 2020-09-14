@@ -13,7 +13,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(LIBUNWIND_TEST_DIR ${PROJECT_SOURCE_DIR}/3rdparty/libunwind/libunwind/tests)
 
@@ -61,6 +61,9 @@ function (add_libunwind_test_enc NAME TESTFILE)
   endif ()
   enclave_compile_definitions(libunwindtest-${NAME}_enc PRIVATE -DWITH_MAIN
                               -D__TEST__="${TESTFILE}" -DUNW_LOCAL_ONLY=1)
+  if (CODE_COVERAGE)
+    enclave_compile_definitions(libunwindtest-${NAME}_enc PRIVATE CODE_COVERAGE)
+  endif ()
   enclave_link_libraries(libunwindtest-${NAME}_enc libunwindtest-support)
   enclave_link_libraries(libunwindtest-${NAME}_enc
                          -Wl,--undefined=pthread_mutex_lock)

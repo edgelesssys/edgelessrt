@@ -4,8 +4,15 @@
 # Add a library oehostmr independent of libsgx_enclave_common/libsgx_dcap_ql
 if (UNIX)
   set(PLATFORM_HOST_MR_SRC
-      crypto/openssl/init.c crypto/openssl/key.c crypto/openssl/rsa.c
-      crypto/openssl/sha.c linux/hostthread.c)
+      crypto/openssl/asn1.c
+      crypto/openssl/cert.c
+      crypto/openssl/ec.c
+      crypto/openssl/init.c
+      crypto/openssl/key.c
+      crypto/openssl/rsa.c
+      crypto/openssl/sha.c
+      linux/hostthread.c
+      linux/time.c)
 elseif (WIN32)
   set(PLATFORM_HOST_MR_SRC
       crypto/bcrypt/key.c
@@ -143,7 +150,7 @@ if (UNIX)
   endif ()
 elseif (WIN32)
   target_include_directories(
-    oehostmr PRIVATE ${CMAKE_SOURCE_DIR}/3rdparty/mbedtls/mbedtls/include)
+    oehostmr PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/mbedtls/mbedtls/include)
 endif ()
 
 # For including edge routines.

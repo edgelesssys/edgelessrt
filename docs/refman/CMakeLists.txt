@@ -48,6 +48,11 @@ if (ENABLE_REFMAN)
     # This list of files is explicit because we disable recursion.
     enclave.h
     host.h
+    attestation/attester.h
+    attestation/custom_claims.h
+    attestation/verifier.h
+    attestation/sgx/evidence.h
+    bits/evidence.h
     bits/properties.h
     bits/report.h
     bits/result.h

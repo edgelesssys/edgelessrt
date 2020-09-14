@@ -8,6 +8,7 @@
 #include <openenclave/internal/defs.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/utils.h>
+#include "arena.h"
 #include "handle_ecall.h"
 #include "platform_t.h"
 
@@ -29,6 +30,42 @@ static bool _is_switchless_initialized = false;
  * type which results in undefined behavior per the C spec.
  * */
 static int64_t _switchless_init_in_progress = 0;
+
+/**
+ * Declare the prototypes of the following functions to avoid the
+ * missing-prototypes warning.
+ */
+oe_result_t _oe_sgx_wake_switchless_worker_ocall(
+    oe_host_worker_context_t* context);
+oe_result_t _oe_sgx_sleep_switchless_worker_ocall(
+    oe_enclave_worker_context_t* context);
+
+/**
+ * Make the following OCALLs weak to support the system EDL opt-in.
+ * When the user does not opt into (import) the EDL, the linker will pick
+ * the following default implementations. If the user opts into the EDL,
+ * the implementations (which are strong) in the oeedger8r-generated code will
+ * be used.
+ */
+oe_result_t _oe_sgx_wake_switchless_worker_ocall(
+    oe_host_worker_context_t* context)
+{
+    OE_UNUSED(context);
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(
+    _oe_sgx_wake_switchless_worker_ocall,
+    oe_sgx_wake_switchless_worker_ocall);
+
+oe_result_t _oe_sgx_sleep_switchless_worker_ocall(
+    oe_enclave_worker_context_t* context)
+{
+    OE_UNUSED(context);
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(
+    _oe_sgx_sleep_switchless_worker_ocall,
+    oe_sgx_sleep_switchless_worker_ocall);
 
 /*
 **==============================================================================
@@ -198,8 +235,7 @@ oe_result_t oe_switchless_call_host_function(
     size_t output_buffer_size,
     size_t* output_bytes_written)
 {
-    return oe_call_host_function_by_table_id(
-        OE_UINT64_MAX,
+    return oe_call_host_function_internal(
         function_id,
         input_buffer,
         input_buffer_size,
@@ -262,19 +298,22 @@ void oe_sgx_switchless_enclave_worker_thread_ecall(
     }
 }
 
-/*
- * Stubs for ocalls in the event they are not included
- */
-OE_WEAK oe_result_t
-oe_sgx_wake_switchless_worker_ocall(oe_host_worker_context_t* context)
+// Function used by oeedger8r for allocating switchless ocall buffers.
+// Preallocate a pool of shared memory per thread for switchless ocalls
+// and then allocate memory from that pool. Since OE does not support
+// reentrant ecalls in the same thread, there can at most be one ecall
+// and one ocall active in a thread. Although an enclave function can
+// make multiple OCALLs, the OCALLs are serialized. So the allocation
+// for one OCALL doesn't interfere with the allocation for the next OCALL.
+// A stack-based allocation scheme is the most efficient in this case.
+void* oe_allocate_switchless_ocall_buffer(size_t size)
 {
-    OE_UNUSED(context);
-    return OE_UNSUPPORTED;
+    return oe_arena_malloc(size);
 }
 
-OE_WEAK oe_result_t
-oe_sgx_sleep_switchless_worker_ocall(oe_enclave_worker_context_t* context)
+// Function used by oeedger8r for freeing ocall buffers.
+void oe_free_switchless_ocall_buffer(void* buffer)
 {
-    OE_UNUSED(context);
-    return OE_UNSUPPORTED;
+    OE_UNUSED(buffer);
+    oe_arena_free_all();
 }

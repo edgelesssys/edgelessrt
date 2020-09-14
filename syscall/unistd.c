@@ -305,6 +305,48 @@ done:
     return ret;
 }
 
+int oe_flock(int fd, int operation)
+{
+    int ret = -1;
+    oe_fd_t* desc;
+
+    if (!(desc = oe_fdtable_get(fd, OE_FD_TYPE_ANY)))
+        OE_RAISE_ERRNO(oe_errno);
+
+    ret = desc->ops.fd.flock(desc, operation);
+
+done:
+    return ret;
+}
+
+int oe_fsync(int fd)
+{
+    int ret = -1;
+    oe_fd_t* desc;
+
+    if (!(desc = oe_fdtable_get(fd, OE_FD_TYPE_FILE)))
+        OE_RAISE_ERRNO(oe_errno);
+
+    ret = desc->ops.file.fsync(desc);
+
+done:
+    return ret;
+}
+
+int oe_fdatasync(int fd)
+{
+    int ret = -1;
+    oe_fd_t* desc;
+
+    if (!(desc = oe_fdtable_get(fd, OE_FD_TYPE_FILE)))
+        OE_RAISE_ERRNO(oe_errno);
+
+    ret = desc->ops.file.fdatasync(desc);
+
+done:
+    return ret;
+}
+
 int oe_dup(int oldfd)
 {
     int ret = -1;

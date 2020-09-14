@@ -1,11 +1,8 @@
 # Copyright (c) Open Enclave SDK contributors.
 # Licensed under the MIT License.
 
-set(OE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-set(EDL_DIR ${CMAKE_SOURCE_DIR}/include/openenclave/edl)
-if (OE_SGX)
-  set(SGX_EDL_DIR ${EDL_DIR}/sgx)
-endif ()
+set(OE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl)
 
 ##==============================================================================
 ##
@@ -15,24 +12,13 @@ endif ()
 ##==============================================================================
 
 set(CORE_EDL_FILE ${EDL_DIR}/core.edl)
-if (COMPILE_SYSTEM_EDL)
-  add_custom_command(
-    OUTPUT core_t.h core_t.c core_args.h
-    DEPENDS ${CORE_EDL_FILE} edger8r
-    COMMAND edger8r --search-path ${OE_INCLUDE_DIR} --trusted ${CORE_EDL_FILE})
+add_custom_command(
+  OUTPUT core_t.h core_args.h
+  DEPENDS ${CORE_EDL_FILE} edger8r
+  COMMAND edger8r --header-only --search-path ${OE_INCLUDE_DIR} --trusted
+          ${CORE_EDL_FILE})
 
-  add_custom_target(core_trusted_edl DEPENDS core_t.h core_t.c core_args.h)
-
-  list(APPEND PLATFORM_SRC core_t_wrapper.c)
-else ()
-  add_custom_command(
-    OUTPUT core_t.h core_args.h
-    DEPENDS ${CORE_EDL_FILE} edger8r
-    COMMAND edger8r --header-only --search-path ${OE_INCLUDE_DIR} --trusted
-            ${CORE_EDL_FILE})
-
-  add_custom_target(core_trusted_edl DEPENDS core_t.h core_args.h)
-endif ()
+add_custom_target(core_trusted_edl DEPENDS core_t.h core_args.h)
 
 ##==============================================================================
 ##
@@ -41,23 +27,13 @@ endif ()
 ##
 ##==============================================================================
 
-set(SGX_EDL_FILE ${SGX_EDL_DIR}/platform.edl)
-if (OE_SGX AND COMPILE_SYSTEM_EDL)
-  add_custom_command(
-    OUTPUT platform_t.h platform_t.c platform_args.h
-    DEPENDS ${SGX_EDL_FILE} edger8r
-    COMMAND edger8r --search-path ${SGX_EDL_DIR} --trusted ${SGX_EDL_FILE})
-
-  add_custom_target(platform_trusted_edl DEPENDS platform_t.h platform_t.c
-                                                 platform_args.h)
-
-  list(APPEND PLATFORM_SRC sgx/platform_t_wrapper.c)
-elseif (OE_SGX)
+set(SGX_EDL_FILE ${EDL_DIR}/sgx/platform.edl)
+if (OE_SGX)
   # Only generate headers
   add_custom_command(
     OUTPUT platform_t.h platform_args.h
     DEPENDS ${SGX_EDL_FILE} edger8r
-    COMMAND edger8r --header-only --search-path ${SGX_EDL_DIR} --trusted
+    COMMAND edger8r --header-only --search-path ${OE_INCLUDE_DIR} --trusted
             ${SGX_EDL_FILE})
 
   add_custom_target(platform_trusted_edl DEPENDS platform_t.h platform_args.h)
@@ -75,13 +51,19 @@ if (OE_SGX)
   list(
     APPEND
     PLATFORM_SRC
+    ${MUSL_SRC_DIR}/string/x86_64/memcpy.s
+    ${MUSL_SRC_DIR}/string/x86_64/memmove.s
+    ${MUSL_SRC_DIR}/string/x86_64/memset.s
     ../../common/sgx/endorsements.c
     ../../common/sgx/rand.S
+    sgx/arena.c
+    sgx/asmdefs.c
     sgx/backtrace.c
     sgx/calls.c
     sgx/cpuid.c
     sgx/enter.S
     sgx/entropy.c
+    sgx/errno.c
     sgx/exception.c
     sgx/exit.S
     sgx/getkey.S
@@ -110,14 +92,32 @@ if (OE_SGX)
   set_source_files_properties(sgx/td_basic.c PROPERTIES COMPILE_FLAGS
                                                         -fno-stack-protector)
 
+  # To avoid the `unused-command-line-argument` warning, which we treat as an
+  # error, we explicitly turn off the warning when compiling these assembly
+  # files.
+  list(
+    APPEND
+    W_NO_UNUSED_COMMAND_LINE_ARGUMENT
+    ${MUSL_SRC_DIR}/string/x86_64/memcpy.s
+    ${MUSL_SRC_DIR}/string/x86_64/memmove.s
+    ${MUSL_SRC_DIR}/string/x86_64/memset.s)
+
+  set_property(
+    SOURCE ${W_NO_UNUSED_COMMAND_LINE_ARGUMENT}
+    APPEND_STRING
+    PROPERTY COMPILE_FLAGS "-Wno-error=unused-command-line-argument")
 elseif (OE_TRUSTZONE)
   list(
     APPEND
     PLATFORM_SRC
+    ${MUSL_SRC_DIR}/string/memcpy.c
+    ${MUSL_SRC_DIR}/string/memmove.c
+    ${MUSL_SRC_DIR}/string/memset.c
     optee/backtrace.c
     optee/bounds.c
     optee/calls.c
     optee/entropy.c
+    optee/errno.c
     optee/header.c
     optee/hostcalls.c
     optee/globals.c
@@ -130,6 +130,12 @@ elseif (OE_TRUSTZONE)
     optee/stubs.c
     optee/thread.c
     optee/tracee.c)
+
+  list(APPEND NEEDS_STDC_NAMES ${MUSL_SRC_DIR}/string/memmove.c
+       ${MUSL_SRC_DIR}/string/memset.c ${MUSL_SRC_DIR}/string/memcpy.c)
+
+  list(APPEND W_NO_CONVERSION ${MUSL_SRC_DIR}/string/memmove.c
+       ${MUSL_SRC_DIR}/string/memset.c)
 endif ()
 
 if (OE_TRUSTZONE OR (OE_SGX AND (UNIX OR USE_CLANGW)))
@@ -137,9 +143,9 @@ if (OE_TRUSTZONE OR (OE_SGX AND (UNIX OR USE_CLANGW)))
 endif ()
 
 if (USE_SNMALLOC)
-  set(DEFAULT_ALLOCATOR oesnmalloc)
+  set(DEFAULT_ALLOCATOR_LIB oesnmalloc_obj)
 else ()
-  set(DEFAULT_ALLOCATOR oedlmalloc)
+  set(DEFAULT_ALLOCATOR_LIB oedlmalloc_obj)
 endif ()
 
 add_enclave_library(
@@ -150,19 +156,13 @@ add_enclave_library(
   ../../common/ringbuffer.c
   ${MUSL_SRC_DIR}/prng/rand.c
   ${MUSL_SRC_DIR}/string/memcmp.c
-  ${MUSL_SRC_DIR}/string/memcpy.c
-  ${MUSL_SRC_DIR}/string/memmove.c
-  ${MUSL_SRC_DIR}/string/memset.c
   __stack_chk_fail.c
-  arena.c
   args.c
   assert.c
   atexit.c
   backtrace.c
-  calls.c
   ctype.c
   debugmalloc.c
-  errno.c
   hexdump.c
   hostcalls.c
   intstr.c
@@ -180,7 +180,6 @@ add_enclave_library(
   time.c
   tracee.c
   wchar.c
-  $<TARGET_OBJECTS:${DEFAULT_ALLOCATOR}>
   ${PLATFORM_SRC})
 
 # Some files in oecore come directly from the musl source. For these files,
@@ -188,24 +187,13 @@ add_enclave_library(
 # Additionally, suppress type conversion warnings introduced by 3rdparty code
 set(CORELIBC_INCLUDES ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
 
-list(
-  APPEND
-  NEEDS_STDC_NAMES
-  ${MUSL_SRC_DIR}/prng/rand.c
-  ${MUSL_SRC_DIR}/string/memmove.c
-  ${MUSL_SRC_DIR}/string/memset.c
-  ${MUSL_SRC_DIR}/string/memcmp.c
-  ${MUSL_SRC_DIR}/string/memcpy.c
-  debugmalloc.c
-  strtok_r.c)
+list(APPEND NEEDS_STDC_NAMES ${MUSL_SRC_DIR}/prng/rand.c
+     ${MUSL_SRC_DIR}/string/memcmp.c debugmalloc.c strtok_r.c)
 
-list(APPEND W_NO_CONVERSION ${MUSL_SRC_DIR}/prng/rand.c
-     ${MUSL_SRC_DIR}/string/memmove.c ${MUSL_SRC_DIR}/string/memset.c)
+list(APPEND W_NO_CONVERSION ${MUSL_SRC_DIR}/prng/rand.c)
 
-set_property(
-  SOURCE ${W_NO_CONVERSION}
-  APPEND_STRING
-  PROPERTY COMPILE_FLAGS " -Wno-conversion")
+set_property(SOURCE ${W_NO_CONVERSION} APPEND_STRING PROPERTY COMPILE_FLAGS
+                                                              "-Wno-conversion")
 
 set_property(SOURCE ${NEEDS_STDC_NAMES} APPEND_STRING
              PROPERTY COMPILE_FLAGS " -I${CORELIBC_INCLUDES}")
@@ -232,7 +220,7 @@ if (OE_TRUSTZONE)
     oecore PRIVATE ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
 endif ()
 
-enclave_link_libraries(oecore PUBLIC oe_includes)
+enclave_link_libraries(oecore PUBLIC oe_includes ${DEFAULT_ALLOCATOR_LIB})
 
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
   enclave_compile_options(oecore PRIVATE -Wjump-misses-init)
@@ -294,6 +282,14 @@ endif ()
 
 enclave_compile_options(oecore INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-nostdinc++>)
 
+enclave_enable_code_coverage(oecore)
+if (CODE_COVERAGE)
+  # Disable the complier flag to the following sources to
+  # avoid conflicts.
+  set_source_files_properties(once.c sgx/calls.c sgx/init.c
+                              PROPERTIES COMPILE_FLAGS -fno-profile-arcs)
+endif ()
+
 enclave_compile_definitions(
   oecore
   PUBLIC
@@ -303,18 +299,10 @@ enclave_compile_definitions(
   # package.
   $<BUILD_INTERFACE:OE_API_VERSION=2>)
 
-if (HAS_QUOTE_PROVIDER)
-  enclave_compile_definitions(oecore PUBLIC OE_LINK_SGX_DCAP_QL)
-endif ()
-
 if (USE_DEBUG_MALLOC)
   enclave_compile_definitions(oecore PRIVATE OE_USE_DEBUG_MALLOC)
   message(
     "USE_DEBUG_MALLOC is set, building oecore with memory leak detection.")
-endif ()
-
-if (COMPILE_SYSTEM_EDL)
-  enclave_compile_definitions(oecore PRIVATE OE_USE_BUILTIN_EDL)
 endif ()
 
 if (WITH_EEID)

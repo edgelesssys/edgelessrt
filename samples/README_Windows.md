@@ -57,6 +57,12 @@ ninja
 ninja run
 ```
 
+5. To run the sample in simulation mode, use below:
+
+```cmd
+ninja simulate
+```
+
 #### Build and Run samples with LVI mitigation
 
 Refer to [here](helloworld#build-and-run-with-lvi-mitigation) for more details.
@@ -115,3 +121,9 @@ The following samples demonstrate how to develop enclave applications using OE A
 
 - Explain the concept of host-side enclave verification
 - Demonstrate attestation of a remote SGX enclave from outside an enclave
+
+#### [Pluggable Allocators](pluggable_allocator/README.md)
+
+- Demonstrate how to replace the default memory allocator by plugging in a custom allocator
+  that performs better in multi-threaded enclaves.
+- Provide overview of how to make an enclave-compatible allocator pluggable.

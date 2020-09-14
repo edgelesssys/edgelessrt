@@ -14,13 +14,14 @@ add_custom_command(
           ../edl/foreign.edl
           ../edl/other.edl
           ../edl/pointer.edl
+          ../edl/security.edl
           ../edl/string.edl
           ../edl/struct.edl
           ../edl/switchless_test.edl
   COMMAND
     edger8r --experimental --trusted --search-path
-    ${PROJECT_SOURCE_DIR}/include --search-path ${PLATFORM_EDL_DIR}
-    --search-path ${CMAKE_CURRENT_SOURCE_DIR}/../edl --search-path
+    ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX} --search-path
+    ${CMAKE_CURRENT_SOURCE_DIR}/../edl --search-path
     ${CMAKE_CURRENT_SOURCE_DIR}/../moreedl all.edl)
 
 add_custom_command(
@@ -40,20 +41,19 @@ add_enclave(
   e71cbbea-a638-4653-b46e-2e58a2ca3408
   CXX
   SOURCES
-  all_t.c
+  all_t.h
+  all_t_wrapper.cpp
   bar_t.h
   bar.cpp
   config.cpp
   foo.cpp
   testaliasing.cpp
   testarray.cpp
-  testbasic.cpp
   testdeepcopy.cpp
   testenum.cpp
-  testerrno.cpp
   testforeign.cpp
   testpointer.cpp
-  teststring.cpp
+  testsecurity.cpp
   teststruct.cpp
   testswitchless.cpp)
 
@@ -62,9 +62,10 @@ add_enclave(
 if (CMAKE_CXX_COMPILER_ID MATCHES GNU
     OR CMAKE_CXX_COMPILER_ID MATCHES Clang
     OR USE_CLANGW)
-  set_source_files_properties(all_t.c PROPERTIES COMPILE_FLAGS
-                                                 "-Wno-conversion")
-  set_source_files_properties(testpointer.cpp teststring.cpp
+  set_source_files_properties(
+    all_t_wrapper.cpp PROPERTIES COMPILE_FLAGS
+                                 "-Wno-conversion -Wno-sign-compare")
+  set_source_files_properties(testpointer.cpp
                               PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
 endif ()
 

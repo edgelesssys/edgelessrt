@@ -81,12 +81,6 @@ static void _initialize_exception_handling(void)
 static void _initialize_enclave_host()
 {
     oe_once(&_enclave_init_once, _initialize_exception_handling);
-
-#ifdef OE_USE_BUILTIN_EDL
-    oe_register_core_ocall_function_table();
-    oe_register_platform_ocall_function_table();
-    oe_register_syscall_ocall_function_table();
-#endif // OE_USE_BUILTIN_EDL
 }
 #endif // OEHOSTMR
 
@@ -180,13 +174,13 @@ static oe_result_t _add_control_pages(
         !enclave)
         OE_RAISE(OE_INVALID_PARAMETER);
 
-    /* Create four "control" pages:
+    /* Create "control" pages:
      *     page1 - page containing thread control structure (TCS)
      *     page2 - state-save-area (SSA) slot (zero-filled)
      *     page3 - state-save-area (SSA) slot (zero-filled)
      *     page4 - guard page
-     *     page5 - thread local storage page.
-     *     page6 - extra segment space for thread-specific data.
+     *             thread local storage pages.
+     *     pageN - extra segment space for thread-specific data.
      */
 
     /* Save the address of new TCS page into enclave object */
@@ -233,7 +227,9 @@ static oe_result_t _add_control_pages(
          * Since negative offsets are used with FS, FS must point to end of the
          * segment.
          */
-        tcs->fsbase = *vaddr + (5 * OE_PAGE_SIZE);
+        tcs->fsbase =
+            *vaddr +
+            (context->num_tls_pages + OE_SGX_NUM_CONTROL_PAGES) * OE_PAGE_SIZE;
 
         /* The existing Windows SGX enclave debugger finds the start of the
          * thread data by assuming that it is located at the start of the GS
@@ -272,8 +268,9 @@ static oe_result_t _add_control_pages(
     /* Skip over guard page */
     (*vaddr) += OE_PAGE_SIZE;
 
-    /* Add one blank pages (for either FS segment or GS segment) */
-    OE_CHECK(_add_filled_pages(context, enclave_addr, vaddr, 1, 0, true));
+    /* Add blank pages (for either FS segment or GS segment) */
+    OE_CHECK(_add_filled_pages(
+        context, enclave_addr, vaddr, context->num_tls_pages, 0, true));
 
     /* Add one page for thread-specific data (TSD) slots */
     OE_CHECK(_add_filled_pages(context, enclave_addr, vaddr, 1, 0, true));
@@ -290,7 +287,7 @@ done:
 static oe_result_t _calculate_enclave_size(
     size_t image_size,
     const oe_sgx_enclave_properties_t* props,
-    size_t* enclave_end, /* end may be less than size due to rounding */
+    size_t* loaded_enclave_pages_size,
     size_t* enclave_size)
 
 {
@@ -304,7 +301,7 @@ static oe_result_t _calculate_enclave_size(
 
     if (enclave_size)
         *enclave_size = 0;
-    *enclave_end = 0;
+    *loaded_enclave_pages_size = 0;
 
     /* Compute size in bytes of the heap */
     heap_size = size_settings->num_heap_pages * OE_PAGE_SIZE;
@@ -318,23 +315,19 @@ static oe_result_t _calculate_enclave_size(
     control_size = 6 * OE_PAGE_SIZE;
 
     /* Compute end of the enclave */
-    *enclave_end = image_size + heap_size +
-                   (size_settings->num_tcs * (stack_size + control_size));
+    *loaded_enclave_pages_size =
+        image_size + heap_size +
+        (size_settings->num_tcs * (stack_size + control_size));
 
     if (enclave_size)
     {
 #ifdef OE_WITH_EXPERIMENTAL_EEID
         if (is_eeid_base_image(props))
-        {
-            /* This is the maximum size SGX allows. When signing base images we
-             * don't know the size that the final image will have, so we chose
-             * the maximum here. */
-            *enclave_size = 68719476736;
-        }
+            *enclave_size = OE_EEID_SGX_ELRANGE;
         else
 #endif
             /* Calculate the total size of the enclave */
-            *enclave_size = oe_round_u64_to_pow2(*enclave_end);
+            *enclave_size = oe_round_u64_to_pow2(*loaded_enclave_pages_size);
     }
 
     result = OE_OK;
@@ -622,8 +615,11 @@ static oe_result_t _add_eeid_marker_page(
         memset(page, 0, sizeof(oe_page_t));
         oe_eeid_marker_t* marker = (oe_eeid_marker_t*)page;
 
+        /* The offset to the EEID in marker->offset is also the extended
+         * commit size of the base image and dynamically configured data
+         * pages (stacks + heap) excluding the EEID data size.
+         */
         _calculate_enclave_size(image_size, props, &marker->offset, NULL);
-        marker->size = enclave->size;
 
         uint64_t addr = enclave->addr + *vaddr;
         uint64_t src = (uint64_t)page;
@@ -683,27 +679,27 @@ static oe_result_t _add_eeid_pages(
 
     if (eeid)
     {
+        char* eeid_bytes = (char*)eeid;
         size_t num_bytes = oe_eeid_byte_size(eeid);
         size_t num_pages =
             num_bytes / OE_PAGE_SIZE + ((num_bytes % OE_PAGE_SIZE) ? 1 : 0);
 
-        oe_page_t* pages =
-            oe_memalign(OE_PAGE_SIZE, sizeof(oe_page_t) * num_pages);
-        memset(pages, 0, sizeof(oe_page_t) * num_pages);
-        memcpy(pages->data, eeid, num_bytes);
-
+        oe_page_t* page = oe_memalign(OE_PAGE_SIZE, sizeof(oe_page_t));
         for (size_t i = 0; i < num_pages; i++)
         {
-            uint64_t addr = enclave_addr + *vaddr;
-            uint64_t src = (uint64_t)(pages + i * OE_PAGE_SIZE);
-            uint64_t flags = SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W;
+            memset(page->data, 0, sizeof(oe_page_t));
+            size_t n = (i != num_pages - 1) ? OE_PAGE_SIZE
+                                            : (num_bytes % OE_PAGE_SIZE);
+            memcpy(page->data, eeid_bytes + OE_PAGE_SIZE * i, n);
 
+            uint64_t addr = enclave_addr + *vaddr;
+            uint64_t src = (uint64_t)(page->data);
+            uint64_t flags = SGX_SECINFO_REG | SGX_SECINFO_R;
             OE_CHECK(oe_sgx_load_enclave_data(
                 context, enclave_addr, addr, src, flags, true));
             *vaddr += OE_PAGE_SIZE;
         }
-
-        oe_memalign_free(pages);
+        oe_memalign_free(page);
     }
 
     result = OE_OK;
@@ -720,7 +716,7 @@ oe_result_t oe_sgx_build_enclave(
     oe_enclave_t* enclave)
 {
     oe_result_t result = OE_UNEXPECTED;
-    size_t enclave_end = 0;
+    size_t loaded_enclave_pages_size = 0;
     size_t enclave_size = 0;
     uint64_t enclave_addr = 0;
     oe_enclave_image_t oeimage;
@@ -762,12 +758,18 @@ oe_result_t oe_sgx_build_enclave(
         props = *properties;
 
         /* Update image to the properties passed in */
-        memcpy(oeimage.image_base + oeimage.oeinfo_rva, &props, sizeof(props));
+        memcpy(
+            oeimage.elf.image_base + oeimage.elf.oeinfo_rva,
+            &props,
+            sizeof(props));
     }
     else
     {
         /* Copy the properties from the image */
-        memcpy(&props, oeimage.image_base + oeimage.oeinfo_rva, sizeof(props));
+        memcpy(
+            &props,
+            oeimage.elf.image_base + oeimage.elf.oeinfo_rva,
+            sizeof(props));
     }
 
     /* Validate the enclave prop_override structure */
@@ -803,30 +805,30 @@ oe_result_t oe_sgx_build_enclave(
 
     /* Calculate the size of this enclave in memory */
     OE_CHECK(_calculate_enclave_size(
-        image_size, &props, &enclave_end, &enclave_size));
+        image_size, &props, &loaded_enclave_pages_size, &enclave_size));
 
     /* Perform the ECREATE operation */
-    OE_CHECK(oe_sgx_create_enclave(context, enclave_size, &enclave_addr));
+    OE_CHECK(oe_sgx_create_enclave(
+        context, enclave_size, loaded_enclave_pages_size, &enclave_addr));
 
     /* Save the enclave base address, size, and text address */
     enclave->addr = enclave_addr;
     enclave->size = enclave_size;
-    enclave->text = enclave_addr + oeimage.text_rva;
 
     /* Patch image */
-    OE_CHECK(oeimage.patch(&oeimage, enclave_end));
+    OE_CHECK(oeimage.sgx_patch(&oeimage, context, enclave_size));
 
     /* Add image to enclave */
     OE_CHECK(oeimage.add_pages(&oeimage, context, enclave, &vaddr));
 
 #ifdef OE_WITH_EXPERIMENTAL_EEID
     OE_CHECK(_add_eeid_marker_page(
-        context, enclave, image_size, oeimage.entry_rva, &props, &vaddr));
+        context, enclave, image_size, oeimage.elf.entry_rva, &props, &vaddr));
 #endif
 
     /* Add data pages */
-    OE_CHECK(
-        _add_data_pages(context, enclave, &props, oeimage.entry_rva, &vaddr));
+    OE_CHECK(_add_data_pages(
+        context, enclave, &props, oeimage.elf.entry_rva, &vaddr));
 
 #ifdef OE_WITH_EXPERIMENTAL_EEID
     /* Add optional EEID pages */
@@ -1005,7 +1007,13 @@ oe_result_t oe_create_enclave(
     OE_CHECK(_initialize_enclave(enclave));
 
     /* Setup logging configuration */
-    oe_log_enclave_init(enclave);
+    if (oe_log_enclave_init(enclave) == OE_UNSUPPORTED)
+    {
+        OE_TRACE_WARNING(
+            "In-enclave logging is not supported. To enable, please add \n\n"
+            "from \"openenclave/edl/logging.edl\" import *;\n\n"
+            "in the edl file.\n");
+    }
 
     /* Apply the list of settings to the enclave.
      * This may initialize switchless manager too.

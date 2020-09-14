@@ -13,10 +13,13 @@
   yum:
     name: "{{ yum_packages }}"
     state: latest
+  retries: 10
+  register: install
+  until: install is success
 
 - name: Download ShellCheck tar.xz archive
   get_url:
-    url: "https://storage.googleapis.com/shellcheck/shellcheck-v{{ shellcheck_target_version }}.linux.x86_64.tar.xz"
+    url: "https://oejenkins.blob.core.windows.net/oejenkins/shellcheck-v{{ shellcheck_target_version }}.linux.x86_64.tar.xz"
     dest: /tmp/shellcheck.tar.xz
     checksum: "sha256:{{ shellcheck_sha256sum }}"
     timeout: 10

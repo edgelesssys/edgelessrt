@@ -2,13 +2,14 @@
 // Licensed under the MIT License.
 
 #include "threadlocal.h"
+#include <openenclave/advanced/allocator.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/enclave.h>
-#include <openenclave/internal/allocator.h>
 #include <openenclave/internal/elf.h>
 #include <openenclave/internal/globals.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
+#include <openenclave/internal/sgx/td.h>
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/utils.h>
 #include "td.h"
@@ -192,19 +193,14 @@
  * the loader fetches the symbol's sh-value and stores it in the r_addend field
  * (r_added field is otherwise zero for R_X86_64_TPOFF64).
  */
-static volatile uint64_t _tdata_rva = 0;
-static volatile uint64_t _tdata_size = 0;
-static volatile uint64_t _tdata_align = 1;
+OE_EXPORT volatile uint64_t _tdata_rva = 0;
+OE_EXPORT volatile uint64_t _tdata_size = 0;
+OE_EXPORT volatile uint64_t _tdata_align = 1;
 
-static volatile uint64_t _tbss_size = 0;
-static volatile uint64_t _tbss_align = 1;
+OE_EXPORT volatile uint64_t _tbss_size = 0;
+OE_EXPORT volatile uint64_t _tbss_align = 1;
 
-// Number of thread-local relocations.
 static volatile bool _thread_locals_relocated = false;
-
-/* Thread local variables to track functions to call on thread exit */
-static __thread oe_tls_atexit_t* _tls_atexit_functions;
-static __thread uint64_t _num_tls_atexit_functions;
 
 // TODO: Make this flexible in case more than one page of thread local storage
 // need to allocate.
@@ -317,7 +313,7 @@ oe_result_t oe_thread_local_init(oe_sgx_td_t* td)
         // Copy the template
         oe_memcpy_s(tls_start, _tdata_size, tdata, _tdata_size);
 
-        // Perform thread-local relocations.
+        // Perform thread-local relocations, only run once.
         if (!_thread_locals_relocated)
         {
             // Note: For an enclave, thread-local relocations always set the
@@ -349,36 +345,26 @@ oe_result_t oe_thread_local_init(oe_sgx_td_t* td)
 
             _thread_locals_relocated = true;
         }
-
-        {
-            static bool _allocator_initialized = false;
-            bool initialized = _allocator_initialized;
-            OE_ATOMIC_MEMORY_BARRIER_ACQUIRE();
-            if (!initialized)
-            {
-                /* Initialize the allocator */
-                OE_ATOMIC_MEMORY_BARRIER_RELEASE();
-                _allocator_initialized = true;
-            }
-        }
-
-        // To properly initialize the allocator, oe_allocator_init must first be
-        // called with the heap start and end addresses. The allocator can
-        // initialize itself during this call. Then, every time an enclave
-        // thread is created, oe_allocator_thread_init will be called to allow
-        // the allocator to perform per thread initialization.
-        // It would seem that _handle_init_enclave is the natural place to call
-        // oe_allocator_init to initialize the enclave and here
-        // (oe_thread_local_init) is the natural place to call
-        // oe_allocator_thread_init to perform thread-specific allocator
-        // initialization. However, currently, td_init and hence
-        // oe_thread_local_init is called *before* _handle_init_enclave is
-        // called. This results in incorrect order of the allocator callbacks.
-        // Therefore, we call oe_allocator_init here (via oe_once)
-        // and then call oe_allocator_thread_init.
-        _initialize_allocator();
-        oe_allocator_thread_init();
     }
+
+    // To properly initialize the allocator, oe_allocator_init must first be
+    // called with the heap start and end addresses. The allocator can
+    // initialize itself during this call. Then, every time an enclave
+    // thread is created, oe_allocator_thread_init will be called to allow
+    // the allocator to perform per thread initialization.
+    // It would seem that _handle_init_enclave is the natural place to call
+    // oe_allocator_init to initialize the enclave and here
+    // (oe_thread_local_init) is the natural place to call
+    // oe_allocator_thread_init to perform thread-specific allocator
+    // initialization. However, currently, td_init and hence
+    // oe_thread_local_init is called *before* _handle_init_enclave is
+    // called. This results in incorrect order of the allocator callbacks.
+    // Therefore, we call oe_allocator_init here (via oe_once)
+    // and then call oe_allocator_thread_init.
+    // Note that we need to initialize the allocator even when thread-local data
+    // is empty (i.e., tls_start is NULL when tdata and tbss are zero).
+    _initialize_allocator();
+    oe_allocator_thread_init();
 
     result = OE_OK;
 done:
@@ -393,16 +379,18 @@ done:
  */
 void __cxa_thread_atexit_impl(void (*destructor)(void*), void* object)
 {
+    oe_sgx_td_t* td = oe_sgx_get_td();
+
     oe_tls_atexit_t item = {destructor, object};
 
-    _num_tls_atexit_functions++;
+    td->num_tls_atexit_functions++;
 
     // TODO: What happens if realloc fails?
-    _tls_atexit_functions = oe_realloc(
-        _tls_atexit_functions,
-        sizeof(oe_tls_atexit_t) * _num_tls_atexit_functions);
+    td->tls_atexit_functions = oe_realloc(
+        td->tls_atexit_functions,
+        sizeof(oe_tls_atexit_t) * td->num_tls_atexit_functions);
 
-    _tls_atexit_functions[_num_tls_atexit_functions - 1] = item;
+    td->tls_atexit_functions[td->num_tls_atexit_functions - 1] = item;
 }
 
 // EDG: stdc++ defines __cxa_thread_atexit which calls
@@ -417,28 +405,28 @@ OE_WEAK_ALIAS(__cxa_thread_atexit_impl, __cxa_thread_atexit);
 oe_result_t oe_thread_local_cleanup(oe_sgx_td_t* td)
 {
     /* Call tls atexit functions in reverse order*/
-    if (_tls_atexit_functions)
+    if (td->tls_atexit_functions)
     {
-        for (uint64_t i = _num_tls_atexit_functions; i > 0; --i)
+        for (uint64_t i = td->num_tls_atexit_functions; i > 0; --i)
         {
-            _tls_atexit_functions[i - 1].destructor(
-                _tls_atexit_functions[i - 1].object);
+            td->tls_atexit_functions[i - 1].destructor(
+                td->tls_atexit_functions[i - 1].object);
         }
 
         // Free the allocated at exit buffer.
-        oe_free(_tls_atexit_functions);
-        _tls_atexit_functions = NULL;
-        _num_tls_atexit_functions = 0;
+        oe_free(td->tls_atexit_functions);
+        td->tls_atexit_functions = NULL;
+        td->num_tls_atexit_functions = 0;
     }
 
     /* Clear tls section if it exists */
     uint8_t* fs = _get_fs_from_td(td);
     uint8_t* tls_start = _get_thread_local_data_start(td);
+    // Invoke the cleanup function even when the thread-local data is empty
+    // (i.e., tls_start is NULL when tdata and tbss are zero).
+    oe_allocator_thread_cleanup();
     if (tls_start)
-    {
-        oe_allocator_thread_cleanup();
         oe_memset_s(tls_start, (uint64_t)(fs - tls_start), 0, 0);
-    }
 
     return OE_OK;
 }

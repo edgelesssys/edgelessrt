@@ -30,7 +30,14 @@ install(
 install(FILES openenclave/attestation/attester.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/attestation/)
 install(
+  FILES openenclave/attestation/sgx/eeid_attester.h
+        openenclave/attestation/sgx/eeid_plugin.h
+        openenclave/attestation/sgx/eeid_verifier.h
+        openenclave/attestation/sgx/evidence.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/attestation/sgx)
+install(
   FILES openenclave/attestation/verifier.h
+        openenclave/attestation/custom_claims.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/attestation/
   COMPONENT OEHOSTVERIFY)
 install(
@@ -54,6 +61,10 @@ install(FILES openenclave/corelibc/bits/defs.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/corelibc/bits)
 install(FILES openenclave/corelibc/bits/types.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/corelibc/bits)
+
+# Install pluggable allocator header.
+install(FILES openenclave/advanced/allocator.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/advanced)
 
 ##==============================================================================
 ##

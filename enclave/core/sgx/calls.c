@@ -2,16 +2,16 @@
 // Licensed under the MIT License.
 
 #include "../calls.h"
-#include <openenclave/bits/eeid.h>
+#include <openenclave/advanced/allocator.h>
+#include <openenclave/attestation/attester.h>
+#include <openenclave/attestation/verifier.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
-#include <openenclave/internal/allocator.h>
 #include <openenclave/internal/atomic.h>
 #include <openenclave/internal/calls.h>
-#include <openenclave/internal/eeid.h>
 #include <openenclave/internal/fault.h>
 #include <openenclave/internal/globals.h>
 #include <openenclave/internal/jump.h>
@@ -28,10 +28,10 @@
 #include <openenclave/internal/utils.h>
 #include "../../../common/sgx/sgxmeasure.h"
 #include "../../sgx/report.h"
-#include "../arena.h"
 #include "../args.h"
 #include "../atexit.h"
 #include "../tracee.h"
+#include "arena.h"
 #include "asmdefs.h"
 #include "core_t.h"
 #include "cpuid.h"
@@ -141,38 +141,6 @@ static __thread void** _backtrace_buffer;
 **==============================================================================
 */
 
-#ifdef OE_WITH_EXPERIMENTAL_EEID
-extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
-extern oe_eeid_t* oe_eeid;
-extern size_t oe_eeid_extended_size;
-
-int _is_eeid_base_image(const volatile oe_sgx_enclave_properties_t* properties)
-{
-    return properties->header.size_settings.num_heap_pages == 0 &&
-           properties->header.size_settings.num_stack_pages == 0 &&
-           properties->header.size_settings.num_tcs == 1;
-}
-
-static oe_result_t _eeid_patch_memory_sizes()
-{
-    oe_result_t r = OE_OK;
-
-    if (_is_eeid_base_image(&oe_enclave_properties_sgx))
-    {
-        uint8_t* enclave_base = (uint8_t*)__oe_get_enclave_base();
-        uint8_t* heap_base = (uint8_t*)__oe_get_heap_base();
-        oe_eeid_marker_t* marker = (oe_eeid_marker_t*)heap_base;
-        oe_eeid = (oe_eeid_t*)(enclave_base + marker->offset);
-        oe_eeid_extended_size = marker->size;
-
-        // Wipe the marker page
-        memset(heap_base, 0, OE_PAGE_SIZE);
-    }
-
-    return r;
-}
-#endif
-
 /*
 **==============================================================================
 **
@@ -200,18 +168,6 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
         if (_once == false)
         {
             oe_enclave_t* enclave = (oe_enclave_t*)arg_in;
-
-#ifdef OE_WITH_EXPERIMENTAL_EEID
-            OE_CHECK(_eeid_patch_memory_sizes());
-#endif
-
-#ifdef OE_USE_BUILTIN_EDL
-            /* Install the common TEE ECALL function table. */
-            OE_CHECK(oe_register_core_ecall_function_table());
-
-            /* Install the SGX ECALL function table. */
-            OE_CHECK(oe_register_platform_ecall_function_table());
-#endif // OE_USE_BUILTIN_EDL
 
             if (!oe_is_outside_enclave(enclave, 1))
                 OE_RAISE(OE_INVALID_PARAMETER);
@@ -291,23 +247,10 @@ oe_result_t oe_handle_call_enclave_function(uint64_t arg_in)
     OE_CHECK(oe_safe_add_u64(
         args.input_buffer_size, args.output_buffer_size, &buffer_size));
 
-    // Resolve which ecall table to use.
-    if (args_ptr->table_id == OE_UINT64_MAX)
-    {
-        ecall_table.ecalls = __oe_ecalls_table;
-        ecall_table.num_ecalls = __oe_ecalls_table_size;
-    }
-    else
-    {
-        if (args_ptr->table_id >= OE_MAX_ECALL_TABLES)
-            OE_RAISE(OE_NOT_FOUND);
-
-        ecall_table.ecalls = _ecall_tables[args_ptr->table_id].ecalls;
-        ecall_table.num_ecalls = _ecall_tables[args_ptr->table_id].num_ecalls;
-
-        if (!ecall_table.ecalls)
-            OE_RAISE(OE_NOT_FOUND);
-    }
+    // The __oe_ecall_table is defined in the oeedger8r-generated
+    // code.
+    ecall_table.ecalls = __oe_ecalls_table;
+    ecall_table.num_ecalls = __oe_ecalls_table_size;
 
     // Fetch matching function.
     if (args.function_id >= ecall_table.num_ecalls)
@@ -478,6 +421,12 @@ static void _handle_ecall(
 
             /* Call all finalization functions */
             oe_call_fini_functions();
+
+            /* Cleanup attesters */
+            oe_attester_shutdown();
+
+            /* Cleanup verifiers */
+            oe_verifier_shutdown();
 
 #if defined(OE_USE_DEBUG_MALLOC)
 
@@ -756,8 +705,7 @@ done:
 **==============================================================================
 */
 
-oe_result_t oe_call_host_function_by_table_id(
-    uint64_t table_id,
+oe_result_t oe_call_host_function_internal(
     uint64_t function_id,
     const void* input_buffer,
     size_t input_buffer_size,
@@ -789,7 +737,6 @@ oe_result_t oe_call_host_function_by_table_id(
         OE_RAISE(OE_UNEXPECTED);
     }
 
-    args->table_id = table_id;
     args->function_id = function_id;
     args->input_buffer = input_buffer;
     args->input_buffer_size = input_buffer_size;
@@ -855,8 +802,7 @@ oe_result_t oe_call_host_function(
     size_t output_buffer_size,
     size_t* output_bytes_written)
 {
-    return oe_call_host_function_by_table_id(
-        OE_UINT64_MAX,
+    return oe_call_host_function_internal(
         function_id,
         input_buffer,
         input_buffer_size,

@@ -24,7 +24,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(test_extras
     ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/common/vmfill.c
@@ -72,6 +72,10 @@ enclave_compile_options(
   -Wno-parentheses
   -Wno-unused-value
   -Wno-overflow)
+
+if (CODE_COVERAGE)
+  enclave_compile_definitions(libc_enc PRIVATE CODE_COVERAGE)
+endif ()
 
 if (OE_SGX)
   enclave_compile_options(libc_enc PRIVATE -Wno-macro-redefined

@@ -11,20 +11,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 --------------
 
 ### Added
-- Added `oe_sgx_get_signer_id_from_public_key()` function which helps a verifier of SGX
-  reports extract the expected MRSIGNER value from the signer's public key PEM certificate.
+- OE SDK Release packages can now be built on non-SGX and non-FLC machines.
+- Support for arbitrarily large thread-local data for SGX machines.
 
 ### Changed
+- Rename the custom claims buffer added by oe_get_evidence from "custom_claims" to "custom_claims_buffer". Likewise, replace the `OE_CLAIM_CUSTOM_CLAIMS` definition for this name with `OE_CLAIM_CUSTOM_CLAIMS_BUFFER`.
+
+### Removed
+
+### Security
+- Update mbedTLS to version 2.16.7. Refer to the [2.16.7 release notes](
+  https://github.com/ARMmbed/mbedtls/releases/tag/v2.16.7) for the set of
+  issues addressed.
+
+[0.10.0][v0.10.0_log]
+------------
+### Added
+- Added `oe_sgx_get_signer_id_from_public_key()` function which helps a verifier of SGX reports extract the expected MRSIGNER value from the signer's public key PEM certificate.
+- OE SDK can now be built and run in simulation mode on a non SGX x64 Windows machine by passing HAS_QUOTE_PROVIDER=off.
+  Previously, the build would work, but running applications would fail due to missing sgx_enclave_common.dll.
+- OE SDK can now be installed from published packages on SGX machines without FLC, and non-SGX machines.
+  Previously, OE SDK could only be installed on SGX1 FLC machines due to a link-time dependency on sgx_dcap_ql which
+  was available only on SGX1 FLC machines.
+- oesign tool supports the new `digest` command and options for [2-step signing using the digest](
+  docs/DesignDocs/oesign_digest_signing_support.md).
+- Oeedger8r now supports the --use-prefix feature.
+- Oeedger8r now supports a subset of C-style preprocessor directives (#ifdef, #ifndef, #else, #endif).
+- The default memory allocator (dlmalloc) can be replaced by providing replacement functions. This ability to plug-in
+  a custom allocator is most applicable for multi-threaded enclaves with memory allocation patterns where the default
+  memory allocator may not be performant. See [Pluggable Allocators](docs/DesignDocs/Pluggableallocators.md).
+- `snmalloc` is available as a pluggable allocator library `oesnmalloc`. An enclave can use snmalloc instead of
+  dlmalloc by specifying `liboesnmalloc.a` before `liboelibc.a` and `liboecore.a` in the linker line.
+- Added pluggable_allocator sample.
+- Gcov is used to obtain code coverage information for the SDK. See [Code Coverage](docs/GettingStartedDocs/Contributors/CodeCoverage.md).
+- Added include\openenclave\attestation\attester.h to support attestation plug-in model attester scenarios.
+- Added include\openenclave\attestation\verifier.h to support attestation plug-in model verifier scenarios.
+
+### Changed
+- `COMPILE_SYSTEM_EDL` is now OFF by default, meaning system EDL must be imported by
+  application EDL. See [system EDL opt-in document](docs/DesignDocs/system_ocall_opt_in.md#how-to-port-your-application) for more information.
+  - Note: SDK users would need to import logging.edl to enable logging. Logging is disabled by default.
+  - See [System edls](docs/SystemEdls.md) for list of all edls and associated OCalls.
+  - A known issue is that different enclaves importing functions from System EDLs cannot be loaded by the same host app unless all of the functions were imported with exactly the same ordinals. See #3250 for details. This will be addressed in the next release based on design proposal #3086.
+  - A workaround for this issue in the meantime is to define a standard import EDL for any enclaves that need to be loaded into the same host app. Ensuring this shared EDL is then the first import in each enclave's EDL will result in the common imports being assigned the same ordinals in each resulting enclave.
 - Mark APIs in include/openenclave/attestation/sgx/attester.h and verifier.h as experimental.
 - Remove CRL_ISSUER_CHAIN_PCK_PROC_CA field from endorsement struct define in include/openenclave/bits/attestation.h.
-- `COMPILE_SYSTEM_EDL` is now OFF by default, meaning system EDL must be imported by
-  application EDL. See [system EDL opt-in document]
-  (docs/DesignDocs/system_ocall_opt_in.md#how-to-port-your-application) for more information.
 - Switch to oeedger8r written in C++.
+- Fix #3143. oesign tool will now reject .conf files that contain duplicate property definitions.
+- SGX Simulation Mode does not need SGX libraries to be present in the system.
+- oehost library dynamically loads sgx_dcap_ql shared library instead of linking against it. This allows the SDK to
+  be installed on non-FLC and non-SGX machines.
+- Fix #3134. ParseSGXExtensions will now correctly parse the SGX extensions for PCK Certificates defined in [SGX spec](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_PCK_Certificate_CRL_Spec-1.4.pdf).
+- oesign `dump` command now also displays the `MRSIGNER` value of an SGX enclave signature if it exists.
+- The Deep-copy feature of oeedger8r is now enabled by default.
+- The oeedger8r-generated header files now contain only the function prototypes. Marshalling structs, function id enums,
+  and function tables are generated only in the c files.
+- Docs and scripts updated to use Azure DCAP client v1.6.0.
+- Fix #2930. Fixes the logic of detecting compilers when LVI mitigation is enabled. That is, the old logic always picks clang-7 (if installed) regardless of whether the environment variable CC is set to gcc.
+- Fix #2670. This fix also allows users to specify the version of clang (default is clang-7) when building the helloworld sample with LVI mitigation.
+- Fix #3056. oe_is_within_enclave() and oe_is_outside_enclave() now reflect the SGX enclave boundary as determined by the enclave SECS rather than the limit of the pages initially provisioned in to the enclave.
+- If not specified, CMAKE_BUILD_TYPE is set to Debug. This ensures that cmake and cmake -DCMAKE_BUILD_TYPE=Debug result in the same build configuration.
+- Moved include/openenclave/attestation/plugin.h to internal. Currently only support internal attestation plugin registration.
+- Parameter _flags_ is removed from experimental function oe_get_evidence(). Use 'evidence_format' parameter to select evidence format.
 
 ### Removed
 - Removed oehostapp and the appendent "-rdynamic" compiling option. Please use oehost instead and add the option back manually if necessary.
 - Removed dependencies on nodejs and esy, which were previously used to build Ocaml compiler and oeedger8r.
+
+### Security
+- Fix [ABI poisoning vulnerability for x87 FPU operations in enclaves](
+https://github.com/openenclave/openenclave/security/advisories/GHSA-7wjx-wcwg-w999).
 
 [0.9.0][v0.9.0_log]
 ------------
@@ -387,7 +443,9 @@ as listed below.
 
 Initial private preview release, no longer supported.
 
-[Unreleased_log]:https://github.com/openenclave/openenclave/compare/v0.9.0...HEAD
+[Unreleased_log]:https://github.com/openenclave/openenclave/compare/v0.10.0...HEAD
+
+[v0.10.0_log]:https://github.com/openenclave/openenclave/compare/v0.9.0...v0.10.0
 
 [v0.9.0_log]:https://github.com/openenclave/openenclave/compare/v0.8.2...v0.9.0
 

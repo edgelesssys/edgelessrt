@@ -8,7 +8,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_enclave(
   TARGET
@@ -18,10 +18,6 @@ add_enclave(
   SOURCES
   enc.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/tests_t.c)
-
-if (HAS_QUOTE_PROVIDER)
-  enclave_compile_definitions(qeidentity_enc PRIVATE HAS_QUOTE_PROVIDER)
-endif ()
 
 enclave_include_directories(qeidentity_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                             ${CMAKE_CURRENT_SOURCE_DIR}/../common)

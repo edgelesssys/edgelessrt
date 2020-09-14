@@ -8,9 +8,7 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_library(snmalloc_test_lib $<TARGET_OBJECTS:oesnmalloc>)
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_enclave(
   TARGET
@@ -22,7 +20,7 @@ add_enclave(
   ${CMAKE_CURRENT_BINARY_DIR}/snmalloc_t.c)
 
 enclave_include_directories(snmalloc_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-enclave_link_libraries(snmalloc_enc snmalloc_test_lib oelibc)
+enclave_link_libraries(snmalloc_enc oesnmalloc oelibc)
 
 add_enclave(
   TARGET
@@ -41,9 +39,8 @@ enclave_link_libraries(snmalloc_enc_link_error oelibc)
 
 # Exclude the enclave from build.
 # From: https://stackoverflow.com/questions/30155619/expected-build-failure-tests-in-cmake
-set_target_properties(
-  snmalloc_enc_link_error PROPERTIES EXCLUDE_FROM_ALL TRUE
-                                     EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+set_enclave_properties(snmalloc_enc_link_error PROPERTIES EXCLUDE_FROM_ALL TRUE
+                       EXCLUDE_FROM_DEFAULT_BUILD TRUE)
 
 add_test(
   NAME pluggable_allocators_expected_multiple_definition_error
