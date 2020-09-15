@@ -55,8 +55,7 @@ if (BUILD_ENCLAVES)
 endif ()
 
 if (OE_SGX)
-  # EDG: disable
-  #set(BUILD_HOSTVERIFY_INLINE ON)
+  set(BUILD_HOSTVERIFY_INLINE ON)
   #add_subdirectory(host_verify)
 endif ()
 

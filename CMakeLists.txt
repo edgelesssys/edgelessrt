@@ -253,7 +253,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                             VERSION_LESS "7.1")
   set(COMPILER_SUPPORTS_SNMALLOC off)
 else ()
-  set(COMPILER_SUPPORTS_SNMALLOC on)
+  # EDG: no support for snmalloc yet
+  #set(COMPILER_SUPPORTS_SNMALLOC on)
 endif ()
 
 # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
@@ -371,7 +372,8 @@ include(add_enclave_test)
 
 # EDG: update required submodules
 execute_process(
-  COMMAND git submodule update --init tools/oeedger8r-cpp 3rdparty/go
+  COMMAND git submodule update --init tools/oeedger8r-cpp
+          3rdparty/mbedtls/mbedtls 3rdparty/go
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Recurse through subdirectories

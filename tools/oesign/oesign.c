@@ -550,7 +550,7 @@ int oesign(
     else if (digest_signature)
     {
         /* Load the public key from the x509 certificate */
-        if (_load_pem_file(x509, &pem_data, &pem_size) != 0)
+        if (load_pem_file(x509, &pem_data, &pem_size) != 0)
         {
             oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
             goto done;

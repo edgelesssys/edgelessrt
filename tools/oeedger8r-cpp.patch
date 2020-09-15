@@ -11,3 +11,16 @@ index 6aeefbf..d79db3b 100644
                << "    uint8_t* input_buffer,"
                << "    size_t input_buffer_size,"
                << "    uint8_t* output_buffer,"
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index 1b4eb56..82ca417 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -6,7 +6,7 @@ add_subdirectory(behavior)
+ add_subdirectory(cmdline)
+ add_subdirectory(comprehensive)
+ add_subdirectory(import)
+-add_subdirectory(prefix)
++#add_subdirectory(prefix)
+ add_subdirectory(preprocessor)
+ 
+ # Virtual Mode execution for tests.

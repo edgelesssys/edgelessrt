@@ -337,6 +337,15 @@ void oe_virtual_exception_dispatcher(
 **==============================================================================
 */
 
+oe_result_t _oe_sgx_get_backtrace_buffer_ocall(void*** _retval)
+{
+    (void)_retval;
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(
+    _oe_sgx_get_backtrace_buffer_ocall,
+    oe_sgx_get_backtrace_buffer_ocall);
+
 static void _handle_ecall(
     oe_sgx_td_t* td,
     uint16_t func,
@@ -401,9 +410,13 @@ static void _handle_ecall(
 
     // EDG: initialize backtrace buffer
 #ifndef NDEBUG
-    if (!_backtrace_buffer &&
-        oe_sgx_get_backtrace_buffer_ocall(&_backtrace_buffer) != OE_OK)
-        oe_abort();
+    if (!_backtrace_buffer)
+    {
+        const oe_result_t res =
+            oe_sgx_get_backtrace_buffer_ocall(&_backtrace_buffer);
+        if (res != OE_OK && res != OE_UNSUPPORTED)
+            oe_abort();
+    }
 #endif
 
     /* Dispatch the ECALL */

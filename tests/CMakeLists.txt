@@ -158,7 +158,7 @@ if (UNIX)
     # process does. At this point, the host fs that libgcov requires can no
     # longer be used.
     if (NOT CODE_COVERAGE)
-      add_subdirectory(child_process)
+      #add_subdirectory(child_process)
     endif ()
   endif ()
   add_subdirectory(libc)

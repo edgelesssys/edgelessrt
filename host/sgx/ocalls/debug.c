@@ -8,6 +8,7 @@
 #include <openenclave/internal/safemath.h>
 
 #include "../enclave.h"
+#include "ocalls.h"
 #include "platform_u.h"
 
 char** oe_host_backtrace_symbols(

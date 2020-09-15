@@ -3,7 +3,10 @@ add_subdirectory(libc)
 add_subdirectory(tools/devhost)
 add_subdirectory(tools/ertgo)
 
-set(PLATFORM_EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl/sgx)
+# Define the `OE_SGX` macro used by the oeedger8r on the SGX build.
+if (OE_SGX)
+  set(DEFINE_OE_SGX "-DOE_SGX")
+endif ()
 
 add_subdirectory(tests/concurrent_stdout)
 add_subdirectory(tests/devhost)

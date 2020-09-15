@@ -1405,3 +1405,17 @@ oe_result_t _oe_syscall_uname_ocall(int* _retval, struct oe_utsname* buf)
     return OE_UNSUPPORTED;
 }
 OE_WEAK_ALIAS(_oe_syscall_uname_ocall, oe_syscall_uname_ocall);
+
+// EDG
+
+oe_result_t _oe_syscall_eventfd_ocall(
+    oe_host_fd_t* _retval,
+    unsigned int initval,
+    int flags)
+{
+    OE_UNUSED(_retval);
+    OE_UNUSED(initval);
+    OE_UNUSED(flags);
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(_oe_syscall_eventfd_ocall, oe_syscall_eventfd_ocall);

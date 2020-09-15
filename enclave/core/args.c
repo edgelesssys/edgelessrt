@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include "args.h"
+#include <openenclave/advanced/allocator.h>
 #include <openenclave/corelibc/string.h>
-#include <openenclave/internal/allocator.h>
 #include <openenclave/internal/defs.h>
 
 static int _argc;

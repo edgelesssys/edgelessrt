@@ -16,11 +16,6 @@
 #include <atomic>
 #include "thread_t.h"
 
-#ifndef TEST_TIMEDOUT
-#define TEST_TIMEDOUT OE_TIMEDOUT
-typedef oe_timespec test_timespec;
-#endif
-
 static oe_mutex_t mutex1 = OE_MUTEX_INITIALIZER;
 static oe_mutex_t mutex2 = OE_MUTEX_INITIALIZER;
 static size_t test_mutex_count1 = 0;

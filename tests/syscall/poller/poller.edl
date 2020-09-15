@@ -12,6 +12,7 @@ enclave {
 #else
     from "openenclave/edl/optee/platform.edl" import *;
 #endif
+    from "openenclave/edl/syscall.edl" import oe_syscall_eventfd_ocall;
 
     trusted {
 

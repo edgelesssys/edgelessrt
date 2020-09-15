@@ -17,8 +17,7 @@ add_subdirectory(mbedtls)
 if (OE_SGX AND COMPILER_SUPPORTS_SNMALLOC)
   # snmalloc is most useful in multi-threaded enclaves. Currently, only
   # SGX enclaves can be multi-threaded.
-  # EDG: no support for snmalloc yet
-  #add_subdirectory(snmalloc)
+  add_subdirectory(snmalloc)
 endif ()
 
 if (CODE_COVERAGE OR BUILD_LIBGCOV)

@@ -65,8 +65,6 @@ Edgeless RT primarily targets Ubuntu 18.04. Other Linuxes may work as well. Wind
    cmake -GNinja ..
    ninja
    ```
-   For SGX1 or simulation mode, add `-DHAS_QUOTE_PROVIDER=OFF` to the cmake command line.
-
    To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
 
 ## Test

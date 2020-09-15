@@ -7,7 +7,7 @@
 #include <cassert>
 #include "../host/hostthread.h"
 #include "../host/sgx/enclave.h"
-#include "../host/sgx/ocalls.h"
+#include "../host/sgx/ocalls/ocalls.h"
 
 using namespace std;
 

@@ -26,7 +26,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "ocalls.h"
+#include "ocalls/ocalls.h"
 #include "platform_u.h"
 
 using namespace std;

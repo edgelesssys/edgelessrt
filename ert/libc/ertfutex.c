@@ -21,6 +21,34 @@ oe_result_t oe_sgx_thread_wake_multiple_ocall(
     const uint64_t* tcs,
     size_t tcs_size);
 
+static oe_result_t _oe_sgx_thread_timedwait_ocall(
+    int* retval,
+    oe_enclave_t* enclave,
+    uint64_t tcs,
+    const struct timespec* timeout)
+{
+    (void)retval;
+    (void)enclave;
+    (void)tcs;
+    (void)timeout;
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(_oe_sgx_thread_timedwait_ocall, oe_sgx_thread_timedwait_ocall);
+
+static oe_result_t _oe_sgx_thread_wake_multiple_ocall(
+    oe_enclave_t* enclave,
+    const uint64_t* tcs,
+    size_t tcs_size)
+{
+    (void)enclave;
+    (void)tcs;
+    (void)tcs_size;
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(
+    _oe_sgx_thread_wake_multiple_ocall,
+    oe_sgx_thread_wake_multiple_ocall);
+
 static oe_spinlock_t _lock;
 
 // Each thread has an info_t object. Objects of currently waiting threads are in

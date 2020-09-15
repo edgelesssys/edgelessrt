@@ -293,6 +293,21 @@ done:
     return ret;
 }
 
+static int _fs_fsync(oe_fd_t* desc)
+{
+    int ret = -1;
+    file_t* file = _cast_file(desc);
+
+    if (!file)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    // noop
+    ret = 0;
+
+done:
+    return ret;
+}
+
 static int _fs_dup(oe_fd_t* desc, oe_fd_t** new_file_out)
 {
     int ret = -1;
@@ -639,6 +654,16 @@ done:
     return ret;
 }
 
+static void _stat(const oe_customfs_t* fs, uintptr_t handle, oe_stat_t* buf)
+{
+    oe_assert(fs);
+    oe_assert(handle);
+    oe_assert(buf);
+    const uint64_t size = fs->get_size(handle);
+    buf->st_size = size < OE_SSIZE_MAX ? (oe_off_t)size : OE_SSIZE_MAX;
+    buf->st_mode = OE_S_IFREG;
+}
+
 static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
 {
     int ret = -1;
@@ -656,17 +681,33 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
     const uintptr_t handle = customfs->open(pathname, true);
     if (handle)
     {
-        const uint64_t size = customfs->get_size(handle);
+        _stat(customfs, handle, buf);
         customfs->close(handle);
-
-        buf->st_size = size < OE_SSIZE_MAX ? (oe_off_t)size : OE_SSIZE_MAX;
-        buf->st_mode = OE_S_IFREG;
         retval = 0;
     }
     else
         oe_errno = OE_ENOENT;
 
     ret = retval;
+
+done:
+
+    return ret;
+}
+
+static int _fs_fstat(oe_fd_t* desc, struct oe_stat_t* buf)
+{
+    int ret = -1;
+    file_t* file = _cast_file(desc);
+
+    if (buf)
+        oe_memset_s(buf, sizeof(*buf), 0, sizeof(*buf));
+
+    if (!file || !buf)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    _stat(file->device, file->handle, buf);
+    ret = 0;
 
 done:
 
@@ -840,6 +881,9 @@ static oe_file_ops_t _file_ops = {
     .pread = _fs_pread,
     .pwrite = _fs_pwrite,
     .getdents64 = _fs_getdents64,
+    .fstat = _fs_fstat,
+    .fsync = _fs_fsync,
+    .fdatasync = _fs_fsync,
 };
 
 static oe_file_ops_t _get_file_ops(void)

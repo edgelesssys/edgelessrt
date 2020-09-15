@@ -1,4 +1,5 @@
 #include <openenclave/host.h>
+#include <openenclave/internal/sgx/tests.h>
 #include <openenclave/internal/tests.h>
 #include <iostream>
 #include "test_u.h"
@@ -16,9 +17,7 @@ int main(int argc, char* argv[])
     const uint32_t flags = oe_get_create_flags();
     oe_enclave_t* enclave = nullptr;
 
-#ifdef OE_LINK_SGX_DCAP_QL
-    if (flags & OE_ENCLAVE_FLAG_SIMULATE)
-#endif
+    if ((flags & OE_ENCLAVE_FLAG_SIMULATE) || !oe_has_sgx_quote_provider())
         return 2; // skip
 
     OE_TEST(

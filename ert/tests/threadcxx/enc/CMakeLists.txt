@@ -5,9 +5,9 @@ add_custom_command(
   DEPENDS ${EDL_FILE} edger8r
   COMMAND
     edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    --search-path ${PLATFORM_EDL_DIR} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_enclave_library(erttest_threadcxx_lib ${DIR}/enc/enc.cpp
+add_enclave_library(erttest_threadcxx_lib OBJECT ${DIR}/enc/enc.cpp
                     ${DIR}/enc/cond_tests.cpp threadcxx_t.c)
 enclave_include_directories(erttest_threadcxx_lib PRIVATE
                             ${CMAKE_CURRENT_BINARY_DIR})

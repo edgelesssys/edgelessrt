@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "syscall.h"
+#include <openenclave/internal/malloc.h>
 #include <openenclave/internal/trace.h>
 #include <sys/syscall.h>
 #include <cerrno>
@@ -94,3 +95,11 @@ extern "C" locale_t __newlocale(int mask, const char* locale, locale_t loc)
         {}, reinterpret_cast<const unsigned short*>(nl_C_LC_CTYPE_class + 128)};
     return const_cast<locale_t>(&c_locale);
 }
+
+// The debug malloc check runs on enclave termination and prints errors for heap
+// memory that has not been freed. As some global objects in (std)c++ use heap
+// memory and don't free it by design, we cannot use this feature.
+static int _init = [] {
+    oe_disable_debug_malloc_check = true;
+    return 0;
+}();

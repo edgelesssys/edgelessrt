@@ -9,6 +9,7 @@ enclave {
 #else
     from "openenclave/edl/optee/platform.edl" import *;
 #endif
+    include "time.h"
 
     trusted {
         public void cb_test_waiter_thread_impl();

@@ -22,11 +22,6 @@ cmake ..
 make
 ertdevhost enclave.signed
 ```
-When using simulation mode, use 
-```sh
-OE_SIMULATION=1 ertdevhost enclave.signed
-```
-to run the sample.
 
 The client can be run either using `ertgo` or a recent Go compiler. It expects the `signer ID` (`MRSIGNER`) as an argument. The `signer ID` can be derived from the signer's public key using `oesign`:
 ```sh

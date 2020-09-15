@@ -360,10 +360,12 @@ static oe_result_t _handle_ocall(
             break;
 
         case OE_OCALL_MALLOC:
+            oe_trace_ocall(enclave, HandleMalloc);
             HandleMalloc(arg_in, arg_out);
             break;
 
         case OE_OCALL_FREE:
+            oe_trace_ocall(enclave, HandleFree);
             HandleFree(arg_in);
             break;
 
