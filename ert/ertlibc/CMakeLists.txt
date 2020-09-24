@@ -15,6 +15,7 @@ add_enclave_library(
   stubs.cpp
   syscall.cpp
   time.cpp
+  util.cpp
   __vasprintf_chk.c
   memfs/file.cpp
   memfs/filesystem.cpp

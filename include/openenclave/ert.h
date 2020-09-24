@@ -22,7 +22,8 @@ int emain(void);
  * Get pointers to commandline arguments, environment variables, and auxiliary
  * vector from host.
  *
- * The caller is responsible to securely copy the arrays to enclave memory.
+ * The caller is responsible to securely copy the arrays to enclave memory. This
+ * can be done using ert_copy_strings_from_host_to_enclave().
  *
  * @param[out] retval Pointer to an ert_args_t object that will be filled with
  * pointers to host memory.
@@ -30,6 +31,20 @@ int emain(void);
  * @return OE_OK if the ocall succeeded
  */
 oe_result_t ert_get_args_ocall(ert_args_t* retval);
+
+/**
+ * Securely deep-copy an array of strings from the host to the enclave.
+ *
+ * @param host_array An array in host memory.
+ * @param[out] enclave_array An array that will be allocated on the enclave
+ * heap. The array will include an additional terminating nullptr element. Free
+ * with free().
+ * @param count Number of elements to copy.
+ */
+void ert_copy_strings_from_host_to_enclave(
+    const char* const* host_array,
+    char*** enclave_array,
+    size_t count);
 
 OE_EXTERNC_END
 
