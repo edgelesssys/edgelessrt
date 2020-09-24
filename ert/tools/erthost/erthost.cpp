@@ -1,7 +1,7 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave_args.h>
+#include <openenclave/ert_args.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/final_action.h>
 #include <openenclave/internal/trace.h>
@@ -21,9 +21,9 @@ using namespace std;
 using namespace ert;
 using namespace open_enclave;
 
-static oe_args_t _args;
+static ert_args_t _args;
 
-oe_args_t get_args_ocall()
+ert_args_t get_args_ocall()
 {
     assert(_args.argc > 0);
     return _args;

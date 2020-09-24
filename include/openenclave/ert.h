@@ -3,9 +3,13 @@
 
 #pragma once
 
+#include <openenclave/enclave.h>
+#include <openenclave/ert_args.h>
+
+#ifdef __cplusplus
+
 #include <memory>
 #include <string>
-#include "bits/module.h"
 
 namespace ert
 {
@@ -41,3 +45,5 @@ class Memfs
     static memfs::Filesystem& to_fs(void* context);
 };
 } // namespace ert
+
+#endif // __cplusplus

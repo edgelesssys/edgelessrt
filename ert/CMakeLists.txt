@@ -5,6 +5,8 @@ add_subdirectory(tools/ertgo)
 
 install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
+install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert_args.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 
 # Define the `OE_SGX` macro used by the oeedger8r on the SGX build.
 if (OE_SGX)

@@ -1,5 +1,4 @@
-#include <openenclave/enclave.h>
-#include <openenclave/enclave_args.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <array>
 #include <string>
@@ -20,7 +19,7 @@ __attribute__((constructor)) static int test_global_ctor(
     return 0;
 }
 
-oe_args_t oe_get_args()
+ert_args_t ert_get_args()
 {
     // test that ocall works at this point of initialization
     string s(3, 0);
@@ -31,7 +30,7 @@ oe_args_t oe_get_args()
     static array<const char*, 2> envp{"envp0", "envp1"};
     static array<long, 4> auxv{2, 3, 4, 5};
 
-    oe_args_t args{};
+    ert_args_t args{};
     args.argc = argv.size();
     args.argv = argv.data();
     args.envc = envp.size();
@@ -44,12 +43,12 @@ oe_args_t oe_get_args()
 void test_ecall()
 {
     OE_TEST(_argv);
-    OE_TEST(oe_get_argc() == 2);
-    OE_TEST(oe_get_argv() == _argv);
+    OE_TEST(ert_get_argc() == 2);
+    OE_TEST(ert_get_argv() == _argv);
     OE_TEST(_argv[0] == "argv0"s);
     OE_TEST(_argv[1] == "argv1"s);
     OE_TEST(_argv[2] == NULL); // argv terminator
-    OE_TEST(oe_get_envp() == _argv + 3);
+    OE_TEST(ert_get_envp() == _argv + 3);
     OE_TEST(_argv[3] == "OE_IS_ENCLAVE=1"s); // injected environment variable
     OE_TEST(_argv[4] == "envp0"s);
     OE_TEST(_argv[5] == "envp1"s);

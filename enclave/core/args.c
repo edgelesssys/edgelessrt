@@ -13,7 +13,7 @@ oe_result_t oe_init_args(void)
 {
     oe_assert(!_argv);
 
-    const oe_args_t args = oe_get_args();
+    const ert_args_t args = ert_get_args();
 
     // check args
     if (args.argc < 0 || (args.argc > 0 && !args.argv))
@@ -62,31 +62,31 @@ oe_result_t oe_init_args(void)
 
     // set __environ to make getenv() work
     extern char** __environ;
-    __environ = oe_get_envp();
+    __environ = ert_get_envp();
 
     return OE_OK;
 }
 
-int oe_get_argc(void)
+int ert_get_argc(void)
 {
-    oe_assert(_argv && "oe_get_argc called before oe_init_args");
+    oe_assert(_argv && "ert_get_argc called before oe_init_args");
     return _argc;
 }
 
-char** oe_get_argv(void)
+char** ert_get_argv(void)
 {
-    oe_assert(_argv && "oe_get_argv called before oe_init_args");
+    oe_assert(_argv && "ert_get_argv called before oe_init_args");
     return _argv;
 }
 
-char** oe_get_envp(void)
+char** ert_get_envp(void)
 {
-    oe_assert(_argv && "oe_get_envp called before oe_init_args");
+    oe_assert(_argv && "ert_get_envp called before oe_init_args");
     return _argv + _argc + 1;
 }
 
-oe_args_t _oe_get_args_default(void)
+ert_args_t _ert_get_args_default(void)
 {
-    return (oe_args_t){};
+    return (ert_args_t){};
 }
-OE_WEAK_ALIAS(_oe_get_args_default, oe_get_args);
+OE_WEAK_ALIAS(_ert_get_args_default, ert_get_args);

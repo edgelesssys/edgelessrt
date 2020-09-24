@@ -1,5 +1,4 @@
-#include <openenclave/enclave.h>
-#include <openenclave/enclave_args.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <string>
 #include "test_t.h"
@@ -22,10 +21,10 @@ __attribute__((constructor)) static int test_global_ctor(
 void test_ecall()
 {
     OE_TEST(_argv);
-    OE_TEST(oe_get_argc() == 0);
-    OE_TEST(oe_get_argv() == _argv);
+    OE_TEST(ert_get_argc() == 0);
+    OE_TEST(ert_get_argv() == _argv);
     OE_TEST(_argv[0] == NULL); // argv terminator
-    OE_TEST(oe_get_envp() == _argv + 1);
+    OE_TEST(ert_get_envp() == _argv + 1);
     OE_TEST(_argv[1] == "OE_IS_ENCLAVE=1"s); // injected environment variable
     OE_TEST(_argv[2] == NULL);               // envp terminator
     OE_TEST(_argv[3] == NULL);               // auxv key AT_NULL

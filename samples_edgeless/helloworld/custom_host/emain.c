@@ -1,27 +1,26 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
-#include <openenclave/enclave_args.h>
+#include <openenclave/ert.h>
 #include "emain_t.h"
 
 int main(int argc, char* argv[], char* envp[]);
 
 void emain(void)
 {
-    const int argc = oe_get_argc();
-    char** const argv = oe_get_argv();
-    char** const envp = oe_get_envp();
+    const int argc = ert_get_argc();
+    char** const argv = ert_get_argv();
+    char** const envp = ert_get_envp();
 
     // Do additional initialization here if needed.
 
     main(argc, argv, envp);
 }
 
-oe_args_t oe_get_args(void)
+ert_args_t ert_get_args(void)
 {
     // Initialize arguments and environment here. In this example we hardcode
     // the arguments.
     static const char* const argv[] = {"./hello", "arg1", "arg2"};
-    return (oe_args_t){.argc = 3, .argv = argv};
+    return (ert_args_t){.argc = 3, .argv = argv};
 }

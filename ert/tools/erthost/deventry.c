@@ -2,8 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/corelibc/stdio.h>
-#include <openenclave/enclave.h>
-#include <openenclave/enclave_args.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/trace.h>
 #include <stdlib.h>
 #include <sys/mount.h>
@@ -16,9 +15,9 @@ int emain(void)
 {
     oe_printf("running in development mode\n");
 
-    const int argc = oe_get_argc();
-    char** const argv = oe_get_argv();
-    char** const envp = oe_get_envp();
+    const int argc = ert_get_argc();
+    char** const argv = ert_get_argv();
+    char** const envp = ert_get_envp();
 
     if (oe_load_module_host_epoll() != OE_OK ||
         oe_load_module_host_file_system() != OE_OK ||
@@ -43,14 +42,14 @@ int emain(void)
     return main(argc, argv, envp);
 }
 
-oe_args_t oe_get_args(void)
+ert_args_t ert_get_args(void)
 {
     // Get args from host. This is just for testing and not secure:
     // - The host controls commandline arguments and environment variables.
     // These are provided to the application without any checks.
     // - The ocall receives raw pointers. It will not be checked if they really
     // point outside the enclave memory.
-    oe_args_t args = {};
+    ert_args_t args = {};
     if (get_args_ocall(&args) != OE_OK)
         oe_abort();
     return args;

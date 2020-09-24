@@ -3,13 +3,13 @@ enclave {
     from "openenclave/edl/syscall.edl" import *;
     from "platform.edl" import *;
     from "openenclave/edl/ertlibc.edl" import *;
-    include "openenclave/enclave_args.h"
+    include "openenclave/ert_args.h"
 
     trusted {
         public int emain();
     };
 
     untrusted {
-        oe_args_t get_args_ocall();
+        ert_args_t get_args_ocall();
     };
 };
