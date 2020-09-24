@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <unistd.h>
-#include "emain_t.h"
 
 int main(int argc, char* argv[], char* envp[]);
 
@@ -50,7 +49,7 @@ ert_args_t ert_get_args(void)
     // - The ocall receives raw pointers. It will not be checked if they really
     // point outside the enclave memory.
     ert_args_t args = {};
-    if (get_args_ocall(&args) != OE_OK)
+    if (ert_get_args_ocall(&args) != OE_OK)
         oe_abort();
     return args;
 }

@@ -14,6 +14,7 @@ if (OE_SGX)
 endif ()
 
 add_subdirectory(tests/concurrent_stdout)
+add_subdirectory(tests/customentry)
 add_subdirectory(tests/deventry)
 add_subdirectory(tests/go)
 add_subdirectory(tests/go_seal)

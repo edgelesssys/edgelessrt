@@ -26,6 +26,13 @@ install(
   EXPORT openenclave-targets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
+add_enclave_library(ertcalls OBJECT emain_t.c)
+enclave_link_libraries(ertcalls PRIVATE oe_includes INTERFACE ertlibc)
+install(
+  TARGETS ertcalls
+  EXPORT openenclave-targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
+
 add_custom_command(
   OUTPUT emain_t.c emain_u.c
   DEPENDS emain.edl

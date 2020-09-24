@@ -1,11 +1,9 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
 #include <openenclave/ert.h>
 #include <openenclave/internal/trace.h>
 #include <iostream>
-#include "emain_t.h"
 
 using namespace std;
 using namespace ert;

@@ -10,6 +10,6 @@ enclave {
     };
 
     untrusted {
-        ert_args_t get_args_ocall();
+        ert_args_t ert_get_args_ocall();
     };
 };

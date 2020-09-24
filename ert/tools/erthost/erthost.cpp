@@ -23,7 +23,7 @@ using namespace open_enclave;
 
 static ert_args_t _args;
 
-ert_args_t get_args_ocall()
+ert_args_t ert_get_args_ocall()
 {
     assert(_args.argc > 0);
     return _args;
