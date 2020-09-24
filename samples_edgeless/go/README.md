@@ -15,10 +15,10 @@ mkdir build
 cd build
 cmake ..
 make
-ertdevhost enclave.signed
+erthost enclave.signed
 ```
-When using simulation mode, use 
+When using simulation mode, use
 ```sh
-OE_SIMULATION=1 ertdevhost enclave.signed
+OE_SIMULATION=1 erthost enclave.signed
 ```
 to run the sample.

@@ -20,7 +20,7 @@ mkdir build
 cd build
 cmake ..
 make
-ertdevhost enclave.signed
+erthost enclave.signed
 ```
 
 The client can be run either using `ertgo` or a recent Go compiler. It expects the `signer ID` (`MRSIGNER`) as an argument. The `signer ID` can be derived from the signer's public key using `oesign`:

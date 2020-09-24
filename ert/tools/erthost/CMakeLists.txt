@@ -1,7 +1,7 @@
-add_executable(ertdevhost devhost.cpp emain_u.c)
-target_include_directories(ertdevhost PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(ertdevhost -rdynamic oehost)
-install(TARGETS ertdevhost DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_executable(erthost erthost.cpp emain_u.c)
+target_include_directories(erthost PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(erthost -rdynamic oehost)
+install(TARGETS erthost DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 add_library(ertdeventry OBJECT emain.c emain_t.c)
 target_include_directories(ertdeventry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

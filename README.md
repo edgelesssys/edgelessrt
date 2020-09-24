@@ -115,7 +115,7 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
       "miDebuggerPath": "/opt/edgelessrt/bin/oegdb",
       "type": "cppdbg",
       "request": "launch",
-      "program": "/opt/edgelessrt/bin/ertdevhost",
+      "program": "/opt/edgelessrt/bin/erthost",
       "args": ["enclave.signed","server","-dev"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/samples_edgeless/vault/build/",

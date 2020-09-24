@@ -21,5 +21,5 @@ make
 
 Run the Vault enclave:
 ```sh
-ertdevhost enclave.signed server -dev
+erthost enclave.signed server -dev
 ```

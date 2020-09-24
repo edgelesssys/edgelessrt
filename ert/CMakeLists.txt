@@ -1,7 +1,7 @@
 add_subdirectory(ertlibc)
 add_subdirectory(libc)
 add_subdirectory(meshentry)
-add_subdirectory(tools/devhost)
+add_subdirectory(tools/erthost)
 add_subdirectory(tools/ertgo)
 
 install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert.h
@@ -13,7 +13,7 @@ if (OE_SGX)
 endif ()
 
 add_subdirectory(tests/concurrent_stdout)
-add_subdirectory(tests/devhost)
+add_subdirectory(tests/deventry)
 add_subdirectory(tests/go)
 add_subdirectory(tests/go_seal)
 add_subdirectory(tests/host)

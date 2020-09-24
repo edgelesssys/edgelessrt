@@ -7,6 +7,6 @@ add_enclave(TARGET erttest_meshentry_nongo_app SOURCES ../empty.c)
 enclave_link_libraries(
   erttest_meshentry_nongo_app ertmeshentry erttest_meshentry_premainmock
   erttest_meshentry_nongo_app_lib)
-add_dependencies(erttest_meshentry_nongo_app ertdevhost)
-add_enclave_test(tests/ert/meshentry_nongo_app ertdevhost
+add_dependencies(erttest_meshentry_nongo_app erthost)
+add_enclave_test(tests/ert/meshentry_nongo_app erthost
                  erttest_meshentry_nongo_app)

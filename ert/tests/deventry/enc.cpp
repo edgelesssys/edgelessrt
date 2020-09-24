@@ -9,10 +9,10 @@ int main(int argc, char* argv[])
 {
     OE_TEST(argc == 3);
     OE_TEST(argv);
-    OE_TEST(argv[0] == "./erttest_devhost"s);
+    OE_TEST(argv[0] == "./erttest_deventry"s);
     OE_TEST(argv[1] == "arg1"s);
     OE_TEST(argv[2] == "arg2"s);
-    OE_TEST(getenv("OE_DEVHOST_TEST") == "test"s);
+    OE_TEST(getenv("ERT_DEVENTRY_TEST") == "test"s);
     return 0;
 }
 

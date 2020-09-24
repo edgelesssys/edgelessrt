@@ -13,10 +13,10 @@ add_subdirectory(app)
 # CMake needs at least one source file even if it contains no code.
 add_executable(enclave enc.c)
 
-# Link against ertdeventry so that the application can be run with ertdevhost.
+# Link against ertdeventry so that the application can be run with erthost.
 target_link_libraries(
   enclave openenclave::oeenclave
-  openenclave::ertdeventry # for production, link against meshentry
+  openenclave::ertdeventry # for production, link against ertmeshentry
   hello)
 
 # Generate key
