@@ -3,7 +3,7 @@ target_include_directories(erthost PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(erthost -rdynamic oehost)
 install(TARGETS erthost DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_library(ertdeventry OBJECT emain.c emain_t.c)
+add_library(ertdeventry OBJECT deventry.c emain_t.c)
 target_include_directories(ertdeventry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertdeventry
@@ -11,6 +11,18 @@ target_link_libraries(
   INTERFACE ertlibc oehostepoll oehostfs oehostresolver oehostsock)
 install(
   TARGETS ertdeventry
+  EXPORT openenclave-targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
+
+add_library(ertmeshentry OBJECT meshentry.cpp emain_t.c)
+target_include_directories(ertmeshentry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(
+  ertmeshentry
+  PRIVATE oe_includes
+  INTERFACE ertlibc oehostepoll oehostfs oehostsock oecustomfs)
+set_property(TARGET ertmeshentry PROPERTY POSITION_INDEPENDENT_CODE ON)
+install(
+  TARGETS ertmeshentry
   EXPORT openenclave-targets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
