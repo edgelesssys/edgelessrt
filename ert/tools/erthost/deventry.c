@@ -33,9 +33,9 @@ int emain(void)
         return 1;
     }
 
-    const char* const pwd = getenv("PWD");
-    if (!pwd || !*pwd || chdir(pwd) != 0)
-        OE_TRACE_ERROR("cannot set pwd");
+    const char* const cwd = getenv("EDG_CWD");
+    if (!cwd || !*cwd || chdir(cwd) != 0)
+        OE_TRACE_ERROR("cannot set cwd");
 
     oe_printf("invoking main\n");
     return main(argc, argv, envp);

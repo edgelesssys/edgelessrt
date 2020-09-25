@@ -6,8 +6,11 @@
 #include <openenclave/internal/final_action.h>
 #include <openenclave/internal/trace.h>
 #include <semaphore.h>
+#include <unistd.h>
+#include <array>
 #include <cassert>
 #include <cerrno>
+#include <climits>
 #include <csignal>
 #include <cstdlib>
 #include <exception>
@@ -21,6 +24,8 @@ using namespace std;
 using namespace ert;
 using namespace open_enclave;
 
+extern "C" char** environ;
+
 static ert_args_t _args;
 
 ert_args_t ert_get_args_ocall()
@@ -29,7 +34,7 @@ ert_args_t ert_get_args_ocall()
     return _args;
 }
 
-static void _init_args(int argc, char* argv[], char* envp[]) noexcept
+static void _init_args(int argc, char* argv[], char* envp[])
 {
     assert(argc > 0);
     assert(argv);
@@ -43,11 +48,30 @@ static void _init_args(int argc, char* argv[], char* envp[]) noexcept
     while (envp[_args.envc])
         ++_args.envc;
 
+#ifndef NDEBUG
+    // initially, envp should be equal to environ
+    {
+        int i = 0;
+        while (environ[i])
+            ++i;
+        assert(i == _args.envc);
+    }
+#endif
+
     _args.auxv = reinterpret_cast<const long*>(_args.envp + _args.envc + 1);
 
     // count auxv elements
     while (_args.auxv[2 * _args.auxc] || _args.auxv[2 * _args.auxc + 1])
         ++_args.auxc;
+
+    // add cwd to env
+    array<char, PATH_MAX> cwd{};
+    if (getcwd(cwd.data(), cwd.size()) != cwd.data())
+        throw system_error(errno, system_category(), "getcwd");
+    if (setenv("EDG_CWD", cwd.data(), 0) != 0)
+        throw system_error(errno, system_category(), "setenv");
+    _args.envp = environ;
+    ++_args.envc;
 }
 
 static int run(const char* path, bool simulate)
@@ -126,10 +150,9 @@ int main(int argc, char* argv[], char* envp[])
     const char* const env_simulation = getenv("OE_SIMULATION");
     const bool simulation = env_simulation && *env_simulation == '1';
 
-    _init_args(argc - 1, argv + 1, envp);
-
     try
     {
+        _init_args(argc - 1, argv + 1, envp);
         return run(argv[1], simulation);
     }
     catch (const exception& e)
