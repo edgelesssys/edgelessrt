@@ -3,12 +3,13 @@
 
 #include <openenclave/ert.h>
 #include <openenclave/internal/trace.h>
+#include <sys/mount.h>
 #include <iostream>
 
 using namespace std;
 using namespace ert;
 
-static const auto _memfs_name = "meshentry_memfs";
+static const auto _memfs_name = "edg_memfs";
 
 int main(int argc, char* argv[], char* envp[]);
 extern "C" void ert_meshentry_premain(int* argc, char*** argv);
@@ -21,6 +22,12 @@ int emain()
         oe_load_module_host_socket_interface() != OE_OK)
     {
         OE_TRACE_FATAL("oe_load_module_host failed");
+        return 1;
+    }
+
+    if (mount("/", "/edg/hostfs", OE_HOST_FILE_SYSTEM, 0, NULL) != 0)
+    {
+        OE_TRACE_FATAL("mount hostfs failed");
         return 1;
     }
 

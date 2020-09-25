@@ -11,7 +11,7 @@ func Premain() error {
 	if err := os.Setenv("key", "value"); err != nil {
 		return err
 	}
-	if err := syscall.Mount("/", "/folder1", "meshentry_memfs", 0, ""); err != nil {
+	if err := syscall.Mount("/", "/folder1", "edg_memfs", 0, ""); err != nil {
 		return err
 	}
 	if err := ioutil.WriteFile("/folder1/folder2/file", []byte("test"), 0); err != nil {
