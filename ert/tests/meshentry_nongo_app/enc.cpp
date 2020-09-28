@@ -14,6 +14,8 @@ int main(int argc, char* argv[])
     OE_TEST(argv[1] == "arg1"s);
     OE_TEST(!argv[2]);
     OE_TEST(getenv("key") == "value"s);
+    OE_TEST(getenv("EDG_FOO") == "bar"s);
+    OE_TEST(!getenv("ABC_FOO"));
 
     string s;
     ifstream("/folder1/folder2/file") >> s;

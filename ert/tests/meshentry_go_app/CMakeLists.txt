@@ -13,3 +13,5 @@ enclave_link_libraries(erttest_meshentry_go_app ertmeshentry
                        ${CMAKE_CURRENT_BINARY_DIR}/gotest.a)
 add_dependencies(erttest_meshentry_go_app erthost erttest_meshentry_go_app_lib)
 add_enclave_test(tests/ert/meshentry_go_app erthost erttest_meshentry_go_app)
+set_enclave_tests_properties(tests/ert/meshentry_go_app PROPERTIES ENVIRONMENT
+                             EDG_FOO=bar;ABC_FOO=bar)

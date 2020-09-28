@@ -18,6 +18,12 @@ func main() {
 	if os.Getenv("key") != "value" {
 		panic("env")
 	}
+	if os.Getenv("EDG_FOO") != "bar" {
+		panic("EDG_FOO")
+	}
+	if os.Getenv("ABC_FOO") != "" {
+		panic("ABC_FOO")
+	}
 	data, err := ioutil.ReadFile("/folder1/folder2/file")
 	if err != nil {
 		panic(err)

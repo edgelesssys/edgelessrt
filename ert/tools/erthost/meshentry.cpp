@@ -4,6 +4,9 @@
 #include <openenclave/ert.h>
 #include <openenclave/internal/trace.h>
 #include <sys/mount.h>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 using namespace std;
@@ -40,4 +43,43 @@ int emain()
 
     cout << "invoking main\n";
     return main(argc, argv, environ);
+}
+
+ert_args_t ert_get_args()
+{
+    //
+    // Get env vars from the host.
+    //
+
+    ert_args_t args{};
+    if (ert_get_args_ocall(&args) != OE_OK || args.envc < 0)
+        abort();
+
+    char** env = nullptr;
+    ert_copy_strings_from_host_to_enclave(
+        args.envp, &env, static_cast<size_t>(args.envc));
+
+    assert(env);
+
+    //
+    // Keep all env vars that begin with EDG_
+    //
+
+    size_t edg_count = 0;
+
+    for (size_t i = 0; env[i]; ++i)
+    {
+        if (memcmp(env[i], "EDG_", 4) == 0)
+        {
+            env[edg_count] = env[i];
+            ++edg_count;
+        }
+    }
+
+    env[edg_count] = nullptr;
+
+    ert_args_t result{};
+    result.envp = env;
+    result.envc = static_cast<int>(edg_count);
+    return result;
 }
