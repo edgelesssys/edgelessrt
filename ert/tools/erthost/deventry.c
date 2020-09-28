@@ -12,7 +12,7 @@ int main(int argc, char* argv[], char* envp[]);
 
 int emain(void)
 {
-    oe_printf("running in development mode\n");
+    oe_printf("[deventry] running in development mode\n");
 
     const int argc = ert_get_argc();
     char** const argv = ert_get_argv();
@@ -37,7 +37,7 @@ int emain(void)
     if (!cwd || !*cwd || chdir(cwd) != 0)
         OE_TRACE_ERROR("cannot set cwd");
 
-    oe_printf("invoking main\n");
+    oe_printf("[deventry] invoking main\n");
     return main(argc, argv, envp);
 }
 

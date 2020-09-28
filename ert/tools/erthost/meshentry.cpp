@@ -36,12 +36,12 @@ int emain()
 
     const Memfs memfs(_memfs_name);
 
-    cout << "invoking premain\n";
+    cout << "[meshentry] invoking premain\n";
     int argc = 0;
     char** argv = nullptr;
     ert_meshentry_premain(&argc, &argv);
 
-    cout << "invoking main\n";
+    cout << "[meshentry] invoking main\n";
     return main(argc, argv, environ);
 }
 

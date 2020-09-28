@@ -86,9 +86,10 @@ static int run(const char* path, bool simulate)
         throw system_error(errno, system_category(), "sem_init");
 
     if (simulate)
-        cout << "running in simulation mode\n";
+        cout << "[erthost] running in simulation mode\n";
 
     oe_enclave_t* enclave = nullptr;
+    cout << "[erthost] loading enclave ...\n";
 
     if (oe_create_emain_enclave(
             path,
@@ -114,6 +115,8 @@ static int run(const char* path, bool simulate)
         // applications ignore the signal anyway and directly handle the errors
         // returned by the socket functions. Thus, we just ignore it.
         signal(SIGPIPE, SIG_IGN);
+
+        cout << "[erthost] entering enclave ...\n";
 
         // create enclave main thread
         host::EnclaveThreadManager::get_instance().create_thread(
