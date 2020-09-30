@@ -22,6 +22,7 @@ int emain()
 {
     if (oe_load_module_host_epoll() != OE_OK ||
         oe_load_module_host_file_system() != OE_OK ||
+        oe_load_module_host_resolver() != OE_OK ||
         oe_load_module_host_socket_interface() != OE_OK)
     {
         OE_TRACE_FATAL("oe_load_module_host failed");
