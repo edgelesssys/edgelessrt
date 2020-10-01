@@ -17,6 +17,9 @@
 
 using namespace std;
 
+// defined in enclave/core/sgx/calls.c
+extern "C" bool ert_exiting;
+
 static ert_thread_t* _to_ert_thread(pthread_t thread) noexcept
 {
     assert(thread);
@@ -110,8 +113,10 @@ int pthread_join(pthread_t thread, void** retval)
     if (!new_thread)
         return EINVAL;
 
-    // wait until the thread has finished executing
-    oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_DONE);
+    // Wait until the thread has finished executing.
+    // If the enclave is exiting, threads have already been canceled.
+    if (!ert_exiting)
+        oe_new_thread_state_wait_enter(new_thread, OE_NEWTHREADSTATE_DONE);
 
     if (retval)
         *retval = new_thread->return_value;

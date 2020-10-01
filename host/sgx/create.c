@@ -1052,11 +1052,11 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
     /* Shut down the switchless manager */
     OE_CHECK(oe_stop_switchless_manager(enclave));
 
+    /* EDG: cancel lingering threads (if any) */
+    OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
+
     /* Call the enclave destructor */
     OE_CHECK(oe_ecall(enclave, OE_ECALL_DESTRUCTOR, 0, NULL));
-
-    // EDG: cancel lingering threads (if any)
-    OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
 
     if (enclave->debug_enclave)
     {

@@ -47,6 +47,8 @@ uint8_t __oe_initialized = 0;
 
 extern bool oe_disable_debug_malloc_check;
 
+bool ert_exiting;
+
 #ifndef NDEBUG
 // EDG: initialized in _handle_ecall() and used in oe_ocall()
 static __thread void** _backtrace_buffer;
@@ -429,6 +431,9 @@ static void _handle_ecall(
         }
         case OE_ECALL_DESTRUCTOR:
         {
+            /* EDG: notify that enclave is exiting */
+            ert_exiting = true;
+
             /* Call functions installed by oe_cxa_atexit() and oe_atexit() */
             oe_call_atexit_functions();
 
