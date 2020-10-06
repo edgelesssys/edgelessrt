@@ -4,6 +4,7 @@
 #include <openenclave/ert.h>
 #include <openenclave/internal/trace.h>
 #include <sys/mount.h>
+#include <array>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -82,5 +83,11 @@ ert_args_t ert_get_args()
     ert_args_t result{};
     result.envp = env;
     result.envc = static_cast<int>(edg_count);
+
+    // We need a dummy value for argv[0] in case it is accessed before premain.
+    static const array argv{"./marble"};
+    result.argv = argv.data();
+    result.argc = argv.size();
+
     return result;
 }

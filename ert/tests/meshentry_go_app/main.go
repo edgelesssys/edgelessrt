@@ -32,3 +32,9 @@ func main() {
 		panic("file")
 	}
 }
+
+func init() {
+	if len(os.Args) < 1 {
+		panic("init: Args")
+	}
+}
