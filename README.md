@@ -100,6 +100,8 @@ Now you are ready to build applications with Edgeless RT! To start, check out th
 Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
 
 ## Debug
+![debugging with vscode](samples_edgeless/go_debugging_vscode.gif)
+
 You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT. `oegdb` is automatically installed with Edgeless RT. It also supports Go enclaves.
 
 `oegdb` works great with Visual Studio Code (vscode). For example, use the following configuration to debug the in-enclave Go code from our [HashiCorp Vault sample](samples_edgeless/vault/README.md) in vscode:
