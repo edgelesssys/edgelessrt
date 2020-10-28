@@ -858,7 +858,8 @@ static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    // Folders are not supported yet. Always succeed.
+    ret = 0;
 
 done:
 
