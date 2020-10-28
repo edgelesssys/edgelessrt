@@ -20,5 +20,7 @@ enclave {
             [out] uint32_t** seq,
             [out] void** clock_realtime_coarse,
             [out] void** clock_monotonic_coarse);
+
+        void ert_exit_ocall(int status);
     };
 }

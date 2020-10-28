@@ -41,3 +41,8 @@ int ert_clock_gettime_ocall(
 {
     return clock_gettime(clk_id, reinterpret_cast<timespec*>(tp));
 }
+
+void ert_exit_ocall(int status)
+{
+    exit(status);
+}

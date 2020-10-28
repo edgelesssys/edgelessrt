@@ -34,6 +34,9 @@ long ert_syscall(long n, long x1, long x2, long x3, long, long, long)
             case SYS_gettid:
                 return ert_thread_self()->tid;
 
+            case SYS_exit_group:
+                sc::exit_group(static_cast<int>(x1));
+                return 0;
             case SYS_getrandom:
                 return sc::getrandom(
                     reinterpret_cast<void*>(x1),  // buf
