@@ -69,7 +69,7 @@ static ssize_t _sock_recvfrom(
     void* buf,
     size_t count,
     int flags,
-    const struct oe_sockaddr* src_addr,
+    struct oe_sockaddr* src_addr,
     oe_socklen_t* addrlen);
 static ssize_t _sock_sendto(
     oe_fd_t* sock_,
@@ -807,7 +807,7 @@ static ssize_t _sock_recvfrom(
     void* buf,
     size_t count,
     int flags,
-    const struct oe_sockaddr* src_addr,
+    struct oe_sockaddr* src_addr,
     oe_socklen_t* addrlen)
 {
     oe_assert(sock_);
