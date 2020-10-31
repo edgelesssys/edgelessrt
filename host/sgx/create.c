@@ -38,6 +38,7 @@ static char* get_fullpath(const char* path)
 #include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/calls.h>
+#include <openenclave/internal/constants_x64.h>
 #include <openenclave/internal/debugrt/host.h>
 #include <openenclave/internal/eeid.h>
 #include <openenclave/internal/load.h>
@@ -164,6 +165,7 @@ static oe_result_t _add_control_pages(
     uint64_t enclave_addr,
     uint64_t enclave_size,
     uint64_t entry,
+    size_t tls_page_count,
     uint64_t* vaddr,
     oe_enclave_t* enclave)
 {
@@ -228,8 +230,7 @@ static oe_result_t _add_control_pages(
          * segment.
          */
         tcs->fsbase =
-            *vaddr +
-            (context->num_tls_pages + OE_SGX_NUM_CONTROL_PAGES) * OE_PAGE_SIZE;
+            *vaddr + (tls_page_count + OE_SGX_TCS_CONTROL_PAGES) * OE_PAGE_SIZE;
 
         /* The existing Windows SGX enclave debugger finds the start of the
          * thread data by assuming that it is located at the start of the GS
@@ -269,8 +270,9 @@ static oe_result_t _add_control_pages(
     (*vaddr) += OE_PAGE_SIZE;
 
     /* Add blank pages (for either FS segment or GS segment) */
-    OE_CHECK(_add_filled_pages(
-        context, enclave_addr, vaddr, context->num_tls_pages, 0, true));
+    if (tls_page_count)
+        OE_CHECK(_add_filled_pages(
+            context, enclave_addr, vaddr, tls_page_count, 0, true));
 
     /* Add one page for thread-specific data (TSD) slots */
     OE_CHECK(_add_filled_pages(context, enclave_addr, vaddr, 1, 0, true));
@@ -286,6 +288,7 @@ done:
 
 static oe_result_t _calculate_enclave_size(
     size_t image_size,
+    size_t tls_page_count,
     const oe_sgx_enclave_properties_t* props,
     size_t* loaded_enclave_pages_size,
     size_t* enclave_size)
@@ -294,6 +297,7 @@ static oe_result_t _calculate_enclave_size(
     oe_result_t result = OE_UNEXPECTED;
     size_t heap_size;
     size_t stack_size;
+    size_t tls_size;
     size_t control_size;
     const oe_enclave_size_settings_t* size_settings;
 
@@ -311,13 +315,17 @@ static oe_result_t _calculate_enclave_size(
                  + (size_settings->num_stack_pages * OE_PAGE_SIZE) +
                  OE_PAGE_SIZE; // guard page
 
-    /* Compute the control size in bytes (6 pages total) */
-    control_size = 6 * OE_PAGE_SIZE;
+    /* Compute size of the TLS */
+    tls_size = tls_page_count * OE_PAGE_SIZE;
+
+    /* Compute the control size in bytes (5 pages total) */
+    control_size = (OE_SGX_TCS_CONTROL_PAGES + OE_SGX_TCS_THREAD_DATA_PAGES) *
+                   OE_PAGE_SIZE;
 
     /* Compute end of the enclave */
     *loaded_enclave_pages_size =
         image_size + heap_size +
-        (size_settings->num_tcs * (stack_size + control_size));
+        (size_settings->num_tcs * (stack_size + tls_size + control_size));
 
     if (enclave_size)
     {
@@ -339,6 +347,7 @@ static oe_result_t _add_data_pages(
     oe_enclave_t* enclave,
     const oe_sgx_enclave_properties_t* props,
     uint64_t entry,
+    size_t tls_page_count,
     uint64_t* vaddr)
 
 {
@@ -365,7 +374,13 @@ static oe_result_t _add_data_pages(
 
         /* Add the "control" pages */
         OE_CHECK(_add_control_pages(
-            context, enclave->addr, enclave->size, entry, vaddr, enclave));
+            context,
+            enclave->addr,
+            enclave->size,
+            entry,
+            tls_page_count,
+            vaddr,
+            enclave));
     }
 
     result = OE_OK;
@@ -393,7 +408,7 @@ oe_result_t oe_sgx_get_cpuid_table_ocall(
     for (unsigned int i = 0; i < OE_CPUID_LEAF_COUNT; i++)
     {
         oe_get_cpuid(
-            i,
+            supported_cpuid_leaves[i],
             subleaf,
             &leaf[OE_CPUID_RAX],
             &leaf[OE_CPUID_RBX],
@@ -586,6 +601,7 @@ static oe_result_t _add_eeid_marker_page(
     oe_sgx_load_context_t* context,
     oe_enclave_t* enclave,
     size_t image_size,
+    size_t tls_page_count,
     uint64_t entry_point,
     oe_sgx_enclave_properties_t* props,
     uint64_t* vaddr)
@@ -605,6 +621,7 @@ static oe_result_t _add_eeid_marker_page(
         oe_sha256_save(hctx, eeid->hash_state.H, eeid->hash_state.N);
         eeid->entry_point = entry_point;
         eeid->vaddr = *vaddr;
+        eeid->tls_page_count = tls_page_count;
         eeid->signature_size = sizeof(sgx_sigstruct_t);
         memcpy(
             eeid->data + eeid->data_size,
@@ -619,7 +636,8 @@ static oe_result_t _add_eeid_marker_page(
          * commit size of the base image and dynamically configured data
          * pages (stacks + heap) excluding the EEID data size.
          */
-        _calculate_enclave_size(image_size, props, &marker->offset, NULL);
+        _calculate_enclave_size(
+            image_size, tls_page_count, props, &marker->offset, NULL);
 
         uint64_t addr = enclave->addr + *vaddr;
         uint64_t src = (uint64_t)page;
@@ -722,6 +740,7 @@ oe_result_t oe_sgx_build_enclave(
     oe_enclave_image_t oeimage;
     void* ecall_data = NULL;
     size_t image_size;
+    size_t tls_page_count;
     uint64_t vaddr = 0;
     oe_sgx_enclave_properties_t props;
 
@@ -803,9 +822,16 @@ oe_result_t oe_sgx_build_enclave(
     /* Calculate the size of image */
     OE_CHECK(oeimage.calculate_size(&oeimage, &image_size));
 
+    /* Calculate the number of pages needed for thread-local data */
+    OE_CHECK(oeimage.get_tls_page_count(&oeimage, &tls_page_count));
+
     /* Calculate the size of this enclave in memory */
     OE_CHECK(_calculate_enclave_size(
-        image_size, &props, &loaded_enclave_pages_size, &enclave_size));
+        image_size,
+        tls_page_count,
+        &props,
+        &loaded_enclave_pages_size,
+        &enclave_size));
 
     /* Perform the ECREATE operation */
     OE_CHECK(oe_sgx_create_enclave(
@@ -823,12 +849,23 @@ oe_result_t oe_sgx_build_enclave(
 
 #ifdef OE_WITH_EXPERIMENTAL_EEID
     OE_CHECK(_add_eeid_marker_page(
-        context, enclave, image_size, oeimage.elf.entry_rva, &props, &vaddr));
+        context,
+        enclave,
+        image_size,
+        tls_page_count,
+        oeimage.elf.entry_rva,
+        &props,
+        &vaddr));
 #endif
 
     /* Add data pages */
     OE_CHECK(_add_data_pages(
-        context, enclave, &props, oeimage.elf.entry_rva, &vaddr));
+        context,
+        enclave,
+        &props,
+        oeimage.elf.entry_rva,
+        tls_page_count,
+        &vaddr));
 
 #ifdef OE_WITH_EXPERIMENTAL_EEID
     /* Add optional EEID pages */
@@ -864,6 +901,40 @@ done:
     return result;
 }
 
+oe_result_t oe_get_ecall_id_table(
+    oe_enclave_t* enclave,
+    oe_ecall_id_t** ecall_id_table,
+    uint64_t* ecall_id_table_size)
+{
+    oe_result_t result = OE_UNEXPECTED;
+    if (!enclave || !ecall_id_table || !ecall_id_table_size)
+        OE_RAISE(OE_INVALID_PARAMETER);
+
+    *ecall_id_table = enclave->ecall_id_table;
+    *ecall_id_table_size = enclave->ecall_id_table_size;
+    result = OE_OK;
+
+done:
+    return result;
+}
+
+oe_result_t oe_set_ecall_id_table(
+    oe_enclave_t* enclave,
+    oe_ecall_id_t* ecall_id_table,
+    uint64_t ecall_id_table_size)
+{
+    oe_result_t result = OE_UNEXPECTED;
+    if (!enclave || !ecall_id_table || !ecall_id_table_size)
+        OE_RAISE(OE_INVALID_PARAMETER);
+
+    enclave->ecall_id_table = ecall_id_table;
+    enclave->ecall_id_table_size = ecall_id_table_size;
+    result = OE_OK;
+
+done:
+    return result;
+}
+
 #if !defined(OEHOSTMR)
 /*
 ** This method encapsulates all steps of the enclave creation process:
@@ -888,6 +959,8 @@ oe_result_t oe_create_enclave(
     uint32_t setting_count,
     const oe_ocall_func_t* ocall_table,
     uint32_t ocall_count,
+    const oe_ecall_info_t* ecall_name_table,
+    uint32_t ecall_count,
     oe_enclave_t** enclave_out)
 {
     oe_result_t result = OE_UNEXPECTED;
@@ -1003,6 +1076,10 @@ oe_result_t oe_create_enclave(
     enclave->ocalls = (const oe_ocall_func_t*)ocall_table;
     enclave->num_ocalls = ocall_count;
 
+    /* Register ecalls */
+    enclave->num_ecalls = ecall_count;
+    oe_register_ecalls(enclave, ecall_name_table, ecall_count);
+
     /* Invoke enclave initialization. */
     OE_CHECK(_initialize_enclave(enclave));
 
@@ -1064,6 +1141,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
         free(enclave->debug_enclave->tcs_array);
         free(enclave->debug_enclave);
     }
+
+    /* Destroy the ecall id table */
+    if (enclave->ecall_id_table)
+        free(enclave->ecall_id_table);
 
     /* Once the enclave destructor has been invoked, the enclave memory
      * and data structures are freed on a best effort basis from here on */

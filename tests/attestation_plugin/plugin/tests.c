@@ -227,6 +227,19 @@ static void _test_verify_evidence_fail()
             &claims_length),
         OE_INVALID_PARAMETER);
 
+    OE_TEST_CODE(
+        oe_verify_evidence(
+            NULL,
+            evidence,
+            evidence_size - 1,
+            endorsements,
+            endorsements_size,
+            NULL,
+            0,
+            &claims,
+            &claims_length),
+        OE_INVALID_PARAMETER);
+
     OE_TEST(
         oe_verify_evidence(
             NULL,
@@ -234,6 +247,18 @@ static void _test_verify_evidence_fail()
             evidence_size,
             endorsements,
             0,
+            NULL,
+            0,
+            &claims,
+            &claims_length) == OE_INVALID_PARAMETER);
+
+    OE_TEST(
+        oe_verify_evidence(
+            NULL,
+            evidence,
+            evidence_size,
+            endorsements,
+            endorsements_size - 1,
             NULL,
             0,
             &claims,
@@ -649,6 +674,44 @@ void verify_sgx_evidence(
         wrapped_with_header,
         &endorsements_body,
         &endorsements_body_size);
+
+    // Try with no output claims.
+    OE_TEST_CODE(
+        oe_verify_evidence(
+            wrapped_with_header ? NULL : format_id,
+            evidence,
+            evidence_size,
+            endorsements,
+            endorsements_size,
+            NULL,
+            0,
+            NULL,
+            NULL),
+        OE_OK);
+    OE_TEST_CODE(
+        oe_verify_evidence(
+            wrapped_with_header ? NULL : format_id,
+            evidence,
+            evidence_size,
+            endorsements,
+            endorsements_size,
+            NULL,
+            0,
+            &claims,
+            NULL),
+        OE_INVALID_PARAMETER);
+    OE_TEST_CODE(
+        oe_verify_evidence(
+            wrapped_with_header ? NULL : format_id,
+            evidence,
+            evidence_size,
+            endorsements,
+            endorsements_size,
+            NULL,
+            0,
+            NULL,
+            &claims_size),
+        OE_INVALID_PARAMETER);
 
     // Try with no policies.
     OE_TEST_CODE(

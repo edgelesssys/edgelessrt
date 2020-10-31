@@ -149,8 +149,10 @@ oe_result_t oe_verifier_free_format_settings(uint8_t* settings);
  * @param[in] endorsements_buffer_size The size of endorsements_buffer in bytes.
  * @param[in] policies An optional list of policies to use.
  * @param[in] policies_size The size of the policy list.
- * @param[out] claims The list of claims (including base and custom).
- * @param[out] claims_length The length of the claims list.
+ * @param[out] claims If not NULL, an output pointer that will be assigned the
+ * address of the dynamically allocated list of claims (including base and
+ * custom).
+ * @param[out] claims_length If not NULL, the length of the claims list.
  * @retval OE_OK The function succeeded.
  * @retval OE_INVALID_PARAMETER At least one of the parameters is invalid.
  * @retval other appropriate error code.
@@ -186,6 +188,8 @@ typedef oe_result_t (*oe_verify_claims_callback_t)(
  * certificate before validating this evidence. An optional
  * claim_verify_callback could be passed in for a calling client to further
  * validate the claims of the enclave creating the certificate.
+ * OE_FAILURE is returned if the expected certificate extension OID is not
+ * found.
  * @param[in] cert_in_der a pointer to buffer holding certificate contents
  *  in DER format
  * @param[in] cert_in_der_len size of certificate buffer above

@@ -206,7 +206,9 @@ if (OE_SGX)
     ../common/sgx/verifier.c
     sgx/hostverify_report.c
     sgx/report_common.c
-    sgx/sgxquoteprovider.c)
+    sgx/sgxquoteprovider.c
+    sgx/quote.c
+    sgx/sgxquote.c)
 
   if (WITH_EEID)
     list(APPEND PLATFORM_HOST_ONLY_SRC ../common/sgx/eeid_verifier.c
@@ -216,6 +218,7 @@ if (OE_SGX)
   list(
     APPEND
     PLATFORM_SDK_ONLY_SRC
+    ../common/sgx/cpuid.c
     sgx/calls.c
     sgx/create.c
     sgx/elf.c
@@ -242,7 +245,11 @@ if (OE_SGX)
 
   # OS specific as well.
   if (UNIX)
-    list(APPEND PLATFORM_HOST_ONLY_SRC sgx/linux/sgxquoteproviderloader.c)
+    list(
+      APPEND
+      PLATFORM_HOST_ONLY_SRC
+      sgx/linux/sgxquoteproviderloader.c
+      sgx/linux/sgxquoteexloader.c)
 
     list(
       APPEND
@@ -255,7 +262,11 @@ if (OE_SGX)
       sgx/linux/sgxquoteexloader.c
       sgx/linux/xstate.c)
   else ()
-    list(APPEND PLATFORM_HOST_ONLY_SRC sgx/windows/sgxquoteproviderloader.c)
+    list(
+      APPEND
+      PLATFORM_HOST_ONLY_SRC
+      sgx/windows/sgxquoteproviderloader.c
+      sgx/windows/sgxquoteexloader.c)
 
     list(
       APPEND
@@ -319,6 +330,7 @@ list(
   ../common/kdf.c
   ../common/argv.c
   asym_keys.c
+  ecall_ids.c
   calls.c
   ocalls/log.c
   ocalls/ocalls.c
@@ -350,6 +362,9 @@ target_link_libraries(oehost PUBLIC oe_includes)
 if (OE_SGX)
   target_include_directories(
     oehost PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/sgxsdk/include)
+  target_include_directories(
+    oehostverify PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/sgxsdk/include)
+
 endif ()
 
 if (WIN32)

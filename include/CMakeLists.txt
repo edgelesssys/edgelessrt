@@ -21,6 +21,10 @@ install(FILES openenclave/enclave_stubs.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 install(FILES openenclave/host.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
+install(FILES openenclave/log.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
+install(FILES openenclave/trace.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
 install(
   FILES openenclave/host_verify.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/
@@ -31,7 +35,6 @@ install(
   FILES openenclave/attestation/sgx/eeid_attester.h
         openenclave/attestation/sgx/eeid_plugin.h
         openenclave/attestation/sgx/eeid_verifier.h
-        openenclave/attestation/sgx/evidence.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/attestation/sgx)
 install(
   FILES openenclave/attestation/verifier.h
@@ -40,6 +43,7 @@ install(
   COMPONENT OEHOSTVERIFY)
 install(
   FILES openenclave/attestation/sgx/report.h
+        openenclave/attestation/sgx/evidence.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/attestation/sgx/
   COMPONENT OEHOSTVERIFY)
 install(TARGETS oe_includes EXPORT openenclave-targets)
@@ -62,6 +66,10 @@ install(FILES openenclave/corelibc/bits/types.h
 
 # Install pluggable allocator header.
 install(FILES openenclave/advanced/allocator.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/advanced)
+
+# Install allocator info header.
+install(FILES openenclave/advanced/mallinfo.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/advanced)
 
 ##==============================================================================
