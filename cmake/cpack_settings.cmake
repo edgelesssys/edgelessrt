@@ -3,9 +3,9 @@
 
 # CPack variables for the regular OE SDK.
 include(InstallRequiredSystemLibraries)
-set(CPACK_PACKAGE_NAME "open-enclave")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Open Enclave SDK")
-set(CPACK_PACKAGE_CONTACT "oesdk@lists.confidentialcomputing.io")
+set(CPACK_PACKAGE_NAME "edgelessrt")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Edgeless RT")
+set(CPACK_PACKAGE_CONTACT "contact@edgeless.systems​")
 set(CPACK_PACKAGE_DESCRIPTION_FILE
     "${PROJECT_SOURCE_DIR}/cmake/NuGetDescription.txt")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
@@ -18,6 +18,7 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
 )
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "pkg-config")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_ARCHIVE_TYPE "gnutar")
 
 # CPack variables for the non-enclave host verification package.
 # We match the naming convention of the OE SDK package by setting the

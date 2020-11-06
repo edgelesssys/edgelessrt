@@ -35,7 +35,7 @@ RUN git submodule update --init tools/oeedger8r-cpp 3rdparty/go 3rdparty/mbedtls
 FROM base-dev AS build
 COPY --from=pull /edgelessrt /edgelessrt
 WORKDIR /edgelessrt/build
-RUN cmake -GNinja .. && ninja install
+RUN cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja install
 
 FROM base-dev as release_develop
 LABEL description="EdgelessRT is an SDK to build Trusted Execution Environment applications"
