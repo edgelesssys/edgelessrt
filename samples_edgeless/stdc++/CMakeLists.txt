@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 cmake_minimum_required(VERSION 3.11)
+project(sample)
 find_package(OpenEnclave CONFIG REQUIRED)
 
 if (NOT CMAKE_BUILD_TYPE)
