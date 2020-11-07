@@ -20,9 +20,11 @@ import (
 )
 
 func main() {
-	// get signer command line argument
 	signerArg := flag.String("s", "", "signer ID")
+	serverAddr := flag.String("a", "localhost:8080", "server address")
 	flag.Parse()
+
+	// get signer command line argument
 	signer, err := hex.DecodeString(*signerArg)
 	if err != nil {
 		panic(err)
@@ -32,11 +34,13 @@ func main() {
 		return
 	}
 
+	url := "https://" + *serverAddr
+
 	// Get server certificate and its report. Skip TLS certificate verification because
 	// the certificate is self-signed and we will verify it using the report instead.
 	tlsConfig := &tls.Config{InsecureSkipVerify: true}
-	certBytes := httpGet(tlsConfig, "https://localhost:8080/cert")
-	reportBytes := httpGet(tlsConfig, "https://localhost:8080/report")
+	certBytes := httpGet(tlsConfig, url+"/cert")
+	reportBytes := httpGet(tlsConfig, url+"/report")
 
 	if err := verifyReport(reportBytes, certBytes, signer); err != nil {
 		panic(err)
@@ -45,10 +49,10 @@ func main() {
 	// Create a TLS config that uses the server certificate as root
 	// CA so that future connections to the server can be verified.
 	cert, _ := x509.ParseCertificate(certBytes)
-	tlsConfig = &tls.Config{RootCAs: x509.NewCertPool()}
+	tlsConfig = &tls.Config{RootCAs: x509.NewCertPool(), ServerName: "localhost"}
 	tlsConfig.RootCAs.AddCert(cert)
 
-	httpGet(tlsConfig, "https://localhost:8080/secret?s=mySecret")
+	httpGet(tlsConfig, url+"/secret?s=mySecret")
 	fmt.Println("Sent secret over attested TLS channel.")
 }
 

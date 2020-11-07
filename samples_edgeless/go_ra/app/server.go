@@ -25,7 +25,7 @@ func main() {
 	hash := sha256.Sum256(cert)
 	report, err := ertenclave.GetRemoteReport(hash[:])
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
 	// Create HTTPS server.
@@ -45,7 +45,7 @@ func main() {
 		},
 	}
 
-	server := http.Server{Addr: "localhost:8080", TLSConfig: &tlsCfg}
+	server := http.Server{Addr: "0.0.0.0:8080", TLSConfig: &tlsCfg}
 
 	fmt.Println("listening ...")
 	err = server.ListenAndServeTLS("", "")
@@ -57,6 +57,7 @@ func createCertificate() ([]byte, crypto.PrivateKey) {
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: "localhost"},
 		NotAfter:     time.Now().Add(time.Hour),
+		DNSNames:     []string{"localhost"},
 	}
 	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
 	cert, _ := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ert-sample-svc
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    app: ert-sample-app
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ert-sample-pod
+  labels:
+    app: ert-sample-app
+spec:
+  containers:
+  - name: ert-sample-image
+    image: ghcr.io/edgelesssys/ert-sample
+    resources:
+      limits:
+        kubernetes.azure.com/sgx_epc_mem_in_MiB: 10
