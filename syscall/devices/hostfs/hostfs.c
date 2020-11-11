@@ -1423,6 +1423,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
 {
     file_t* file = _cast_file(desc);
 
+    // EDG: set errno if this is a directory file
+    if (file && file->host_fd == -1)
+        oe_errno = OE_EINVAL;
+
     return file ? file->host_fd : -1;
 }
 
