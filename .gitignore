@@ -28,5 +28,3 @@ prereqs/dcap/*.deb
 prereqs/nuget/*
 prereqs/packages/.packages
 prereqs/sgx-driver/*.bin
-
-Testing/Temporary
