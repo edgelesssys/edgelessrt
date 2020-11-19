@@ -31,6 +31,7 @@ int oedigest(
     const char* conffile,
     const char* digest_file);
 int oesignerid(const char* keyfile);
+int eradump(const char* enc_bin);
 
 static const char _usage_gen[] =
     "Usage: %s <command> [options]\n"
@@ -41,6 +42,7 @@ static const char _usage_gen[] =
     "  dump      -  Print out the Open Enclave metadata for the specified "
     "enclave.\n"
     "  signerid  -  Print out the signer ID for the specified public key.\n"
+    "  eradump   -  Generates enclave config in JSON format.\n"
     "\n"
     "For help with a specific command, enter \"%s <command> --help\"\n";
 
@@ -153,6 +155,13 @@ static const char _usage_signerid[] =
     "\n"
     "Description:\n"
     "  This option prints the signer ID derived from a public key.\n"
+    "\n";
+
+static const char _usage_eradump[] =
+    "Usage: %s eradump -e ENCLAVE_IMAGE\n"
+    "\n"
+    "Options:\n"
+    "  -e, --enclave-image      path to enclave image file.\n"
     "\n";
 
 int dump_parser(int argc, const char* argv[])
@@ -592,6 +601,66 @@ done:
     return ret;
 }
 
+static int _eradump_parser(int argc, const char* argv[])
+{
+    int ret = 0;
+    const char* enclave = NULL;
+
+    const struct option long_options[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"enclave", required_argument, NULL, 'e'},
+        {NULL, 0, NULL, 0},
+    };
+    const char short_options[] = "he:";
+
+    int c;
+    do
+    {
+        c = getopt_long(
+            argc, (char* const*)argv, short_options, long_options, NULL);
+        if (c == -1)
+        {
+            // all the command-line options are parsed
+            break;
+        }
+
+        switch (c)
+        {
+            case 'h':
+                fprintf(stderr, _usage_eradump, argv[0]);
+                goto done;
+            case 'e':
+                enclave = optarg;
+                break;
+            case ':':
+                // Missing option argument
+                ret = 1;
+                goto done;
+            case '?':
+            default:
+                // Invalid option
+                ret = 1;
+                goto done;
+        }
+    } while (1);
+
+    if (enclave == NULL)
+    {
+        oe_err("--enclave-image option is missing");
+
+        fprintf(stderr, _usage_eradump, argv[0]);
+        ret = 1;
+    }
+
+    if (!ret)
+    {
+        ret = eradump(enclave);
+    }
+
+done:
+    return ret;
+}
+
 int arg_handler(int argc, const char* argv[])
 {
     int ret = 1;
@@ -607,6 +676,8 @@ int arg_handler(int argc, const char* argv[])
         ret = digest_parser(argc, argv);
     else if (strcmp(argv[1], "signerid") == 0)
         ret = _signerid_parser(argc, argv);
+    else if (strcmp(argv[1], "eradump") == 0)
+        ret = _eradump_parser(argc, argv);
     else
     {
         fprintf(stderr, _usage_gen, argv[0], argv[0]);

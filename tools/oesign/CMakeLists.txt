@@ -11,7 +11,8 @@ list(
   oedump.c
   oeinfo.c
   oesign.c
-  oesignerid.c)
+  oesignerid.c
+  eradump.cpp)
 
 if (WITH_EEID)
   list(APPEND SOURCES oedump_eeid.c)
