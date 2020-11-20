@@ -9,8 +9,8 @@ Key features of Edgeless RT are:
   * More C++17 STL
   * pthread and std::thread
   * libstdc++ for better compatibility with existing code
+* Seamless integration with [Marblerun](https://github.com/edgelesssys/marblerun) to create distributed confidential applications
 * Experimental support for Rust
-* Soon: seamless integration with [Edgeless Mesh](https://edgeless.systems) to create distributed confidential applications
 * Soon: support for Python
 
 ## Quick Start

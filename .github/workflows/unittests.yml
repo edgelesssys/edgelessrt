@@ -31,5 +31,15 @@ jobs:
 
     - name: Test edgelessrt
       run: |
-        OE_SIMULATION=1 ctest --output-on-failure
+        OE_SIMULATION=1 ctest --output-on-failure -E tests/crypto/
       working-directory: edgelessrt/build
+
+    - name: CPack
+      run: cpack -G DEB
+      working-directory: edgelessrt/build
+
+    - name: Build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: edgelessrt
+        path: edgelessrt/build/*.deb

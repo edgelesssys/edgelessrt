@@ -2,12 +2,17 @@
 
 FROM ubuntu:18.04 AS common
 RUN apt update && \
-    apt install -y libssl-dev wget gnupg software-properties-common
+    apt install -y libssl-dev wget gnupg software-properties-common locales
 RUN wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add - && \
     apt-add-repository 'https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main'
 RUN wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
     apt-add-repository 'https://packages.microsoft.com/ubuntu/18.04/prod bionic main' && \
     apt clean && apt autoclean
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
 FROM common AS sgx
 RUN apt update && \

@@ -13,7 +13,7 @@ These samples show how to write a new application or port an existing one to `Ed
 
 During development, link your enclave against `ertdeventry`. Then `erthost` will transparently forward all commandline arguments and environment variables to the enclave application. The enclave has unlimited access to the host's filesystem.
 
-Once your application is ready to go into production, you can either switch to [Edgeless Mesh](#edgeless-mesh) or write a custom enclave entry function. The [helloworld](helloworld/README.md) sample includes an example of the latter.
+Once your application is ready to go into production, you can either switch to [Marblerun](#marblerun) or write a custom enclave entry function. The [helloworld](helloworld/README.md) sample includes an example of the latter.
 
-## Edgeless Mesh
-Edgeless Mesh is the preferred way to run enclave applications in production: it seamlessly integrates with Edgeless RT and enables the creation of distributed confidential applications. Learn more at <https://edgeless.systems>.
+## Marblerun
+[Marblerun](https://github.com/edgelesssys/marblerun) is the preferred way to run enclave applications in production: it seamlessly integrates with Edgeless RT and enables the creation of distributed confidential applications.
