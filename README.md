@@ -18,7 +18,7 @@ If you are on Ubuntu 18.04 and do not want to build the SDK yourself, you can in
 ```bash
 wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
 sudo add-apt-repository 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main'
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.1.1/edgelessrt_0.1.2_amd64.deb
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.1.2/edgelessrt_0.1.2_amd64.deb
 sudo apt install ./edgelessrt_0.1.2_amd64.deb
 ```
 Then proceed with [Use](#use).

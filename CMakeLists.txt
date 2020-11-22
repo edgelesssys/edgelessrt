@@ -54,9 +54,9 @@ if (UNIX AND LVI_MITIGATION MATCHES ControlFlow)
 endif ()
 
 project(
-  "Open Enclave SDK"
+  "Edgeless RT"
   LANGUAGES C CXX ${OE_ASM}
-  HOMEPAGE_URL "https://github.com/openenclave/openenclave")
+  HOMEPAGE_URL "https://github.com/edgelesssys/edgelessrt")
 set(PROJECT_VERSION ${OE_VERSION})
 set(OE_SCRIPTSDIR "${PROJECT_SOURCE_DIR}/scripts")
 
