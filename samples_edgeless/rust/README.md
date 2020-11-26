@@ -3,7 +3,7 @@ This sample shows how to build an enclave application written in Rust.
 
 The directory `app` contains the Rust application code. It is a Cargo project that builds a static library. The library exports the function `rustmain` that can be called from C.
 
-The enclave entry point is in `main.c` and just calls `rustmain`.
+The enclave entry point is in `main.c` which calls `rustmain`.
 
 The sample can be built and run as follows:
 ```sh

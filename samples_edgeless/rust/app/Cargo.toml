@@ -1,5 +1,5 @@
 [package]
-name = "app"
+name = "mthread"
 version = "0.1.0"
 authors = ["Edgeless Systems GmbH"]
 edition = "2018"

@@ -25,7 +25,7 @@ add_executable(enclave main.c)
 add_dependencies(enclave app)
 
 target_link_libraries(enclave openenclave::oeenclave openenclave::ertdeventry
-                      ${CMAKE_BINARY_DIR}/target/${CARGOTARGET}/libapp.a)
+                      ${CMAKE_BINARY_DIR}/target/${CARGOTARGET}/libmthread.a)
 
 # Generate key
 add_custom_command(
