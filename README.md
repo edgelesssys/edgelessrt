@@ -1,9 +1,11 @@
 # Edgeless RT
-[Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It aims to provide support for modern programming languages and to facilitate the porting of existing applications.
+![ERT logo](ert_icon.svg)
+
+[Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It adds support for modern programming languages (in particular Go) and facilitates the porting of existing applications.
 Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
 
 Key features of Edgeless RT are:
-* Support for Go
+* Comprehensive support for Go, most existing code runs without changes
 * Extended C/C++ support
   * More libc and POSIX functions
   * More C++17 STL
