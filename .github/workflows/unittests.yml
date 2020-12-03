@@ -31,6 +31,16 @@ jobs:
         OE_SIMULATION=1 ctest --output-on-failure -E tests/crypto/
       working-directory: build
 
+    - name: CPack
+      run: cpack -G DEB
+      working-directory: build
+
+    - name: Build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: edgelessrt
+        path: build/*.deb
+
     - name: Deploy edgelessrt-dev:nightly
       if: github.ref == 'refs/heads/master' &&
           github.event_name == 'push'
