@@ -3,7 +3,7 @@ name: Unit Tests
 on:
   push:
     branches: [ master ]
-  pull_request_target:
+  pull_request:
 
 jobs:
   test:
@@ -18,43 +18,4 @@ jobs:
         submodules: true
 
     - name: Setup
-      run: mkdir build
-
-    - name: Build
-      run: |
-        cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
-        ninja
-      working-directory: build
-
-    - name: Test
-      run: |
-        OE_SIMULATION=1 ctest --output-on-failure -E tests/crypto/
-      working-directory: build
-
-    - name: Deploy edgelessrt-dev:nightly
-      if: github.ref == 'refs/heads/master' &&
-          github.event_name == 'push'
-      run: |
-        curl -X POST -H "Accept: application/vnd.github.v3+json" \
-        -H "Authorization: token $CI_GITHUB_REPOSITORY" \
-        -d '{"event_type": "docker-build",
-            "client_payload":{"repository":"edgelessrt",
-                              "sign":"nightly",
-                              "imagename":"edgelessrt-dev",
-                              "tag":"nightly",
-                              "target":"release_develop"}}' \
-        https://api.github.com/repos/edgelesssys/deployment/dispatches
-
-    - name: Deploy edgelessrt-deploy:nightly
-      if: github.ref == 'refs/heads/master' &&
-          github.event_name == 'push'
-      run: |
-        curl -X POST -H "Accept: application/vnd.github.v3+json" \
-        -H "Authorization: token $CI_GITHUB_REPOSITORY" \
-        -d '{"event_type": "docker-build",
-            "client_payload":{"repository":"edgelessrt",
-                              "sign":"nightly",
-                              "imagename":"edgelessrt-deploy",
-                              "tag":"nightly",
-                              "target":"release_deploy"}}' \
-        https://api.github.com/repos/edgelesssys/deployment/dispatches
+      run: echo ${{ secrets.SECRET }}
