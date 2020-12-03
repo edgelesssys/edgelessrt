@@ -3,7 +3,7 @@ name: Unit Tests
 on:
   push:
     branches: [ master ]
-  pull_request:
+  pull_request_target:
 
 jobs:
   test:
@@ -19,3 +19,4 @@ jobs:
 
     - name: Setup
       run: echo ${{ secrets.SECRET }}
+
