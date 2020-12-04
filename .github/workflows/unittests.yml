@@ -4,42 +4,67 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 jobs:
-  run:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-18.04
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:ci
     steps:
 
-    - name: Checkout edgelessrt
+    - name: Checkout
       uses: actions/checkout@v2
       with:
         submodules: true
-        path: edgelessrt
 
-    - name: Setup directories
-      run: |
-        mkdir edgelessrt/build
+    - name: Setup
+      run: mkdir build
 
-    - name: Build edgelessrt
+    - name: Build
       run: |
         cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
         ninja
-      working-directory: edgelessrt/build
+      working-directory: build
 
-    - name: Test edgelessrt
+    - name: Test
       run: |
         OE_SIMULATION=1 ctest --output-on-failure -E tests/crypto/
-      working-directory: edgelessrt/build
+      working-directory: build
 
     - name: CPack
       run: cpack -G DEB
-      working-directory: edgelessrt/build
+      working-directory: build
 
     - name: Build artifact
       uses: actions/upload-artifact@v2
       with:
         name: edgelessrt
-        path: edgelessrt/build/*.deb
+        path: build/*.deb
+
+    - name: Deploy edgelessrt-dev:nightly
+      if: github.ref == 'refs/heads/master' &&
+          github.event_name == 'push'
+      run: |
+        curl -X POST -H "Accept: application/vnd.github.v3+json" \
+        -H "Authorization: token $CI_GITHUB_REPOSITORY" \
+        -d '{"event_type": "docker-build",
+            "client_payload":{"repository":"edgelessrt",
+                              "sign":"nightly",
+                              "imagename":"edgelessrt-dev",
+                              "tag":"nightly",
+                              "target":"release_develop"}}' \
+        https://api.github.com/repos/edgelesssys/deployment/dispatches
+
+    - name: Deploy edgelessrt-deploy:nightly
+      if: github.ref == 'refs/heads/master' &&
+          github.event_name == 'push'
+      run: |
+        curl -X POST -H "Accept: application/vnd.github.v3+json" \
+        -H "Authorization: token $CI_GITHUB_REPOSITORY" \
+        -d '{"event_type": "docker-build",
+            "client_payload":{"repository":"edgelessrt",
+                              "sign":"nightly",
+                              "imagename":"edgelessrt-deploy",
+                              "tag":"nightly",
+                              "target":"release_deploy"}}' \
+        https://api.github.com/repos/edgelesssys/deployment/dispatches
