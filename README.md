@@ -1,7 +1,7 @@
 # Edgeless RT
 ![ERT logo](ert_logo.svg)
 
-![Unit Tests][unit-tests-badge]
+[![Unit Tests][unit-tests-badge]][unit-tests]
 [![GitHub license][license-badge]](LICENSE)
 [![Gitter Chat][gitter-badge]][gitter]
 
@@ -155,6 +155,7 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
 ```
 
 <!-- refs -->
+[unit-tests]: https://github.com/edgelesssys/edgelessrt/actions
 [unit-tests-badge]: https://github.com/edgelesssys/edgelessrt/workflows/Unit%20Tests/badge.svg
 [license-badge]: https://img.shields.io/github/license/edgelesssys/edgelessrt
 [gitter]: https://gitter.im/edgeless-systems/community
