@@ -18,8 +18,8 @@ ExternalProject_Add(
   oeedger8r-cpp
   URL ${CMAKE_CURRENT_SOURCE_DIR}/oeedger8r-cpp
   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/oeedger8r-cpp-src
+  PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/ert/oeedger8r-cpp.patch
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/oeedger8r-cpp
-  PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/oeedger8r-cpp.patch
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   BUILD_ALWAYS on
   TEST_BEFORE_INSTALL on
