@@ -171,8 +171,3 @@ if (UNIX)
   endif ()
   add_subdirectory(libc)
 endif ()
-
-# edgeless
-if (OE_SGX AND UNIX)
-  add_subdirectory(go_ra)
-endif ()
