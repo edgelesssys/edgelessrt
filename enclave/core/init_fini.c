@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include "init_fini.h"
-#include "args.h"
+#include <openenclave/ert_args.h>
 
 /*
 **==============================================================================

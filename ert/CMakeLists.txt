@@ -1,4 +1,5 @@
-target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c)
+target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c
+                              ${CMAKE_CURRENT_SOURCE_DIR}/enclave/args.c)
 target_sources(oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/eventfd.c)
 target_sources(oehostsock
                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/internalsock.c)
@@ -18,6 +19,7 @@ if (OE_SGX)
   set(DEFINE_OE_SGX "-DOE_SGX")
 endif ()
 
+add_subdirectory(tests/args)
 add_subdirectory(tests/concurrent_stdout)
 add_subdirectory(tests/customentry)
 add_subdirectory(tests/deventry)

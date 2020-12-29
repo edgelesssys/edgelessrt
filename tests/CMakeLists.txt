@@ -174,7 +174,6 @@ endif ()
 
 # edgeless
 if (OE_SGX AND UNIX)
-  add_subdirectory(args)
   add_subdirectory(bitset)
   add_subdirectory(go_ra)
   add_subdirectory(mman)

@@ -28,7 +28,6 @@
 #include <openenclave/internal/utils.h>
 #include "../../../common/sgx/sgxmeasure.h"
 #include "../../sgx/report.h"
-#include "../args.h"
 #include "../atexit.h"
 #include "../tracee.h"
 #include "arena.h"
@@ -185,7 +184,8 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
             OE_CHECK(oe_set_is_xsave_supported());
 
             /* EDG: Initialize args before calling global constructors. */
-            OE_CHECK(oe_init_args());
+            oe_result_t ert_init_args(void);
+            OE_CHECK(ert_init_args());
 
             /* EDG: DCLP Release barrier and set initialized before calling
              * global constructors because they may create threads whose ecall

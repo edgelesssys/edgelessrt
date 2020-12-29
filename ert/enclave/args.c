@@ -1,15 +1,16 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include "args.h"
 #include <openenclave/advanced/allocator.h>
+#include <openenclave/bits/result.h>
+#include <openenclave/corelibc/assert.h>
 #include <openenclave/corelibc/string.h>
-#include <openenclave/internal/defs.h>
+#include <openenclave/ert_args.h>
 
 static int _argc;
 static char** _argv;
 
-oe_result_t oe_init_args(void)
+oe_result_t ert_init_args(void)
 {
     oe_assert(!_argv);
 
