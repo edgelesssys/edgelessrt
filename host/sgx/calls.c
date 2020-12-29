@@ -34,8 +34,9 @@
 #include "../ocalls/ocalls.h"
 #include "asmdefs.h"
 #include "enclave.h"
-#include "ocall_tracer.h"
 #include "ocalls/ocalls.h"
+
+void ert_trace_ocall(oe_enclave_t* enclave, const void* func);
 
 /*
 **==============================================================================
@@ -246,8 +247,7 @@ oe_result_t oe_handle_call_host_function(uint64_t arg, oe_enclave_t* enclave)
         goto done;
     }
 
-    // EDG: trace
-    oe_trace_ocall(enclave, func);
+    ert_trace_ocall(enclave, func);
 
     OE_CHECK(oe_safe_add_u64(
         args_ptr->input_buffer_size,
@@ -360,27 +360,27 @@ static oe_result_t _handle_ocall(
             break;
 
         case OE_OCALL_MALLOC:
-            oe_trace_ocall(enclave, HandleMalloc);
+            ert_trace_ocall(enclave, HandleMalloc);
             HandleMalloc(arg_in, arg_out);
             break;
 
         case OE_OCALL_FREE:
-            oe_trace_ocall(enclave, HandleFree);
+            ert_trace_ocall(enclave, HandleFree);
             HandleFree(arg_in);
             break;
 
         case OE_OCALL_THREAD_WAIT:
-            oe_trace_ocall(enclave, HandleThreadWait);
+            ert_trace_ocall(enclave, HandleThreadWait);
             HandleThreadWait(enclave, arg_in);
             break;
 
         case OE_OCALL_THREAD_WAKE:
-            oe_trace_ocall(enclave, HandleThreadWake);
+            ert_trace_ocall(enclave, HandleThreadWake);
             HandleThreadWake(enclave, arg_in);
             break;
 
         case OE_OCALL_GET_TIME:
-            oe_trace_ocall(enclave, oe_handle_get_time);
+            ert_trace_ocall(enclave, oe_handle_get_time);
             oe_handle_get_time(arg_in, arg_out);
             break;
 

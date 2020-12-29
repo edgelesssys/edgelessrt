@@ -5,7 +5,9 @@ list(
   PLATFORM_SDK_ONLY_SRC
   ${ERTHOSTDIR}/calls.cpp
   ${ERTHOSTDIR}/core.c
+  ${ERTHOSTDIR}/debug.cpp
   ${ERTHOSTDIR}/enclave_thread_manager.cpp
+  ${ERTHOSTDIR}/ocall_tracer.cpp
   ${ERTHOSTDIR}/syscall.cpp
   ${ERTHOSTDIR}/thread.cpp
   ${ERTHOSTDIR}/vdso.cpp)

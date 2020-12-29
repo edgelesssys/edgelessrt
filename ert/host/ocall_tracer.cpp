@@ -1,11 +1,9 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include "ocall_tracer.h"
 #include <dlfcn.h>
 #include <openenclave/internal/backtrace.h>
 #include <openenclave/internal/elf.h>
-#include <openenclave/internal/final_action.h>
 #include <openenclave/internal/trace.h>
 #include <algorithm>
 #include <cassert>
@@ -26,7 +24,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "ocalls/ocalls.h"
+#include "../common/final_action.h"
+#include "../host/sgx/enclave.h"
+#include "debug.h"
 #include "platform_u.h"
 
 using namespace std;
@@ -67,7 +67,7 @@ class OcallTracer final
 } _tracer;
 } // namespace
 
-extern "C" void oe_trace_ocall(oe_enclave_t* enclave, const void* func)
+extern "C" void ert_trace_ocall(oe_enclave_t* enclave, const void* func)
 {
     try
     {
@@ -209,7 +209,7 @@ void OcallTracer::dump_backtraces(ostream& out) const
 
         // Get backtrace symbols. Must be free()d.
         const unique_ptr<char*, void (*)(void*)> pBacktrace(
-            oe_host_backtrace_symbols(
+            ert_backtrace_symbols(
                 &elf,
                 enclave_addr,
                 backtrace.data(),

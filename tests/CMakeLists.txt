@@ -175,5 +175,4 @@ endif ()
 # edgeless
 if (OE_SGX AND UNIX)
   add_subdirectory(go_ra)
-  add_subdirectory(trace_ocalls)
 endif ()

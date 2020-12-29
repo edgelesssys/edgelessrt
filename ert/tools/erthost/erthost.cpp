@@ -3,7 +3,6 @@
 
 #include <openenclave/ert_args.h>
 #include <openenclave/host.h>
-#include <openenclave/internal/final_action.h>
 #include <openenclave/internal/trace.h>
 #include <semaphore.h>
 #include <unistd.h>
@@ -17,6 +16,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <system_error>
+#include "../../common/final_action.h"
 #include "../../host/enclave_thread_manager.h"
 #include "emain_u.h"
 

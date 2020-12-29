@@ -52,6 +52,15 @@ bool ert_exiting;
 #ifndef NDEBUG
 // EDG: initialized in _handle_ecall() and used in oe_ocall()
 static __thread void** _backtrace_buffer;
+
+oe_result_t _oe_sgx_get_backtrace_buffer_ocall(void*** _retval)
+{
+    (void)_retval;
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(
+    _oe_sgx_get_backtrace_buffer_ocall,
+    oe_sgx_get_backtrace_buffer_ocall);
 #endif
 
 /*
@@ -343,15 +352,6 @@ void oe_virtual_exception_dispatcher(
 **
 **==============================================================================
 */
-
-oe_result_t _oe_sgx_get_backtrace_buffer_ocall(void*** _retval)
-{
-    (void)_retval;
-    return OE_UNSUPPORTED;
-}
-OE_WEAK_ALIAS(
-    _oe_sgx_get_backtrace_buffer_ocall,
-    oe_sgx_get_backtrace_buffer_ocall);
 
 static void _handle_ecall(
     oe_sgx_td_t* td,
