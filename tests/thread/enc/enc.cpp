@@ -5,7 +5,6 @@
 #include "thread.h"
 #endif
 
-#include <errno.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
@@ -100,7 +99,7 @@ static size_t assign_mutex()
     return (_n % 2) ? 1 : 2;
 }
 
-void enc_wait(size_t num_threads, const timespec* abstime, bool expect_timeout)
+void enc_wait(size_t num_threads)
 {
     static size_t _count1 = 0;
     static size_t _count2 = 0;
@@ -129,31 +128,13 @@ void enc_wait(size_t num_threads, const timespec* abstime, bool expect_timeout)
     oe_host_printf("Waiting: %llu\n", OE_LLU(oe_thread_self()));
 
     oe_mutex_lock(&cond_mutex);
-
-    if (!abstime)
-        oe_cond_wait(&cond, &cond_mutex);
-    else
-    {
-#ifdef _PTHREAD_ENC_
-        const auto res = oe_cond_timedwait(
-            &cond,
-            &cond_mutex,
-            reinterpret_cast<const test_timespec*>(abstime));
-        if (expect_timeout)
-            OE_TEST(res == TEST_TIMEDOUT);
-        else
-            OE_TEST(res == 0);
-#else
-        (void)expect_timeout;
-#endif
-    }
+    oe_cond_wait(&cond, &cond_mutex);
 
     oe_host_printf("Done waiting!\n");
 
     oe_mutex_unlock(&cond_mutex);
 
-    if (!abstime)
-        OE_TEST(_count1 + _count2 == num_threads);
+    OE_TEST(_count1 + _count2 == num_threads);
 
     _test_parallel_mallocs();
 }

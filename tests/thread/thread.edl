@@ -9,7 +9,6 @@ enclave {
 #else
     from "openenclave/edl/optee/platform.edl" import *;
 #endif
-    include "time.h"
 
     trusted {
         public void cb_test_waiter_thread_impl();
@@ -23,9 +22,7 @@ enclave {
             [out] size_t* count2);
 
         public void enc_wait(
-            size_t num_threads,
-            [in] const struct timespec* abstime,
-            bool expect_timeout);
+            size_t num_threads);
 
         public void enc_signal();
 
@@ -41,7 +38,7 @@ enclave {
         public size_t enc_tcs_used_thread_count();
 
         public void enc_reader_thread_impl();
-
+           
         public void enc_writer_thread_impl();
 
         public void enc_rw_results(
