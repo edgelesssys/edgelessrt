@@ -1,10 +1,10 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave_stubs.h>
+#include <openenclave/ert_stubs.h>
 #include <openenclave/internal/trace.h>
 
-extern "C" void oe_stub_trace(const char* msg)
+void ert_stub_trace(const char* msg)
 {
     OE_TRACE_ERROR("not implemented: %s", msg);
 }
