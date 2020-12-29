@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include <openenclave/bits/types.h>
+#include <openenclave/bits/defs.h>
+#include <stddef.h>
 
 OE_EXTERNC_BEGIN
 
@@ -14,7 +15,7 @@ OE_EXTERNC_BEGIN
  * @param pos Positon of the first bit.
  * @param count Number of bits to change.
  */
-void oe_bitset_set_range(void* bitset, size_t pos, size_t count);
+void ert_bitset_set_range(void* bitset, size_t pos, size_t count);
 
 /**
  * Changes the value of all bits in the specified range to 0.
@@ -23,7 +24,7 @@ void oe_bitset_set_range(void* bitset, size_t pos, size_t count);
  * @param pos Positon of the first bit.
  * @param count Number of bits to change.
  */
-void oe_bitset_reset_range(void* bitset, size_t pos, size_t count);
+void ert_bitset_reset_range(void* bitset, size_t pos, size_t count);
 
 /**
  * Finds the first position of *count* consecutive 0 bits.
@@ -34,7 +35,7 @@ void oe_bitset_reset_range(void* bitset, size_t pos, size_t count);
  *
  * @return If found, the position of the found range; otherwise, SIZE_MAX.
  */
-size_t oe_bitset_find_unset_range(
+size_t ert_bitset_find_unset_range(
     const void* bitset,
     size_t bitset_size,
     size_t count);

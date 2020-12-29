@@ -108,7 +108,7 @@ add_enclave_library(
   mman.c
   pthreadhooks.c
   threaded.c
-  ../../common/bitset.c
+  ../common/bitset.c
   ${MUSLSRC}/complex/cabs.c
   ${MUSLSRC}/complex/cabsf.c
   ${MUSLSRC}/complex/cabsl.c

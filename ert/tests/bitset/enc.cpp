@@ -1,10 +1,10 @@
-#include <openenclave/internal/bitset.h>
 #include <openenclave/internal/tests.h>
 #include <array>
 #include <climits>
 #include <cstdint>
 #include <limits>
 #include <string>
+#include "../ert/common/bitset.h"
 #include "test_t.h"
 
 using namespace std;
@@ -36,7 +36,7 @@ template <typename T>
 static void _test_find_unset_range(const T& bitset, size_t count, int expect)
 {
     OE_TEST(
-        oe_bitset_find_unset_range(
+        ert_bitset_find_unset_range(
             bitset.data(),
             bitset.size() * sizeof bitset.front() * CHAR_BIT,
             count) == static_cast<size_t>(expect));
@@ -53,34 +53,34 @@ void test_ecall()
     array<uint64_t, bit_count / 64> bitset;
 
     //
-    // Test oe_bitset_(re)set_range
+    // Test ert_bitset_(re)set_range
     //
     for (size_t pos = 0; pos < 3; ++pos)
         for (size_t count = 0; count < 3; ++count)
         {
             bitset.fill(0);
-            oe_bitset_set_range(bitset.data(), pos, count);
+            ert_bitset_set_range(bitset.data(), pos, count);
             expect(
                 bitset,
                 zeros(pos) + ones(count) + zeros(bit_count - pos - count));
 
             bitset.fill(numeric_limits<uint64_t>::max());
-            oe_bitset_set_range(bitset.data(), pos, count);
+            ert_bitset_set_range(bitset.data(), pos, count);
             expect(bitset, ones(bit_count));
 
             bitset.fill(0);
-            oe_bitset_reset_range(bitset.data(), pos, count);
+            ert_bitset_reset_range(bitset.data(), pos, count);
             expect(bitset, zeros(bit_count));
 
             bitset.fill(numeric_limits<uint64_t>::max());
-            oe_bitset_reset_range(bitset.data(), pos, count);
+            ert_bitset_reset_range(bitset.data(), pos, count);
             expect(
                 bitset,
                 ones(pos) + zeros(count) + ones(bit_count - pos - count));
         }
 
     //
-    // Test oe_bitset_find_unset_range
+    // Test ert_bitset_find_unset_range
     //
 
     bitset.fill(numeric_limits<uint64_t>::max());
