@@ -344,7 +344,7 @@ list(
   traceh_enclave.c)
 
 # EDG: add erthost
-include(../ert/host/erthost.cmake)
+include(../ert/host/erthost)
 
 # Combine the following common code along with the platform specific code and
 # host verification code to get the full oehost target provided by the OE SDK.

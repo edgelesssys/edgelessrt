@@ -54,7 +54,6 @@ static char* get_fullpath(const char* path)
 #include <openenclave/internal/trace.h>
 #include <openenclave/internal/utils.h>
 #include <string.h>
-#include "../ert/host/thread.h"
 #include "../memalign.h"
 #include "../signkey.h"
 #include "cpuid.h"
@@ -1130,6 +1129,7 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
     OE_CHECK(oe_stop_switchless_manager(enclave));
 
     /* EDG: cancel lingering threads (if any) */
+    oe_result_t ert_cancel_threads_created_inside_enclave(oe_enclave_t*);
     OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
 
     /* Call the enclave destructor */

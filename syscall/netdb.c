@@ -59,6 +59,12 @@ done:
     return ret;
 }
 
+#define OE_IN6_IS_ADDR_MULTICAST(a) (((uint8_t*)(a))[0] == 0xff)
+#define OE_IN6_IS_ADDR_LINKLOCAL(a) \
+    ((((uint8_t*)(a))[0]) == 0xfe && (((uint8_t*)(a))[1] & 0xc0) == 0x80)
+#define OE_IN6_IS_ADDR_MC_LINKLOCAL(a) \
+    (OE_IN6_IS_ADDR_MULTICAST(a) && ((((uint8_t*)(a))[1] & 0xf) == 0x2))
+
 // copied from musl/network/lookup.h
 struct address
 {

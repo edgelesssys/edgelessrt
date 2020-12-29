@@ -6,6 +6,7 @@ include(InstallRequiredSystemLibraries)
 set(CPACK_PACKAGE_NAME "edgelessrt")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Edgeless RT")
 set(CPACK_PACKAGE_CONTACT "contact@edgeless.systems​")
+set(CPACK_DEBIAN_ARCHIVE_TYPE gnutar)
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION ${OE_VERSION})
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
@@ -16,7 +17,6 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
 )
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "pkg-config")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-set(CPACK_DEBIAN_ARCHIVE_TYPE "gnutar")
 
 # CPack variables for the non-enclave host verification package.
 # We match the naming convention of the OE SDK package by setting the
