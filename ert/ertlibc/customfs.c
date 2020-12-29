@@ -1,24 +1,21 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-// clang-format off
-#include <openenclave/enclave.h>
-// clang-format on
-
-#include <openenclave/internal/syscall/device.h>
-#include <openenclave/internal/thread.h>
-#include <openenclave/internal/syscall/dirent.h>
-#include <openenclave/internal/syscall/sys/mount.h>
 #include <openenclave/corelibc/stdio.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
-#include <openenclave/internal/syscall/fcntl.h>
-#include <openenclave/internal/syscall/sys/ioctl.h>
-#include <openenclave/internal/syscall/raise.h>
-#include <openenclave/internal/syscall/iov.h>
-#include <openenclave/internal/raise.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/hexdump.h>
+#include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
+#include <openenclave/internal/syscall/device.h>
+#include <openenclave/internal/syscall/dirent.h>
+#include <openenclave/internal/syscall/fcntl.h>
+#include <openenclave/internal/syscall/iov.h>
+#include <openenclave/internal/syscall/raise.h>
+#include <openenclave/internal/syscall/sys/ioctl.h>
+#include <openenclave/internal/syscall/sys/mount.h>
+#include <openenclave/internal/thread.h>
 
 #define FIONCLEX 0x5450
 #define FIOCLEX 0x5451

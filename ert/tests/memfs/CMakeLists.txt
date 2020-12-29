@@ -11,6 +11,6 @@ enclave_link_libraries(erttest_memfs_lib PRIVATE oe_includes)
 set_property(TARGET erttest_memfs_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_enclave(TARGET erttest_memfs SOURCES ../empty.c)
-enclave_link_libraries(erttest_memfs erttest_memfs_lib ertlibc oecustomfs)
+enclave_link_libraries(erttest_memfs erttest_memfs_lib ertlibc)
 
 add_enclave_test(tests/ert/memfs erttest_host erttest_memfs)

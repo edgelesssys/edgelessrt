@@ -19,7 +19,7 @@ target_include_directories(ertmeshentry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertmeshentry
   PRIVATE oe_includes
-  INTERFACE ertlibc oehostepoll oehostfs oehostresolver oehostsock oecustomfs)
+  INTERFACE ertlibc oehostepoll oehostfs oehostresolver oehostsock)
 set_property(TARGET ertmeshentry PROPERTY POSITION_INDEPENDENT_CODE ON)
 install(
   TARGETS ertmeshentry

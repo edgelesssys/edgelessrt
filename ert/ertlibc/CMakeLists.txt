@@ -4,6 +4,7 @@ enclave_link_libraries(ertlibunwind PRIVATE libunwind)
 
 add_enclave_library(
   ertlibc
+  customfs.c
   dynlink.cpp
   locale.cpp
   misc.cpp

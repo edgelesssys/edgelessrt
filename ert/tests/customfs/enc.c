@@ -1,4 +1,4 @@
-#include <openenclave/enclave.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <string.h>
 #include <sys/mount.h>
@@ -59,7 +59,7 @@ static bool _fs_write(
     return true;
 }
 
-void test_customfs(void)
+void test_ecall(void)
 {
     extern int run_main(const char* path, bool readonly);
 

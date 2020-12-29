@@ -46,6 +46,49 @@ void ert_copy_strings_from_host_to_enclave(
     char*** enclave_array,
     size_t count);
 
+typedef struct _oe_customfs
+{
+    uint8_t reserved[4248];
+    uintptr_t (*open)(void* context, const char* path, bool must_exist);
+    void (*close)(void* context, uintptr_t handle);
+    uint64_t (*get_size)(void* context, uintptr_t handle);
+    void (*unlink)(void* context, const char* path);
+    void (*read)(
+        void* context,
+        uintptr_t handle,
+        void* buf,
+        uint64_t count,
+        uint64_t offset);
+    bool (*write)(
+        void* context,
+        uintptr_t handle,
+        const void* buf,
+        uint64_t count,
+        uint64_t offset);
+} oe_customfs_t;
+
+/**
+ * Load a custom file system.
+ *
+ * The enclave application must implement the functions defined in
+ * oe_customfs_t. Folders are not supported for now.
+ *
+ * @param devname An arbitrary but unique device name. The same name must be
+ * passed to mount().
+ * @param ops Pointer to a struct that contains the file operation function
+ * pointers. Its memory must not be modified or freed.
+ * @param context An arbitrary value that is passed to the file operation
+ * functions.
+ *
+ * @retval device_id The module was successfully loaded.
+ * @retval 0 Module failed to load.
+ *
+ */
+uint64_t oe_load_module_custom_file_system(
+    const char* devname,
+    oe_customfs_t* ops,
+    void* context);
+
 OE_EXTERNC_END
 
 #ifdef __cplusplus
