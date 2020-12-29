@@ -6,6 +6,7 @@ list(
   ${ERTHOSTDIR}/calls.cpp
   ${ERTHOSTDIR}/core.c
   ${ERTHOSTDIR}/enclave_thread_manager.cpp
+  ${ERTHOSTDIR}/syscall.cpp
   ${ERTHOSTDIR}/thread.cpp
   ${ERTHOSTDIR}/vdso.cpp)
 

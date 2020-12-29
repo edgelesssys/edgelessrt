@@ -1,8 +1,8 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+#include "eventfd.h"
 #include <openenclave/corelibc/stdlib.h>
-#include <openenclave/internal/syscall/eventfd.h>
 #include <openenclave/internal/syscall/fdtable.h>
 #include <openenclave/internal/syscall/raise.h>
 #include "syscall_t.h"
@@ -203,3 +203,15 @@ int oe_host_eventfd_write(oe_host_fd_t fd, oe_eventfd_t value)
 done:
     return ret;
 }
+
+oe_result_t _oe_syscall_eventfd_ocall(
+    oe_host_fd_t* _retval,
+    unsigned int initval,
+    int flags)
+{
+    OE_UNUSED(_retval);
+    OE_UNUSED(initval);
+    OE_UNUSED(flags);
+    return OE_UNSUPPORTED;
+}
+OE_WEAK_ALIAS(_oe_syscall_eventfd_ocall, oe_syscall_eventfd_ocall);

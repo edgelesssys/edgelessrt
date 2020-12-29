@@ -1,8 +1,8 @@
-#include <openenclave/internal/syscall/eventfd.h>
 #include <openenclave/internal/syscall/unistd.h>
 #include <openenclave/internal/tests.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
+#include "../ert/enclave/eventfd.h"
 #include "test_t.h"
 
 static void _test_eventfd()

@@ -11,7 +11,6 @@
 #include <openenclave/internal/safemath.h>
 #include <openenclave/internal/syscall/device.h>
 #include <openenclave/internal/syscall/dirent.h>
-#include <openenclave/internal/syscall/eventfd.h>
 #include <openenclave/internal/syscall/fcntl.h>
 #include <openenclave/internal/syscall/raise.h>
 #include <openenclave/internal/syscall/sys/ioctl.h>
@@ -869,6 +868,7 @@ static long _syscall(
         {
             const unsigned int initval = (unsigned int)arg1;
             const int flags = (int)arg2;
+            int oe_eventfd(unsigned int initval, int flags);
             ret = oe_eventfd(initval, flags);
             goto done;
         }

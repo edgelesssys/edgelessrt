@@ -1,4 +1,5 @@
 target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c)
+target_sources(oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/eventfd.c)
 target_sources(oehostsock
                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/internalsock.c)
 
@@ -20,6 +21,7 @@ endif ()
 add_subdirectory(tests/concurrent_stdout)
 add_subdirectory(tests/customentry)
 add_subdirectory(tests/deventry)
+add_subdirectory(tests/eventfd)
 add_subdirectory(tests/go)
 add_subdirectory(tests/go_seal)
 add_subdirectory(tests/host)
