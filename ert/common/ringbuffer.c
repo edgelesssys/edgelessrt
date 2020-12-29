@@ -1,23 +1,23 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
-#include <openenclave/internal/ringbuffer.h>
-#include "common.h"
+#include "ringbuffer.h"
+#include "../common/common.h"
 
-oe_ringbuffer_t* oe_ringbuffer_alloc(size_t size)
+ert_ringbuffer_t* ert_ringbuffer_alloc(size_t size)
 {
-    oe_ringbuffer_t* const result = oe_calloc(1, sizeof *result + size);
+    ert_ringbuffer_t* const result = oe_calloc(1, sizeof *result + size);
     if (result)
         result->_capacity = size;
     return result;
 }
 
-void oe_ringbuffer_free(oe_ringbuffer_t* rb)
+void ert_ringbuffer_free(ert_ringbuffer_t* rb)
 {
     oe_free(rb);
 }
 
-static size_t _read(oe_ringbuffer_t* rb, void* buffer, size_t size)
+static size_t _read(ert_ringbuffer_t* rb, void* buffer, size_t size)
 {
     if (!size || (rb->_front == rb->_back && !rb->_full))
         return 0;
@@ -35,7 +35,7 @@ static size_t _read(oe_ringbuffer_t* rb, void* buffer, size_t size)
     return n;
 }
 
-size_t oe_ringbuffer_read(oe_ringbuffer_t* rb, void* buffer, size_t size)
+size_t ert_ringbuffer_read(ert_ringbuffer_t* rb, void* buffer, size_t size)
 {
     oe_assert(rb);
     oe_assert(buffer || !size);
@@ -44,7 +44,7 @@ size_t oe_ringbuffer_read(oe_ringbuffer_t* rb, void* buffer, size_t size)
     return n1 + n2;
 }
 
-static size_t _write(oe_ringbuffer_t* rb, const void* buffer, size_t size)
+static size_t _write(ert_ringbuffer_t* rb, const void* buffer, size_t size)
 {
     if (!size || rb->_full)
         return 0;
@@ -62,7 +62,10 @@ static size_t _write(oe_ringbuffer_t* rb, const void* buffer, size_t size)
     return n;
 }
 
-size_t oe_ringbuffer_write(oe_ringbuffer_t* rb, const void* buffer, size_t size)
+size_t ert_ringbuffer_write(
+    ert_ringbuffer_t* rb,
+    const void* buffer,
+    size_t size)
 {
     oe_assert(rb);
     oe_assert(buffer || !size);
@@ -71,7 +74,7 @@ size_t oe_ringbuffer_write(oe_ringbuffer_t* rb, const void* buffer, size_t size)
     return n1 + n2;
 }
 
-bool oe_ringbuffer_empty(const oe_ringbuffer_t* rb)
+bool ert_ringbuffer_empty(const ert_ringbuffer_t* rb)
 {
     oe_assert(rb);
     return rb->_front == rb->_back && !rb->_full;

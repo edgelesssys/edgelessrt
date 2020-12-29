@@ -1,3 +1,7 @@
+target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c)
+target_sources(oehostsock
+               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/internalsock.c)
+
 add_subdirectory(ertlibc)
 add_subdirectory(libc)
 add_subdirectory(tools/erthost)
@@ -27,6 +31,7 @@ add_subdirectory(tests/meshentry_nongo_app)
 add_subdirectory(tests/meshentry_premainmock)
 add_subdirectory(tests/misc_syscalls)
 add_subdirectory(tests/pthread_create)
+add_subdirectory(tests/ringbuffer)
 add_subdirectory(tests/sem)
 add_subdirectory(tests/signal)
 add_subdirectory(tests/stdcxx)

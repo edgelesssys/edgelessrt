@@ -20,15 +20,11 @@
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/safecrt.h>
-#include "sock.h"
+#include "../ert/enclave/sock.h"
 #include "syscall_t.h"
 
 #define DEVICE_MAGIC 0x536f636b
 #define SOCK_MAGIC 0xe57a696d
-
-#ifndef SOCK_NONBLOCK
-#define SOCK_NONBLOCK 04000
-#endif
 
 static oe_socket_ops_t _get_socket_ops(void);
 
@@ -39,7 +35,7 @@ typedef struct _device
     oe_host_fd_t host_fd;
 } device_t;
 
-sock_t* oe_hostsock_new_sock(void)
+static sock_t* _new_sock(void)
 {
     sock_t* sock = NULL;
 
@@ -52,6 +48,11 @@ sock_t* oe_hostsock_new_sock(void)
     sock->host_fd = -1;
 
     return sock;
+}
+
+sock_t* oe_hostsock_new_sock(void)
+{
+    return _new_sock();
 }
 
 static device_t* _cast_device(const oe_device_t* device)
@@ -95,7 +96,7 @@ static oe_fd_t* _hostsock_device_socket(
     if (!sock)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (!(new_sock = oe_hostsock_new_sock()))
+    if (!(new_sock = _new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     // TODO Do not create host socket here, but in bind or connect.
@@ -147,10 +148,10 @@ static ssize_t _hostsock_device_socketpair(
 
     /* Create the new socket devices. */
     {
-        if (!(pair[0] = oe_hostsock_new_sock()))
+        if (!(pair[0] = _new_sock()))
             OE_RAISE_ERRNO(OE_ENOMEM);
 
-        if (!(pair[1] = oe_hostsock_new_sock()))
+        if (!(pair[1] = _new_sock()))
             OE_RAISE_ERRNO(OE_ENOMEM);
     }
 
@@ -265,7 +266,7 @@ static oe_fd_t* _hostsock_accept(
     }
 
     /* Create the new socket. */
-    if (!(new_sock = oe_hostsock_new_sock()))
+    if (!(new_sock = _new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     /* Call the host. */
@@ -849,7 +850,7 @@ static int _hostsock_dup(oe_fd_t* sock_, oe_fd_t** new_sock_out)
     if (!sock || !new_sock_out)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (!(new_sock = oe_hostsock_new_sock()))
+    if (!(new_sock = _new_sock()))
         OE_RAISE_ERRNO(OE_ENOMEM);
 
     /* Call the host. */

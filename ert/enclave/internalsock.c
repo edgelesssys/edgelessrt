@@ -17,6 +17,7 @@ eventfd if any poller requests its host fd.
 #include <openenclave/internal/syscall/fcntl.h>
 #include <openenclave/internal/syscall/raise.h>
 #include <openenclave/internal/syscall/unistd.h>
+#include "../common/ringbuffer.h"
 #include "sock.h"
 #include "syscall_t.h" // TODO remove
 
@@ -157,7 +158,7 @@ static void _update_events(internalsock_buffer_t* buffer, bool force_notify)
 {
     oe_assert(buffer);
     const bool needs_notification =
-        force_notify || !oe_ringbuffer_empty(buffer->buf);
+        force_notify || !ert_ringbuffer_empty(buffer->buf);
 
     for (size_t i = 0; i < OE_COUNTOF(buffer->socks); ++i)
     {
@@ -201,15 +202,15 @@ static internalsock_connection_t* _connection_alloc(sock_t* sock)
     if (!res)
         return NULL;
 
-    if (!(res->buf[0].buf = oe_ringbuffer_alloc(buffer_size)))
+    if (!(res->buf[0].buf = ert_ringbuffer_alloc(buffer_size)))
     {
         oe_free(res);
         return NULL;
     }
 
-    if (!(res->buf[1].buf = oe_ringbuffer_alloc(buffer_size)))
+    if (!(res->buf[1].buf = ert_ringbuffer_alloc(buffer_size)))
     {
-        oe_ringbuffer_free(res->buf[0].buf);
+        ert_ringbuffer_free(res->buf[0].buf);
         oe_free(res);
         return NULL;
     }
@@ -223,8 +224,8 @@ static void _connection_free(internalsock_connection_t* connection)
 {
     if (!connection)
         return;
-    oe_ringbuffer_free(connection->buf[0].buf);
-    oe_ringbuffer_free(connection->buf[1].buf);
+    ert_ringbuffer_free(connection->buf[0].buf);
+    ert_ringbuffer_free(connection->buf[1].buf);
     oe_free(connection);
 }
 
@@ -413,7 +414,7 @@ oe_result_t oe_internalsock_connect(
 
     // add connection to listener's backlog
     const size_t bytes_written =
-        oe_ringbuffer_write(bound->backlog.buf, &con, sizeof con);
+        ert_ringbuffer_write(bound->backlog.buf, &con, sizeof con);
     if (!bytes_written)
         OE_RAISE_ERRNO(OE_ECONNREFUSED); // backlog full
     oe_assert(bytes_written == sizeof con);
@@ -546,8 +547,8 @@ static void _free_boundsock(internalsock_boundsock_t* bound)
     oe_mutex_lock(&bound->backlog.mutex);
 
     size_t bytes_read;
-    while (
-        (bytes_read = oe_ringbuffer_read(bound->backlog.buf, &con, sizeof con)))
+    while ((
+        bytes_read = ert_ringbuffer_read(bound->backlog.buf, &con, sizeof con)))
     {
         oe_assert(bytes_read == sizeof con);
         oe_assert(con);
@@ -563,7 +564,7 @@ static void _free_boundsock(internalsock_boundsock_t* bound)
         _connection_free(con);
     }
 
-    oe_ringbuffer_free(bound->backlog.buf);
+    ert_ringbuffer_free(bound->backlog.buf);
 
     oe_mutex_unlock(&bound->backlog.mutex);
 
@@ -630,7 +631,7 @@ static oe_fd_t* _sock_accept(
     // wait for a client
     size_t bytes_read;
     while (!(bytes_read =
-                 oe_ringbuffer_read(bound->backlog.buf, &con, sizeof con)) &&
+                 ert_ringbuffer_read(bound->backlog.buf, &con, sizeof con)) &&
            block)
         oe_cond_wait(&bound->backlog.cond, &bound->backlog.mutex);
 
@@ -687,7 +688,7 @@ static int _sock_listen(oe_fd_t* sock_, int backlog)
     if (backlog <= 0)
         backlog = 1;
 
-    oe_ringbuffer_t* const rb = oe_ringbuffer_alloc(
+    ert_ringbuffer_t* const rb = ert_ringbuffer_alloc(
         (size_t)backlog * sizeof(internalsock_connection_t*));
     if (!rb)
         OE_RAISE_ERRNO(OE_ENOMEM);
@@ -833,7 +834,7 @@ static ssize_t _sock_recvfrom(
     oe_mutex_lock(&con.self->mutex);
 
     size_t bytes_read;
-    while (!(bytes_read = oe_ringbuffer_read(con.self->buf, buf, count)) &&
+    while (!(bytes_read = ert_ringbuffer_read(con.self->buf, buf, count)) &&
            block && _get_refcount(sock->internal.connection, con.other))
         oe_cond_wait(&con.self->cond, &con.self->mutex);
 
@@ -888,7 +889,7 @@ static ssize_t _sock_sendto(
     {
         if (!_get_refcount(sock->internal.connection, con.other))
             OE_RAISE_ERRNO(OE_EPIPE);
-        written += oe_ringbuffer_write(
+        written += ert_ringbuffer_write(
             con.other->buf, (uint8_t*)buf + written, count - written);
         oe_cond_broadcast(&con.other->cond);
         _update_events(con.other, false);

@@ -20,6 +20,6 @@ enclave {
 
     untrusted {
         /* define OCALLs here. */
-
+    
     };
 };

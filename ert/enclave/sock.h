@@ -4,17 +4,20 @@
 #pragma once
 
 #include <openenclave/bits/result.h>
-#include <openenclave/internal/ringbuffer.h>
 #include <openenclave/internal/syscall/fd.h>
 #include <openenclave/internal/syscall/sys/socket.h>
 #include <openenclave/internal/syscall/types.h>
 #include <openenclave/internal/thread.h>
 #include <stdint.h>
 
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK 04000
+#endif
+
 typedef struct _internalsock_buffer
 {
     unsigned int refcount;
-    oe_ringbuffer_t* buf;
+    struct _ert_ringbuffer* buf;
     oe_mutex_t mutex;
     oe_cond_t cond;
 
