@@ -1,3 +1,6 @@
 [submodule "3rdparty/go"]
 	path = 3rdparty/go
 	url = https://github.com/edgelesssys/ertgo
+[submodule "3rdparty/openenclave/openenclave"]
+	path = 3rdparty/openenclave/openenclave
+	url = https://github.com/openenclave/openenclave
