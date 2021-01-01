@@ -12,13 +12,13 @@ eventfd if any poller requests its host fd.
 #include <openenclave/corelibc/assert.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
+#include <openenclave/internal/ert/sock.h>
 #include <openenclave/internal/syscall/arpa/inet.h>
 #include <openenclave/internal/syscall/fcntl.h>
 #include <openenclave/internal/syscall/raise.h>
 #include <openenclave/internal/syscall/unistd.h>
 #include "../common/ringbuffer.h"
 #include "eventfd.h"
-#include "sock.h"
 #include "syscall_t.h" // TODO remove
 
 #define STUB_(x, t, r)             \

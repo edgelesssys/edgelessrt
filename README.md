@@ -34,7 +34,7 @@ Edgeless RT primarily targets Ubuntu 18.04. Other Linuxes may work as well. Wind
 
 1. Determine the SGX support of your system
    ```bash
-   cc -ooesgx tools/oesgx/oesgx.c && ./oesgx
+   cc -ooesgx src/tools/oesgx/oesgx.c && ./oesgx
    ```
    You will get one of the following three types of output:
 

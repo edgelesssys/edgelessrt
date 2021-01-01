@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../host/sgx/cpuid.h"
+#include "cpuid.h"
 
 #define EXTENDED_FEATURE_FLAGS_FUNCTION 0x7
 #define SGX_CAPABILITY_ENUMERATION 0x12
