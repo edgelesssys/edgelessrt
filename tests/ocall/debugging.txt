@@ -1,3 +1,0 @@
-
-
-    add-symbol-file enc/ocallenc.signed ENCLAVE-BASE-ADDRESS + B80 (from readelf -l from .text section)
