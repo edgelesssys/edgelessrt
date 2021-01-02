@@ -13,12 +13,11 @@ if (ENABLE_REFMAN)
 
   set(DOXYGEN_PROJECT_NAME "Edgeless RT")
   set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "MainPage.md")
-  set(DOXYGEN_OUTPUT_DIRECTORY "${OE_DOCDIR}/openenclave")
   set(DOXYGEN_RECURSIVE NO) # CMake enables this by default.
   # While Doxygen would automatically strip the working directory, we
   # have to specify it because we have another directory to strip.
   set(DOXYGEN_STRIP_FROM_PATH
-      "${PROJECT_SOURCE_DIR}/include/openenclave/;${PROJECT_SOURCE_DIR}/docs/refman"
+      "${PROJECT_SOURCE_DIR}/3rdparty/openenclave/openenclave/include/openenclave/;${PROJECT_SOURCE_DIR}/docs/refman;${PROJECT_SOURCE_DIR}/src/ert/include/openenclave"
   )
 
   # Allow @experimental to be used in headers to mark an API as experimental and add it to a list of
@@ -41,7 +40,7 @@ if (ENABLE_REFMAN)
   set(DOXYGEN_GENERATE_LATEX NO)
   set(DOXYGEN_MACRO_EXPANSION YES)
   set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
-  set(DOXYGEN_PREDEFINED "=OE_ALIGNED(x)=;OE_EXTERNC_BEGIN=")
+  set(DOXYGEN_PREDEFINED "=OE_ALIGNED(x)=;OE_EXTERNC_BEGIN=;__cplusplus")
 
   doxygen_add_docs(
     doxygen
@@ -59,7 +58,11 @@ if (ENABLE_REFMAN)
     bits/types.h
     bits/exception.h
     bits/module.h
-    ../../docs/refman/MainPage.md
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/include/openenclave/
-    COMMENT "Generating refman HTML documentation")
+    ../../../../../docs/refman/MainPage.md
+    ../../../../../src/ert/include/openenclave/ert.h
+    ../../../../../src/ert/include/openenclave/ert_args.h
+    WORKING_DIRECTORY
+    ${PROJECT_SOURCE_DIR}/3rdparty/openenclave/openenclave/include/openenclave/
+    COMMENT
+    "Generating refman HTML documentation")
 endif ()

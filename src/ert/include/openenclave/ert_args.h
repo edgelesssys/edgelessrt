@@ -1,6 +1,9 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+/**
+ * @file ert_args.h
+ */
 #pragma once
 
 #include <openenclave/bits/defs.h>

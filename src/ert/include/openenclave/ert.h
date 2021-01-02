@@ -1,6 +1,9 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+/**
+ * @file ert.h
+ */
 #pragma once
 
 #include <openenclave/enclave.h>
