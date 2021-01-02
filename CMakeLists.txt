@@ -58,7 +58,8 @@ ExternalProject_Add(
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/3rdparty/openenclave/openenclave-install/
   DESTINATION .
-  USE_SOURCE_PERMISSIONS)
+  USE_SOURCE_PERMISSIONS
+  PATTERN samples EXCLUDE)
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/ertcore-install/
   DESTINATION .
@@ -69,6 +70,10 @@ configure_file(src/openenclaverc.in openenclaverc @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/openenclaverc
         DESTINATION ${CMAKE_INSTALL_DATADIR}/openenclave)
 
+install(
+  DIRECTORY samples
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/openenclave
+  PATTERN build EXCLUDE)
 install(
   DIRECTORY 3rdparty/go/
   DESTINATION go

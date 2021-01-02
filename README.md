@@ -1,5 +1,5 @@
 # Edgeless RT
-![ERT logo](ert_logo.svg)
+![ERT logo](docs/ert_logo.svg)
 
 [![Unit Tests][unit-tests-badge]][unit-tests]
 [![GitHub license][license-badge]](LICENSE)
@@ -112,16 +112,16 @@ To use the SDK you need to source the `openenclaverc` file to setup environment 
 . /opt/edgelessrt/share/openenclave/openenclaverc
 ```
 
-Now you are ready to build applications with Edgeless RT! To start, check out the [samples](samples_edgeless/README.md) in the `samples_edgeless` folder.
+Now you are ready to build applications with Edgeless RT! To start, check out the [samples](samples).
 
 Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
 
 ## Debug
-![debugging with vscode](samples_edgeless/go_debugging_vscode.gif)
+![debugging with vscode](docs/go_debugging_vscode.gif)
 
 You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT. `oegdb` is automatically installed with Edgeless RT. It also supports Go enclaves.
 
-`oegdb` works great with Visual Studio Code (vscode). For example, use the following configuration to debug the in-enclave Go code from our [HashiCorp Vault sample](samples_edgeless/vault/README.md) in vscode:
+`oegdb` works great with Visual Studio Code (vscode). For example, use the following configuration to debug the in-enclave Go code from our [HashiCorp Vault sample](samples/vault) in vscode:
 
 ```json
 {
@@ -135,7 +135,7 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
       "program": "/opt/edgelessrt/bin/erthost",
       "args": ["enclave.signed","server","-dev"],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}/samples_edgeless/vault/build/",
+      "cwd": "${workspaceFolder}/samples/vault/build/",
       "environment": [],
       "externalConsole": false,
       "MIMode": "gdb",
