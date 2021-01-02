@@ -2,6 +2,8 @@
 # Copyright (c) Edgeless Systems GmbH.
 # Licensed under the MIT License.
 
+set(LIBCDIR ${CMAKE_SOURCE_DIR}/libc)
+
 # Build the C library, using local sources and sources from musl.
 set(MUSLSRC ${PROJECT_SOURCE_DIR}/3rdparty/musl/musl/src)
 
@@ -9,8 +11,8 @@ if (OE_SGX)
   add_enclave_library(
     oelibasm
     OBJECT
-    ../../libc/sgx/abort.S
-    ../../libc/sgx/exp2l.S
+    ${LIBCDIR}/sgx/abort.S
+    ${LIBCDIR}/sgx/exp2l.S
     ${MUSLSRC}/fenv/x86_64/fenv.s
     ${MUSLSRC}/math/x86_64/acosl.s
     ${MUSLSRC}/math/x86_64/asinl.s
@@ -51,7 +53,7 @@ endif ()
 set(PLATFORM_SRC "")
 
 if (OE_SGX)
-  list(APPEND PLATFORM_SRC ../../libc/sgx/arc4random.c)
+  list(APPEND PLATFORM_SRC ${LIBCDIR}/sgx/arc4random.c)
 else ()
   list(
     APPEND
@@ -68,39 +70,39 @@ endif ()
 add_enclave_library(
   oelibc
   STATIC
-  ../../libc/atexit.c
-  ../../libc/backtrace.c
-  ../../libc/dladdr.c
-  ../../libc/errno.c
-  ../../libc/epoll.c
-  ../../libc/exit.c
-  ../../libc/freeaddrinfo.c
-  ../../libc/getaddrinfo.c
-  ../../libc/getnameinfo.c
-  ../../libc/kill.c
-  ../../libc/libunwind_stubs.c
-  ../../libc/link.c
-  ../../libc/locale.c
-  ../../libc/malloc.c
+  ${LIBCDIR}/atexit.c
+  ${LIBCDIR}/backtrace.c
+  ${LIBCDIR}/dladdr.c
+  ${LIBCDIR}/errno.c
+  ${LIBCDIR}/epoll.c
+  ${LIBCDIR}/exit.c
+  ${LIBCDIR}/freeaddrinfo.c
+  ${LIBCDIR}/getaddrinfo.c
+  ${LIBCDIR}/getnameinfo.c
+  ${LIBCDIR}/kill.c
+  ${LIBCDIR}/libunwind_stubs.c
+  ${LIBCDIR}/link.c
+  ${LIBCDIR}/locale.c
+  ${LIBCDIR}/malloc.c
   pthread.c
-  ../../libc/sched_yield.c
-  #../../libc/sigaction.c
-  ../../libc/signal.c
-  ../../libc/stdlib.c
-  ../../libc/strerror.c
+  ${LIBCDIR}/sched_yield.c
+  #${LIBCDIR}/sigaction.c
+  ${LIBCDIR}/signal.c
+  ${LIBCDIR}/stdlib.c
+  ${LIBCDIR}/strerror.c
   syscalls.c
-  #../../libc/sysconf.c
-  ../../libc/regcomp.c
-  ../../libc/regexec.c
-  ../../libc/tre-mem.c
-  ../../libc/__printf_chk.c
-  ../../libc/__fprintf_chk.c
-  ../../libc/__sprintf_chk.c
-  ../../libc/__snprintf_chk.c
-  ../../libc/__vprintf_chk.c
-  ../../libc/__vfprintf_chk.c
-  ../../libc/__vsprintf_chk.c
-  ../../libc/__vsnprintf_chk.c
+  #${LIBCDIR}/sysconf.c
+  ${LIBCDIR}/regcomp.c
+  ${LIBCDIR}/regexec.c
+  ${LIBCDIR}/tre-mem.c
+  ${LIBCDIR}/__printf_chk.c
+  ${LIBCDIR}/__fprintf_chk.c
+  ${LIBCDIR}/__sprintf_chk.c
+  ${LIBCDIR}/__snprintf_chk.c
+  ${LIBCDIR}/__vprintf_chk.c
+  ${LIBCDIR}/__vfprintf_chk.c
+  ${LIBCDIR}/__vsprintf_chk.c
+  ${LIBCDIR}/__vsnprintf_chk.c
   ${MUSLSRC}/internal/syscall_ret.c
   chk.c
   ertfutex.c

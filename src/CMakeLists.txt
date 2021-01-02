@@ -1,53 +1,50 @@
-target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c
-                              ${CMAKE_CURRENT_SOURCE_DIR}/enclave/args.c)
-target_sources(oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/eventfd.c)
-target_sources(oehostsock
-               PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/internalsock.c)
+cmake_minimum_required(VERSION 3.11)
+project(ertcore)
+
+find_package(OpenEnclave REQUIRED PATHS
+             ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options(-Wall -Wextra -Werror -Wno-missing-field-initializers)
+if (CMAKE_C_COMPILER_ID MATCHES GNU)
+  add_compile_options(-fno-builtin)
+endif ()
+
+include(GNUInstallDirs)
+
+add_library(oe_includes INTERFACE)
+target_include_directories(
+  oe_includes INTERFACE ert/include ${OESRCDIR}/include
+                        ${OEBUILDDIR}/openenclave/output/include)
 
 add_subdirectory(ertlibc)
-add_subdirectory(libc)
 add_subdirectory(tools/erthost)
 add_subdirectory(tools/ertgo)
 
-install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
-install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert_args.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
-install(FILES ${PROJECT_SOURCE_DIR}/include/openenclave/ert_stubs.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/)
-
-# Define the `OE_SGX` macro used by the oeedger8r on the SGX build.
-if (OE_SGX)
-  set(DEFINE_OE_SGX "-DOE_SGX")
+if (BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
 endif ()
 
-add_subdirectory(tests/args)
-add_subdirectory(tests/bitset)
-add_subdirectory(tests/concurrent_stdout)
-add_subdirectory(tests/customentry)
-add_subdirectory(tests/customfs)
-add_subdirectory(tests/deventry)
-add_subdirectory(tests/eventfd)
-add_subdirectory(tests/go)
-add_subdirectory(tests/go_ra)
-add_subdirectory(tests/go_seal)
-add_subdirectory(tests/host)
-add_subdirectory(tests/libc)
-add_subdirectory(tests/lingering_threads)
-add_subdirectory(tests/mman)
-add_subdirectory(tests/memfs)
-add_subdirectory(tests/meshentry_go_app)
-add_subdirectory(tests/meshentry_nongo_app)
-add_subdirectory(tests/meshentry_premainmock)
-add_subdirectory(tests/misc_syscalls)
-add_subdirectory(tests/pthread_create)
-add_subdirectory(tests/ringbuffer)
-add_subdirectory(tests/sem)
-add_subdirectory(tests/signal)
-add_subdirectory(tests/stdcxx)
-add_subdirectory(tests/template)
-add_subdirectory(tests/threadcpp)
-add_subdirectory(tests/threadcxx)
-add_subdirectory(tests/thread_join_on_exit)
-add_subdirectory(tests/trace_ocalls)
-add_subdirectory(tests/util)
+install(
+  FILES ${PROJECT_SOURCE_DIR}/ert/include/openenclave/ert.h
+        ${PROJECT_SOURCE_DIR}/ert/include/openenclave/ert_args.h
+        ${PROJECT_SOURCE_DIR}/ert/include/openenclave/ert_stubs.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave)
+install(FILES ${PROJECT_SOURCE_DIR}/ert/include/openenclave/edl/ertlibc.edl
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/edl)
+
+# install ert-targets.cmake and patch openenclave-config.cmake such that it includes ert-targets.cmake
+install(
+  EXPORT openenclave-targets
+  NAMESPACE openenclave::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/cmake
+  FILE ert-targets.cmake)
+file(
+  COPY ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake/openenclave-config.cmake
+  DESTINATION .)
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
+     include (\${CMAKE_CURRENT_LIST_DIR}/ert-targets.cmake))
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/cmake)

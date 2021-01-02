@@ -4,7 +4,7 @@
 #include <openenclave/corelibc/pthread.h>
 #include <openenclave/internal/globals.h>
 #include <openenclave/internal/sgx/td.h>
-#include "../ertlibc/ertthread.h"
+#include "../../ertlibc/ertthread.h"
 #include "pthread_impl.h"
 
 #define PTHREAD_MUTEX_ADAPTIVE_NP 3

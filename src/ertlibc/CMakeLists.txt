@@ -1,8 +1,4 @@
-add_enclave_library(ertlibunwind
-                    ${CMAKE_SOURCE_DIR}/3rdparty/libcxx/__dso_handle.cpp)
-enclave_link_libraries(ertlibunwind PRIVATE libunwind)
-
-add_enclave_library(
+add_library(
   ertlibc
   customfs.c
   dynlink.cpp
@@ -24,34 +20,24 @@ add_enclave_library(
   memfs/filesystem.cpp
   memfs/memfs.cpp)
 
-set_enclave_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
-enclave_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-enclave_compile_definitions(ertlibc PRIVATE OE_BUILD_ENCLAVE)
-enclave_link_libraries(
+set_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(ertlibc PRIVATE OE_BUILD_ENCLAVE)
+target_link_libraries(
   ertlibc
-  INTERFACE
-  -static
-  -Wl,--eh-frame-hdr
-  -Wl,-u,ert_syscall
-  stdc++
-  ertlibunwind
-  PRIVATE
-  oe_includes)
+  INTERFACE -static -Wl,--eh-frame-hdr -Wl,-u,ert_syscall stdc++
+            openenclave::ertlibunwind
+  PRIVATE $<BUILD_INTERFACE:oe_includes>)
 
-set(EDL_FILE ${CMAKE_SOURCE_DIR}/include/openenclave/edl/ertlibc.edl)
+set(EDL_FILE ${CMAKE_SOURCE_DIR}/ert/include/openenclave/edl/ertlibc.edl)
 add_custom_command(
   OUTPUT ertlibc_t.h
-  DEPENDS ${EDL_FILE} edger8r
-  COMMAND edger8r --header-only --trusted ${EDL_FILE})
+  DEPENDS ${EDL_FILE}
+  COMMAND openenclave::oeedger8r --header-only --trusted ${EDL_FILE})
 add_custom_target(ertlibc_trusted_edl DEPENDS ertlibc_t.h)
-add_enclave_dependencies(ertlibc ertlibc_trusted_edl)
+add_dependencies(ertlibc ertlibc_trusted_edl)
 
-install_enclaves(
-  TARGETS
-  ertlibc
-  ertlibunwind
-  EXPORT
-  openenclave-targets
-  ARCHIVE
-  DESTINATION
-  ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
+install(
+  TARGETS ertlibc
+  EXPORT openenclave-targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)

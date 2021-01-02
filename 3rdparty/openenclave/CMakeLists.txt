@@ -1,0 +1,38 @@
+set(OE_CMAKE_ARGS
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/openenclave-install
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DBUILD_TESTS=${BUILD_TESTS}
+    -DERTSRC=${CMAKE_SOURCE_DIR}/src/ert)
+
+if (OEDEV)
+  ExternalProject_Add(
+    openenclave
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openenclave
+    BINARY_DIR openenclave
+    CMAKE_ARGS ${OE_CMAKE_ARGS}
+    BUILD_ALWAYS ON
+    USES_TERMINAL_BUILD ON)
+  set(OESRCDIR
+      ${CMAKE_CURRENT_SOURCE_DIR}/openenclave
+      PARENT_SCOPE)
+else ()
+  ExternalProject_Add(
+    openenclave
+    SOURCE_DIR openenclave-src
+    BINARY_DIR openenclave
+    DOWNLOAD_COMMAND cp -r ${CMAKE_CURRENT_SOURCE_DIR}/openenclave/.
+                     ${CMAKE_CURRENT_BINARY_DIR}/openenclave-src
+    PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/ert.patch
+    CMAKE_ARGS ${OE_CMAKE_ARGS}
+    BUILD_ALWAYS ON
+    USES_TERMINAL_BUILD ON)
+  set(OESRCDIR
+      ${CMAKE_CURRENT_BINARY_DIR}/openenclave-src
+      PARENT_SCOPE)
+endif ()
+
+set(OEBUILDDIR
+    ${CMAKE_CURRENT_BINARY_DIR}
+    PARENT_SCOPE)

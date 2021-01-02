@@ -16,8 +16,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <system_error>
-#include "../../common/final_action.h"
-#include "../../host/enclave_thread_manager.h"
+#include "../../ert/common/final_action.h"
+#include "../../ert/host/enclave_thread_manager.h"
 #include "emain_u.h"
 
 using namespace std;

@@ -4,7 +4,7 @@
 #pragma once
 
 #include <errno.h>
-#include "bits/defs.h"
+#include <openenclave/bits/defs.h>
 
 OE_EXTERNC void ert_stub_trace(const char* msg);
 

@@ -1,9 +1,9 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+#include "../../ertlibc/ertthread.h"
 #include "../3rdparty/musl/musl/src/internal/libc.h"
 #include "../3rdparty/musl/musl/src/internal/stdio_impl.h"
-#include "../ertlibc/ertthread.h"
 
 // copied from musl/thread/pthread_create.c
 static void init_file_lock(FILE* f)

@@ -1,18 +1,16 @@
-set(ERTHOSTDIR ${CMAKE_SOURCE_DIR}/ert/host)
-
 list(
   APPEND
   PLATFORM_SDK_ONLY_SRC
-  ${ERTHOSTDIR}/calls.cpp
-  ${ERTHOSTDIR}/core.c
-  ${ERTHOSTDIR}/debug.cpp
-  ${ERTHOSTDIR}/enclave_thread_manager.cpp
-  ${ERTHOSTDIR}/ocall_tracer.cpp
-  ${ERTHOSTDIR}/syscall.cpp
-  ${ERTHOSTDIR}/thread.cpp
-  ${ERTHOSTDIR}/vdso.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/calls.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/core.c
+  ${CMAKE_CURRENT_LIST_DIR}/debug.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/enclave_thread_manager.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/ocall_tracer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/syscall.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/thread.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/vdso.cpp)
 
-set(ERT_EDL_FILE ${CMAKE_SOURCE_DIR}/include/openenclave/edl/ertlibc.edl)
+set(ERT_EDL_FILE ${ERTSRC}/include/openenclave/edl/ertlibc.edl)
 add_custom_command(
   OUTPUT ertlibc_t.h
   DEPENDS ${ERT_EDL_FILE} edger8r

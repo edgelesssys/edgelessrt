@@ -10,7 +10,7 @@
 #include <openenclave/internal/trace.h>
 #include <stdlib.h>
 #include <time.h>
-#include "../ertlibc/syscall.h"
+#include "../../ertlibc/syscall.h"
 #include "ertfutex.h"
 #include "mman.h"
 
