@@ -1,10 +1,7 @@
-set(DIR ${CMAKE_SOURCE_DIR}/tests/threadcxx)
+set(DIR ${OESRCDIR}/tests/threadcxx)
 
 add_subdirectory(host)
+add_subdirectory(enc)
 
-if (BUILD_ENCLAVES)
-  add_subdirectory(enc)
-endif ()
-
-add_enclave_test(tests/ert/threadcxx erttest_threadcxx_host
-                 erttest_threadcxx_enc)
+add_test(NAME tests/ert/threadcxx COMMAND erttest_threadcxx_host
+                                          $<TARGET_FILE:erttest_threadcxx_enc>)

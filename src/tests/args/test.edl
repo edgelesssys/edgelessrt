@@ -6,6 +6,7 @@ enclave {
 #else
     from "openenclave/edl/optee/platform.edl" import *;
 #endif
+    from "openenclave/edl/ertlibc.edl" import *;
 
     trusted {
         public void test_ecall();

@@ -1,8 +1,8 @@
 add_custom_command(
   OUTPUT test_t.c
-  DEPENDS ../test.edl edger8r
-  COMMAND edger8r --trusted ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl
-          --search-path ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX})
+  DEPENDS ../test.edl
+  COMMAND openenclave::oeedger8r --trusted
+          ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl ${DEFINE_OE_SGX})
 
 add_enclave_library(erttest_signal_lib OBJECT enc.cpp test_t.c)
 enclave_include_directories(erttest_signal_lib PRIVATE
@@ -13,5 +13,6 @@ set_property(TARGET erttest_signal_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_enclave(TARGET erttest_signal SOURCES ../empty.c)
 enclave_link_libraries(erttest_signal erttest_signal_lib ertlibc)
 
-add_enclave_test(tests/ert/signal erttest_host erttest_signal --skip-simulate)
+add_test(NAME tests/ert/signal COMMAND erttest_host erttest_signal
+                                       --skip-simulate)
 set_enclave_tests_properties(tests/ert/signal PROPERTIES SKIP_RETURN_CODE 2)

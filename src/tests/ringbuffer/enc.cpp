@@ -1,7 +1,7 @@
 #include <openenclave/internal/tests.h>
 #include <array>
 #include <cstring>
-#include "../ert/common/ringbuffer.h"
+#include "../../ert/common/ringbuffer.h"
 #include "test_t.h"
 
 using namespace std;

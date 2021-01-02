@@ -3,8 +3,8 @@
 #include <cstdio>
 #include <limits>
 #include <string>
-#include "../ert/ertlibc/memfs/file.h"
-#include "../ert/ertlibc/memfs/filesystem.h"
+#include "../../ertlibc/memfs/file.h"
+#include "../../ertlibc/memfs/filesystem.h"
 #include "../tests_ex.h"
 #include "test_t.h"
 

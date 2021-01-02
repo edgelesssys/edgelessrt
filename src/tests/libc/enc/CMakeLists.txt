@@ -8,7 +8,7 @@ include(../tests.cmake)
 foreach (test_file ${LIBC_TESTS})
   string(MAKE_C_IDENTIFIER ${test_file} test_name)
   list(APPEND test_dependencies ${CMAKE_CURRENT_BINARY_DIR}/${test_file})
-  configure_file(${DIR}/enc/include.c.in ${test_file})
+  configure_file(include.c.in ${test_file})
 
   string(APPEND forward_declarations
          "extern int ${test_name}(int argc, const char* argv[]);\n")
@@ -21,23 +21,22 @@ set(EDL_FILE ../libc.edl)
 
 add_custom_command(
   OUTPUT libc_t.h libc_t.c
-  DEPENDS ${EDL_FILE} edger8r
+  DEPENDS ${EDL_FILE}
   COMMAND
-    edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    openenclave::oeedger8r --trusted ${EDL_FILE} --search-path
+    ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX} --search-path
+    ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(test_extras
-    ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/common/vmfill.c
-    ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/common/mtest.c
-    ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/common/rand.c)
+    ${OESRCDIR}/3rdparty/musl/libc-test/src/common/vmfill.c
+    ${OESRCDIR}/3rdparty/musl/libc-test/src/common/mtest.c
+    ${OESRCDIR}/3rdparty/musl/libc-test/src/common/rand.c)
 
 if (NOT OE_TRUSTZONE)
   # This file requires TLS relocations, which cannot be applied by OP-TEE's
   # ELF loader.
-  list(
-    APPEND test_extras
-    ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/functional/tls_align_dso.c
-  )
+  list(APPEND test_extras
+       ${OESRCDIR}/3rdparty/musl/libc-test/src/functional/tls_align_dso.c)
 endif ()
 
 add_enclave(
@@ -80,7 +79,7 @@ endif ()
 
 enclave_include_directories(
   erttest_libc_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${PROJECT_SOURCE_DIR}/3rdparty/musl/libc-test/src/common)
+  ${CMAKE_CURRENT_SOURCE_DIR} ${OESRCDIR}/3rdparty/musl/libc-test/src/common)
 
-enclave_link_libraries(erttest_libc_enc ertlibc oehostfs oehostsock)
+enclave_link_libraries(erttest_libc_enc ertlibc openenclave::oehostfs
+                       openenclave::oehostsock oe_includes)

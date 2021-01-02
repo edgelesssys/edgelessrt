@@ -8,7 +8,7 @@ enclave_link_libraries(
   erttest_meshentry_nongo_app ertmeshentry erttest_meshentry_premainmock
   erttest_meshentry_nongo_app_lib)
 add_dependencies(erttest_meshentry_nongo_app erthost)
-add_enclave_test(tests/ert/meshentry_nongo_app erthost
-                 erttest_meshentry_nongo_app)
+add_test(NAME tests/ert/meshentry_nongo_app COMMAND erthost
+                                                    erttest_meshentry_nongo_app)
 set_enclave_tests_properties(tests/ert/meshentry_nongo_app PROPERTIES
                              ENVIRONMENT EDG_FOO=bar;ABC_FOO=bar)

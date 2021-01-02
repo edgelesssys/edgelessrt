@@ -2,7 +2,7 @@
 #include <openenclave/internal/tests.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
-#include "../ert/enclave/eventfd.h"
+#include "../../ert/enclave/eventfd.h"
 #include "test_t.h"
 
 static void _test_eventfd()

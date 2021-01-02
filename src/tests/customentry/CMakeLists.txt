@@ -6,4 +6,4 @@ set_property(TARGET erttest_customentry_lib PROPERTY POSITION_INDEPENDENT_CODE
 add_enclave(TARGET erttest_customentry SOURCES ../empty.c)
 enclave_link_libraries(erttest_customentry ertcalls erttest_customentry_lib)
 add_dependencies(erttest_customentry erthost)
-add_enclave_test(tests/ert/customentry erthost erttest_customentry)
+add_test(NAME tests/ert/customentry COMMAND erthost erttest_customentry)

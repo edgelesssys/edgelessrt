@@ -1,9 +1,7 @@
-set(DIR ${CMAKE_SOURCE_DIR}/tests/libc)
+set(DIR ${OESRCDIR}/tests/libc)
 
 add_subdirectory(host)
+add_subdirectory(enc)
 
-if (BUILD_ENCLAVES)
-  add_subdirectory(enc)
-endif ()
-
-add_enclave_test(tests/ert/libc erttest_libc_host erttest_libc_enc)
+add_test(NAME tests/ert/libc COMMAND erttest_libc_host
+                                     $<TARGET_FILE:erttest_libc_enc>)

@@ -1,15 +1,15 @@
 add_custom_command(
   OUTPUT test_t.c
-  DEPENDS ../test.edl edger8r
-  COMMAND edger8r --trusted ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl
-          --search-path ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX})
+  DEPENDS ../test.edl
+  COMMAND openenclave::oeedger8r --trusted
+          ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl ${DEFINE_OE_SGX})
 
 add_custom_command(
   OUTPUT gotest.a
   DEPENDS gotest.go
   COMMAND
     sh -c
-    "GOROOT='${CMAKE_SOURCE_DIR}/3rdparty/go' '${CMAKE_SOURCE_DIR}/3rdparty/go/bin/go' build -buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/gotest.go"
+    "GOROOT='${CMAKE_SOURCE_DIR}/../3rdparty/go' '${CMAKE_SOURCE_DIR}/../3rdparty/go/bin/go' build -buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/gotest.go"
 )
 add_custom_target(gotestlib DEPENDS gotest.a)
 
@@ -23,4 +23,4 @@ enclave_link_libraries(erttest_go erttest_go_lib
                        ${CMAKE_CURRENT_BINARY_DIR}/gotest.a ertlibc)
 add_dependencies(erttest_go gotestlib)
 
-add_enclave_test(tests/ert/go erttest_host erttest_go)
+add_test(NAME tests/ert/go COMMAND erttest_host erttest_go)

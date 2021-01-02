@@ -9,5 +9,5 @@ add_test(
   NAME tests/ert/deventry
   COMMAND
     sh -c
-    "ERT_DEVENTRY_TEST=test ${CMAKE_BINARY_DIR}/ert/tools/erthost/erthost ./erttest_deventry arg1 arg2"
+    "ERT_DEVENTRY_TEST=test ${CMAKE_BINARY_DIR}/tools/erthost/erthost ./erttest_deventry arg1 arg2"
 )

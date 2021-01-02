@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
-#include "../ert/common/bitset.h"
+#include "../../ert/common/bitset.h"
 #include "test_t.h"
 
 using namespace std;

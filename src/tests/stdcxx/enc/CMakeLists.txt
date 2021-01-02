@@ -2,10 +2,11 @@ set(EDL_FILE ../stdcxx.edl)
 
 add_custom_command(
   OUTPUT stdcxx_t.h stdcxx_t.c
-  DEPENDS ${EDL_FILE} edger8r
+  DEPENDS ${EDL_FILE}
   COMMAND
-    edger8r --trusted ${EDL_FILE} --search-path ${PROJECT_SOURCE_DIR}/include
-    ${DEFINE_OE_SGX} --search-path ${CMAKE_CURRENT_SOURCE_DIR})
+    openenclave::oeedger8r --trusted ${EDL_FILE} --search-path
+    ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX} --search-path
+    ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_enclave_library(erttest_stdcxx_lib OBJECT enc.cpp stdcxx_t.c)
 enclave_include_directories(erttest_stdcxx_lib PRIVATE

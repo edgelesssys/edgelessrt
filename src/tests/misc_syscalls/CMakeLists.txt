@@ -1,8 +1,8 @@
 add_custom_command(
   OUTPUT test_t.c
-  DEPENDS ../test.edl edger8r
-  COMMAND edger8r --trusted ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl
-          --search-path ${PROJECT_SOURCE_DIR}/include ${DEFINE_OE_SGX})
+  DEPENDS ../test.edl
+  COMMAND openenclave::oeedger8r --trusted
+          ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl ${DEFINE_OE_SGX})
 
 add_enclave_library(erttest_misc_syscalls_lib OBJECT enc.cpp test_t.c)
 enclave_include_directories(erttest_misc_syscalls_lib PRIVATE
@@ -14,4 +14,5 @@ set_property(TARGET erttest_misc_syscalls_lib PROPERTY POSITION_INDEPENDENT_CODE
 add_enclave(TARGET erttest_misc_syscalls SOURCES ../empty.c)
 enclave_link_libraries(erttest_misc_syscalls erttest_misc_syscalls_lib ertlibc)
 
-add_enclave_test(tests/ert/misc_syscalls erttest_host erttest_misc_syscalls)
+add_test(NAME tests/ert/misc_syscalls COMMAND erttest_host
+                                              erttest_misc_syscalls)
