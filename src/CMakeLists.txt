@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.11)
 project(ertcore)
 
-find_package(OpenEnclave REQUIRED PATHS
-             ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake)
+find_package(
+  OpenEnclave REQUIRED PATHS
+  ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake NO_DEFAULT_PATH)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)

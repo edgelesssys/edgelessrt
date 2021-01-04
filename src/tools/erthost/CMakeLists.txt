@@ -7,7 +7,7 @@ add_library(ertdeventry OBJECT deventry.c emain_t.c)
 target_include_directories(ertdeventry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertdeventry
-  PRIVATE oelibc oe_includes
+  PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc openenclave::oehostepoll openenclave::oehostfs
             openenclave::oehostresolver openenclave::oehostsock)
 set_property(TARGET ertdeventry PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -20,7 +20,7 @@ add_library(ertmeshentry OBJECT meshentry.cpp emain_t.c)
 target_include_directories(ertmeshentry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertmeshentry
-  PRIVATE oe_includes
+  PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc openenclave::oehostepoll openenclave::oehostfs
             openenclave::oehostresolver openenclave::oehostsock)
 set_property(TARGET ertmeshentry PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -32,7 +32,7 @@ install(
 add_library(ertcalls OBJECT emain_t.c)
 target_link_libraries(
   ertcalls
-  PRIVATE oe_includes
+  PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc)
 install(
   TARGETS ertcalls
