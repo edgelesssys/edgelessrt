@@ -24,24 +24,43 @@ index 510668721..b17909b5b 100644
  #define fprintf _dlmalloc_stats_fprintf
  #define NO_MALLOC_STATS 1
 diff --git a/3rdparty/musl/CMakeLists.txt b/3rdparty/musl/CMakeLists.txt
-index b9b51649a..d3052e960 100644
+index 01db03dbc..86ca27f3e 100644
 --- a/3rdparty/musl/CMakeLists.txt
 +++ b/3rdparty/musl/CMakeLists.txt
-@@ -92,7 +92,8 @@ ExternalProject_Add(musl_includes
-       ${PATCHES_DIR}/endian.h
-       ${MUSL_INCLUDES}/endian.h
-     # Append deprecations.h to all C header files.
--    COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
-+    # EDG: don't deprecate pthread_create and friends
-+    #COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
-     # Copy local deprecations.h to include/bits/deprecated.h.
-     COMMAND ${CMAKE_COMMAND} -E copy
-       ${CMAKE_CURRENT_LIST_DIR}/deprecations.h
+@@ -47,8 +47,6 @@ ExternalProject_Add(
+   PATCH_COMMAND
+   COMMAND ${CMAKE_COMMAND} -E copy ${MUSL_DIR}/arch/${ARCH}/syscall_arch.h
+           ${MUSL_DIR}/arch/${ARCH}/__syscall_arch.h
+-  COMMAND ${CMAKE_COMMAND} -E copy ${PATCHES_DIR}/syscall.h
+-          ${MUSL_DIR}/src/internal/syscall.h
+   COMMAND ${CMAKE_COMMAND} -E copy ${PATCHES_DIR}/syscall_arch.h
+           ${MUSL_DIR}/arch/${ARCH}/syscall_arch.h
+   COMMAND ${CMAKE_COMMAND} -E copy ${PATCHES_DIR}/pthread_${ARCH}.h
+@@ -83,7 +81,8 @@ ExternalProject_Add(
+   COMMAND ${CMAKE_COMMAND} -E copy ${PATCHES_DIR}/endian.h
+           ${MUSL_INCLUDES}/endian.h
+   # Append deprecations.h to all C header files.
+-  COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
++  # EDG: don't deprecate pthread_create and friends
++  #COMMAND ${OE_BASH} -c "${MUSL_APPEND_DEPRECATIONS}"
+   # Copy local deprecations.h to include/bits/deprecated.h.
+   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/deprecations.h
+           ${MUSL_INCLUDES}/bits/deprecations.h
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 35c5a1453..0a87bc506 100644
+index 6f35184d3..ab9758da2 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -253,7 +253,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
+@@ -160,7 +160,8 @@ endif ()
+ 
+ if (OE_SGX)
+   # Currently we only support OpenSSL on SGX.
+-  set(BUILD_OPENSSL ON)
++  # EDG: we use mbedtls only
++  #set(BUILD_OPENSSL ON)
+ endif ()
+ 
+ set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
+@@ -270,7 +271,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
    set(COMPILER_SUPPORTS_SNMALLOC off)
  else ()
@@ -51,8 +70,8 @@ index 35c5a1453..0a87bc506 100644
  endif ()
  
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
-@@ -390,9 +391,9 @@ endif ()
- if (BUILD_ENCLAVES AND (NOT COMPONENT MATCHES OEHOSTVERIFY))
+@@ -403,9 +405,9 @@ add_subdirectory(tools)
+ if (BUILD_ENCLAVES)
    add_subdirectory(enclave)
    add_subdirectory(3rdparty)
 -  add_subdirectory(libc)
@@ -61,7 +80,7 @@ index 35c5a1453..0a87bc506 100644
 +  add_subdirectory(${ERTSRC} ert)
  endif ()
  
- if (OE_SGX AND (NOT COMPONENT MATCHES OEHOSTVERIFY))
+ if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
 index 47fa9b93f..fd1a72b9c 100644
 --- a/cmake/compiler_settings.cmake
@@ -156,12 +175,12 @@ index b9d64b1b4..4c5f03803 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index b8bda7366..ec5af648c 100644
+index adf260715..c9344f06e 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
-@@ -47,6 +47,22 @@ uint8_t __oe_initialized = 0;
- 
- extern bool oe_disable_debug_malloc_check;
+@@ -46,6 +46,22 @@
+ oe_result_t __oe_enclave_status = OE_OK;
+ uint8_t __oe_initialized = 0;
  
 +bool ert_exiting;
 +
@@ -182,9 +201,9 @@ index b8bda7366..ec5af648c 100644
  /*
  **==============================================================================
  **
-@@ -176,14 +192,20 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
-              * Depends on TD and sgx_create_report, so can't happen earlier */
-             OE_CHECK(oe_set_is_xsave_supported());
+@@ -178,14 +194,20 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
+             /* Initialize the OE crypto library. */
+             oe_crypto_initialize();
  
 -            /* Call global constructors. Now they can safely use simulated
 -             * instructions like CPUID. */
@@ -207,7 +226,7 @@ index b8bda7366..ec5af648c 100644
          }
  
          oe_spin_unlock(&_lock);
-@@ -393,6 +415,17 @@ static void _handle_ecall(
+@@ -395,6 +417,17 @@ static void _handle_ecall(
          goto done;
      }
  
@@ -225,7 +244,7 @@ index b8bda7366..ec5af648c 100644
      /* Dispatch the ECALL */
      switch (func)
      {
-@@ -403,6 +436,9 @@ static void _handle_ecall(
+@@ -405,6 +438,9 @@ static void _handle_ecall(
          }
          case OE_ECALL_DESTRUCTOR:
          {
@@ -235,7 +254,7 @@ index b8bda7366..ec5af648c 100644
              /* Call functions installed by oe_cxa_atexit() and oe_atexit() */
              oe_call_atexit_functions();
  
-@@ -634,6 +670,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
+@@ -642,6 +678,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
  
  oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
  {
@@ -251,7 +270,7 @@ index b8bda7366..ec5af648c 100644
      oe_sgx_td_t* td = oe_sgx_get_td();
      oe_callsite_t* callsite = td->callsites;
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
-index 1b5b4b606..76e2935c5 100644
+index da7a16a9d..02a038e9d 100644
 --- a/enclave/core/sgx/exception.c
 +++ b/enclave/core/sgx/exception.c
 @@ -23,6 +23,12 @@ uint32_t g_current_exception_handler_count = 0;
@@ -419,10 +438,10 @@ index cbb4f535c..a8e77c2f8 100644
   * Cleanup the thread-local section for a given thread.
   * This must be called *before* the td itself is cleaned up.
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index 7334fac2c..16d151f18 100644
+index 229a0d06b..d6330f662 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
-@@ -343,10 +343,16 @@ list(
+@@ -340,10 +340,16 @@ list(
    strings.c
    traceh_enclave.c)
  
@@ -439,7 +458,7 @@ index 7334fac2c..16d151f18 100644
  add_library(oehostverify STATIC ${PLATFORM_HOST_ONLY_SRC})
  
  target_link_libraries(oehostverify PUBLIC oe_includes)
-@@ -459,7 +465,8 @@ endif ()
+@@ -466,7 +472,8 @@ endif ()
  if (UNIX)
    target_compile_options(
      oehost
@@ -449,21 +468,21 @@ index 7334fac2c..16d151f18 100644
      PUBLIC -fstack-protector-strong)
    target_compile_definitions(
      oehost
-@@ -468,7 +475,8 @@ if (UNIX)
+@@ -483,7 +490,8 @@ if (UNIX)
  endif ()
  
  if (CMAKE_C_COMPILER_ID MATCHES GNU)
 -  target_compile_options(oehost PRIVATE -Wjump-misses-init)
 +  target_compile_options(oehost
 +                         PRIVATE $<$<COMPILE_LANGUAGE:C>:-Wjump-misses-init>)
+   target_compile_options(oehostverify PRIVATE -Wjump-misses-init)
  endif ()
  
- # Use the same the compile options and definitions from oehost.
 diff --git a/host/linux/syscall.c b/host/linux/syscall.c
-index f0eb83517..0a489c328 100644
+index 9056f92d3..676033c5c 100644
 --- a/host/linux/syscall.c
 +++ b/host/linux/syscall.c
-@@ -1263,11 +1263,15 @@ int oe_syscall_poll_ocall(
+@@ -1270,11 +1270,15 @@ int oe_syscall_poll_ocall(
  
      errno = 0;
  
@@ -541,10 +560,10 @@ index 449af159e..6c2b8d6a4 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index fa25c0720..2b88fe50c 100644
+index fa2f97e85..a2dd19a54 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
-@@ -1128,6 +1128,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1185,6 +1185,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      /* Shut down the switchless manager */
      OE_CHECK(oe_stop_switchless_manager(enclave));
  
@@ -574,7 +593,7 @@ index e908e9f9a..e8c81440a 100644
          // Reset the flag
          thread_data->flags &= (~_OE_THREAD_HANDLING_EXCEPTION);
 diff --git a/host/sgx/exception.h b/host/sgx/exception.h
-index c5a41f3ec..75ac658ce 100644
+index 0552194e7..a86ad4800 100644
 --- a/host/sgx/exception.h
 +++ b/host/sgx/exception.h
 @@ -12,6 +12,7 @@ typedef struct _host_exception_context
@@ -658,10 +677,10 @@ index 38f075434..7b7a083f7 100644
 +    };
  };
 diff --git a/include/openenclave/host.h b/include/openenclave/host.h
-index 05f8fa4c3..1cb39623f 100644
+index 23017cd2b..3407398b9 100644
 --- a/include/openenclave/host.h
 +++ b/include/openenclave/host.h
-@@ -196,6 +196,18 @@ oe_result_t oe_create_enclave(
+@@ -204,6 +204,18 @@ oe_result_t oe_create_enclave(
      uint32_t ecall_count,
      oe_enclave_t** enclave);
  
@@ -750,7 +769,7 @@ index 5f328735d..6c15cb5c4 100644
          oe_errno = __err;                                           \
          goto done;                                                  \
 diff --git a/include/openenclave/internal/syscall/unistd.h b/include/openenclave/internal/syscall/unistd.h
-index 4bf41c352..b98041692 100644
+index e541e8aa0..70ba3fd5e 100644
 --- a/include/openenclave/internal/syscall/unistd.h
 +++ b/include/openenclave/internal/syscall/unistd.h
 @@ -9,6 +9,7 @@
@@ -761,7 +780,7 @@ index 4bf41c352..b98041692 100644
  #include <openenclave/internal/syscall/unistd.h>
  
  OE_EXTERNC_BEGIN
-@@ -72,6 +73,8 @@ int oe_chdir(const char* path);
+@@ -74,6 +75,8 @@ int oe_chdir(const char* path);
  
  int oe_close(int fd);
  
@@ -771,12 +790,12 @@ index 4bf41c352..b98041692 100644
  
  int oe_getdomainname(char* name, size_t len);
 diff --git a/pkgconfig/CMakeLists.txt b/pkgconfig/CMakeLists.txt
-index a35db6756..649decc51 100644
+index f974de571..4b40bf9c5 100644
 --- a/pkgconfig/CMakeLists.txt
 +++ b/pkgconfig/CMakeLists.txt
-@@ -83,7 +83,7 @@ set(ENCLAVE_CLIBS_1
-     -lmbedx509
-     -lmbedcrypto)
+@@ -86,7 +86,7 @@ set(ENCLAVE_MBEDTLS_CRYPTO_WRAPPER_LIBS -loecryptombedtls -lmbedx509 -lmbedtls
+ set(ENCLAVE_OPENSSL_CRYPTO_WRAPPER_LIBS -loecryptoopenssl -lopensslssl
+                                         -lopensslcrypto)
  
 -set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loecore)
 +set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loelibc -loecore)
@@ -784,31 +803,44 @@ index a35db6756..649decc51 100644
  set(ENCLAVE_CLIBS_LIST ${ENCLAVE_CLIBS_1} ${ENCLAVE_CLIBS_2})
  list(JOIN ENCLAVE_CLIBS_LIST " " ENCLAVE_CLIBS)
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index 7ea15c9e3..a0e664a3e 100644
+index 116626d70..ee67fef34 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
-@@ -21,7 +21,7 @@ build:
- 		--search-path $(INCDIR)/openenclave/edl/sgx
- 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -std=c++11 ecalls.cpp client.cpp cert_verifier.cpp identity_verifier.cpp ../../common/utility.cpp
- 	$(CC) -c $(CFLAGS) $(CINCLUDES) ./tls_client_t.c
--	$(CXX) -o tls_client_enclave ecalls.o client.o cert_verifier.o identity_verifier.o utility.o tls_client_t.o $(LDFLAGS) -lmbedtls -lmbedcrypto -loehostsock -loehostresolver -loecore -loelibc -loesyscall
-+	$(CXX) -o tls_client_enclave ecalls.o client.o cert_verifier.o identity_verifier.o utility.o tls_client_t.o -lmbedtls -loehostsock -loehostresolver $(LDFLAGS)
+@@ -31,7 +31,7 @@ build:
+ 
+ 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
+ 	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
+-	$(CXX) -o tls_client_enclave $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
++	$(CXX) -o tls_client_enclave $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
  
  sign:
  	oesign sign -e tls_client_enclave -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
-index 112a2804c..dd5eb5b7e 100644
+index 91438ba5d..f37a442e5 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
-@@ -22,7 +22,7 @@ build:
- 		--search-path $(INCDIR)/openenclave/edl/sgx
- 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -std=c++11 ecalls.cpp server.cpp identity_verifier.cpp cert_verifier.cpp ../../common/utility.cpp
- 	$(CC) -c $(CFLAGS) $(CINCLUDES) tls_server_t.c
--	$(CXX) -o tls_server_enc ecalls.o server.o cert_verifier.o identity_verifier.o utility.o tls_server_t.o $(LDFLAGS) -lmbedtls -lmbedcrypto -loehostsock -loehostresolver -loecore -loelibc -loesyscall
-+	$(CXX) -o tls_server_enc ecalls.o server.o cert_verifier.o identity_verifier.o utility.o tls_server_t.o -lmbedtls -loehostsock -loehostresolver $(LDFLAGS)
+@@ -33,7 +33,7 @@ build:
+ 
+ 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 ${SRC_FILES}
+ 	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. tls_server_t.c
+-	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
++	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
  
  sign:
  	oesign sign -e tls_server_enc -c enc.conf -k private.pem
+diff --git a/samples/debugmalloc/host/Makefile b/samples/debugmalloc/host/Makefile
+index 7ea4266a4..b18a70159 100644
+--- a/samples/debugmalloc/host/Makefile
++++ b/samples/debugmalloc/host/Makefile
+@@ -14,7 +14,7 @@ build:
+ 		--search-path $(INCDIR)/openenclave/edl/sgx
+ 	$(CC) -g -c $(CFLAGS) host.c
+ 	$(CC) -g -c $(CFLAGS) debugmalloc_u.c
+-	$(CC) -o debugmallochost debugmalloc_u.o host.o $(LDFLAGS)
++	$(CXX) -o debugmallochost debugmalloc_u.o host.o $(LDFLAGS)
+ 
+ clean:
+ 	rm -f debugmallochost host.o debugmalloc_u.o debugmalloc_u.c debugmalloc_u.h debugmalloc_args.h
 diff --git a/samples/helloworld/host/Makefile b/samples/helloworld/host/Makefile
 index 7b3c2c2ec..29bcd0c44 100644
 --- a/samples/helloworld/host/Makefile
@@ -848,11 +880,26 @@ index 234aa640b..5e8043871 100644
  
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
+diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
+index 87920e529..34aa3f807 100644
+--- a/samples/test-samples.cmake
++++ b/samples/test-samples.cmake
+@@ -71,8 +71,8 @@ else ()
+     # These tests can only run with SGX-FLC, meaning they were built
+     # against SGX.
+     if (HAS_QUOTE_PROVIDER)
+-      list(APPEND SAMPLES_LIST attested_tls attested_tls attestation)
+-      list(APPEND CRYPTO_LIB_LIST mbedtls openssl mbedtls)
++      list(APPEND SAMPLES_LIST attested_tls attestation)
++      list(APPEND CRYPTO_LIB_LIST mbedtls mbedtls)
+     endif ()
+   endif ()
+ endif ()
 diff --git a/syscall/CMakeLists.txt b/syscall/CMakeLists.txt
-index 94c6e5745..980058a11 100644
+index e69e9d848..4e19b7ec8 100644
 --- a/syscall/CMakeLists.txt
 +++ b/syscall/CMakeLists.txt
-@@ -62,7 +62,7 @@ enclave_include_directories(
+@@ -66,7 +66,7 @@ enclave_include_directories(
    oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
    ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
  
@@ -879,7 +926,7 @@ index 1cb00423c..63664a178 100644
  **==============================================================================
  **
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
-index c03c55b5b..ff1ccba8c 100644
+index 66a94d7f6..5f40182c1 100644
 --- a/syscall/devices/hostfs/hostfs.c
 +++ b/syscall/devices/hostfs/hostfs.c
 @@ -426,15 +426,14 @@ static oe_fd_t* _hostfs_open(
@@ -917,7 +964,7 @@ index c03c55b5b..ff1ccba8c 100644
      if (oe_syscall_fsync_ocall(&ret, file->host_fd) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
  
-@@ -1420,6 +1423,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
+@@ -1438,6 +1441,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
  {
      file_t* file = _cast_file(desc);
  
@@ -1585,26 +1632,35 @@ index 072e4fec5..a70034931 100644
  
      if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
 diff --git a/syscall/syscall.c b/syscall/syscall.c
-index f8707fc14..02b8c69d6 100644
+index e81bcfa61..de2479d39 100644
 --- a/syscall/syscall.c
 +++ b/syscall/syscall.c
-@@ -864,6 +864,14 @@ static long _syscall(
-             ret = (long)oe_nanosleep(req, rem);
-             goto done;
-         }
-+        case OE_SYS_eventfd2:
-+        {
-+            const unsigned int initval = (unsigned int)arg1;
-+            const int flags = (int)arg2;
-+            int oe_eventfd(unsigned int initval, int flags);
-+            ret = oe_eventfd(initval, flags);
-+            goto done;
-+        }
-         default:
-         {
-             oe_errno = OE_ENOSYS;
+@@ -198,6 +198,15 @@ OE_WEAK OE_DEFINE_SYSCALL4_M(SYS_epoll_wait)
+ }
+ #endif
+ 
++OE_WEAK OE_DEFINE_SYSCALL2(SYS_eventfd2)
++{
++    oe_errno = 0;
++    const unsigned int initval = (unsigned int)arg1;
++    const int flags = (int)arg2;
++    int oe_eventfd(unsigned int initval, int flags);
++    return oe_eventfd(initval, flags);
++}
++
+ OE_WEAK OE_DEFINE_SYSCALL1(SYS_exit)
+ {
+     oe_errno = 0;
+@@ -1107,6 +1116,7 @@ static long _syscall(
+ #if __x86_64__ || _M_X64
+         OE_SYSCALL_DISPATCH(SYS_epoll_wait, arg1, arg2, arg3, arg4);
+ #endif
++        OE_SYSCALL_DISPATCH(SYS_eventfd2, arg1, arg2);
+         OE_SYSCALL_DISPATCH(SYS_exit, arg1);
+         OE_SYSCALL_DISPATCH(SYS_exit_group, arg1);
+         OE_SYSCALL_DISPATCH(SYS_faccessat, arg1, arg2, arg3, arg4);
 diff --git a/syscall/unistd.c b/syscall/unistd.c
-index 67af74764..a5ad5269f 100644
+index 943528b51..11ef0abc5 100644
 --- a/syscall/unistd.c
 +++ b/syscall/unistd.c
 @@ -288,6 +288,23 @@ done:
@@ -1653,6 +1709,41 @@ index 8d188a458..c886a1ecc 100644
      endif ()
    endif ()
    add_subdirectory(libc)
+diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
+index cfbd81120..862f0d4ea 100644
+--- a/tests/crypto/enclave/enc/enc.c
++++ b/tests/crypto/enclave/enc/enc.c
+@@ -168,7 +168,7 @@ static long _syscall_dispatch(
+         OE_SYSCALL_DISPATCH(SYS_readv, arg1, arg2, arg3);
+         OE_SYSCALL_DISPATCH(SYS_close, arg1);
+         default:
+-            return -1;
++            return -2;
+     }
+ }
+ 
+@@ -190,7 +190,8 @@ static oe_result_t _syscall_hook(
+         OE_RAISE(OE_INVALID_PARAMETER);
+ 
+     *ret = _syscall_dispatch(number, arg1, arg2, arg3, arg4, arg5, arg6);
+-    result = OE_OK;
++    if (*ret != -2)
++        result = OE_OK;
+ done:
+     return result;
+ }
+diff --git a/tests/mbed/enc/enc.c b/tests/mbed/enc/enc.c
+index 2c82b6c72..2ddd2619a 100644
+--- a/tests/mbed/enc/enc.c
++++ b/tests/mbed/enc/enc.c
+@@ -130,6 +130,7 @@ OE_DEFINE_SYSCALL3_M(SYS_writev)
+     // expecting the runtime implementation of SYS_writev to also be
+     // called.
+     tls_result = OE_UNSUPPORTED;
++    errno = 1; // EDG: we don't accept a return value of -1 with errno=0
+     return ret;
+ }
+ 
 diff --git a/tests/sealKey/host/host.cpp b/tests/sealKey/host/host.cpp
 index 10286da24..db9188cf7 100644
 --- a/tests/sealKey/host/host.cpp
@@ -2211,6 +2302,27 @@ index 7767757c0..ade8012ea 100644
      };
  
      untrusted {
+diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
+index 0878f7b06..9ccb5862c 100644
+--- a/tests/tools/oesign/test-enclave/host/host.c
++++ b/tests/tools/oesign/test-enclave/host/host.c
+@@ -4,6 +4,7 @@
+ #include <openenclave/host.h>
+ #include <openenclave/internal/error.h>
+ #include <openenclave/internal/load.h>
++#include <openenclave/internal/sgx/tests.h>
+ #include <openenclave/internal/tests.h>
+ #include <stdio.h>
+ #include "../host/sgx/cpuid.h"
+@@ -93,7 +94,7 @@ int main(int argc, const char* argv[])
+         }
+     }
+ 
+-    if (_is_kss_supported())
++    if (_is_kss_supported() && oe_has_sgx_quote_provider())
+     {
+         result = check_kss_extended_ids(
+             enclave,
 diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
 index 26fc27474..8b12b392f 100644
 --- a/tools/CMakeLists.txt
@@ -2227,7 +2339,7 @@ index 26fc27474..8b12b392f 100644
    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
    BUILD_ALWAYS on
 diff --git a/tools/oesign/CMakeLists.txt b/tools/oesign/CMakeLists.txt
-index f5bc403dd..2292984db 100644
+index d862a4ae3..547dddcbb 100644
 --- a/tools/oesign/CMakeLists.txt
 +++ b/tools/oesign/CMakeLists.txt
 @@ -10,7 +10,9 @@ list(
@@ -2242,8 +2354,9 @@ index f5bc403dd..2292984db 100644
  if (WITH_EEID)
    list(APPEND SOURCES oedump_eeid.c)
 diff --git a/tools/oesign/eradump.cpp b/tools/oesign/eradump.cpp
-index e69de29bb..b6173b473 100644
---- a/tools/oesign/eradump.cpp
+new file mode 100644
+index 000000000..b6173b473
+--- /dev/null
 +++ b/tools/oesign/eradump.cpp
 @@ -0,0 +1,104 @@
 +// Copyright (c) Edgeless Systems GmbH.
@@ -2351,7 +2464,7 @@ index e69de29bb..b6173b473 100644
 +    return ret;
 +}
 diff --git a/tools/oesign/main.c b/tools/oesign/main.c
-index 450a88271..5c16669f6 100644
+index 450a88271..222b5d5bb 100644
 --- a/tools/oesign/main.c
 +++ b/tools/oesign/main.c
 @@ -30,15 +30,19 @@ int oedigest(
@@ -2402,7 +2515,7 @@ index 450a88271..5c16669f6 100644
  int dump_parser(int argc, const char* argv[])
  {
      int ret = 0;
-@@ -523,19 +545,139 @@ done:
+@@ -523,6 +545,122 @@ done:
      return ret;
  }
  
@@ -2525,19 +2638,9 @@ index 450a88271..5c16669f6 100644
  int arg_handler(int argc, const char* argv[])
  {
      int ret = 1;
--    if ((strcmp(argv[1], "dump") == 0))
-+    if (strcmp(argv[1], "dump") == 0)
-         ret = dump_parser(argc, argv);
- #ifdef OE_WITH_EXPERIMENTAL_EEID
--    else if ((strcmp(argv[1], "dump-eeid") == 0))
-+    else if (strcmp(argv[1], "dump-eeid") == 0)
-         ret = dump_eeid_parser(argc, argv);
- #endif
--    else if ((strcmp(argv[1], "sign") == 0))
-+    else if (strcmp(argv[1], "sign") == 0)
+@@ -536,6 +674,10 @@ int arg_handler(int argc, const char* argv[])
          ret = sign_parser(argc, argv);
--    else if ((strcmp(argv[1], "digest") == 0))
-+    else if (strcmp(argv[1], "digest") == 0)
+     else if ((strcmp(argv[1], "digest") == 0))
          ret = digest_parser(argc, argv);
 +    else if (strcmp(argv[1], "signerid") == 0)
 +        ret = _signerid_parser(argc, argv);
@@ -2547,10 +2650,10 @@ index 450a88271..5c16669f6 100644
      {
          fprintf(stderr, _usage_gen, argv[0], argv[0]);
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index 51b66abc0..0710146c9 100644
+index cbfe236ba..4effe10ac 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
-@@ -328,7 +328,7 @@ done:
+@@ -399,7 +399,7 @@ done:
      return rc;
  }
  
@@ -2559,7 +2662,7 @@ index 51b66abc0..0710146c9 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -550,7 +550,7 @@ int oesign(
+@@ -638,7 +638,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -2568,7 +2671,7 @@ index 51b66abc0..0710146c9 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -598,7 +598,7 @@ int oesign(
+@@ -688,7 +688,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -2578,8 +2681,9 @@ index 51b66abc0..0710146c9 100644
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
 diff --git a/tools/oesign/oesignerid.c b/tools/oesign/oesignerid.c
-index e69de29bb..d0138e9b1 100644
---- a/tools/oesign/oesignerid.c
+new file mode 100644
+index 000000000..d0138e9b1
+--- /dev/null
 +++ b/tools/oesign/oesignerid.c
 @@ -0,0 +1,46 @@
 +// Copyright (c) Edgeless Systems GmbH.

@@ -3,7 +3,7 @@
 
 #include <errno.h>
 #include <openenclave/corelibc/assert.h>
-#include <openenclave/internal/syscall.h>
+#include <openenclave/internal/syscall/hook.h>
 #include <openenclave/internal/syscall/sys/syscall.h>
 #include <openenclave/internal/thread.h>
 #include <openenclave/internal/time.h>

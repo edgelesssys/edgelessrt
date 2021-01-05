@@ -10,23 +10,6 @@ graphviz/
 build/
 winbuild/
 
-devex/vscode-extension/node_modules
-devex/vscode-extension/out
-devex/vscode-extension/*.vsix
-
 scripts/ansible/*.retry
-
-prereqs/aesm/.build
-prereqs/aesm/.prebuilt
-prereqs/aesm/.psw_installer
-prereqs/aesm/.sdk
-prereqs/aesm/.sdk_installer
-prereqs/aesm/dynamic-application-loader-host-interface/
-prereqs/aesm/linux-sgx/
-prereqs/isgx/linux-sgx-driver/
-prereqs/dcap/*.deb
-prereqs/nuget/*
-prereqs/packages/.packages
-prereqs/sgx-driver/*.bin
 
 Testing/Temporary

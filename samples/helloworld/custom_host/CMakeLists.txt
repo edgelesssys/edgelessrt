@@ -20,7 +20,8 @@ add_custom_command(
 
 add_executable(enclave emain.c emain_t.c)
 target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(enclave openenclave::oeenclave hello)
+target_link_libraries(enclave openenclave::oeenclave hello
+                      openenclave::oecryptombedtls)
 
 # Generate key
 add_custom_command(

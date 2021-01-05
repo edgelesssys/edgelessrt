@@ -4,6 +4,6 @@ enclave {
     from "platform.edl" import *;
 
     trusted {
-        public void emain();
+        public int emain();
     };
 };

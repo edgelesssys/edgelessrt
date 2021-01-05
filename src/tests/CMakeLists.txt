@@ -4,12 +4,15 @@ if (OE_SGX)
                     --search-path ${OEBUILDDIR}/openenclave-install/include)
 endif ()
 
+set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB "mbedtls")
 include(${OESRCDIR}/cmake/enclave_cmake_wrappers.cmake)
 include(${OESRCDIR}/cmake/add_enclave.cmake)
 
-# add_enclave() links its target against oeenclave. Add helper interface library for that.
+# add_enclave() links its target against oeenclave and oecryptombedtls. Add helper interface libraries for that.
 add_library(oeenclave INTERFACE)
 target_link_libraries(oeenclave INTERFACE openenclave::oeenclave)
+add_library(oecryptombedtls INTERFACE)
+target_link_libraries(oecryptombedtls INTERFACE openenclave::oecryptombedtls)
 
 add_subdirectory(args)
 add_subdirectory(bitset)

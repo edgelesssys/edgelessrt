@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[], char* envp[]);
 
-void emain(void)
+int emain(void)
 {
     const int argc = ert_get_argc();
     char** const argv = ert_get_argv();
@@ -14,7 +14,7 @@ void emain(void)
 
     // Do additional initialization here if needed.
 
-    main(argc, argv, envp);
+    return main(argc, argv, envp);
 }
 
 ert_args_t ert_get_args(void)

@@ -840,6 +840,22 @@ done:
     return ret;
 }
 
+static int _fs_ftruncate(oe_fd_t* desc, oe_off_t length)
+{
+    (void)length;
+
+    int ret = -1;
+    const file_t* const file = _cast_file(desc);
+
+    if (!file)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    OE_RAISE_ERRNO(OE_ENOSYS);
+
+done:
+    return ret;
+}
+
 static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
 {
     (void)pathname;
@@ -908,6 +924,7 @@ static oe_file_ops_t _file_ops = {
     .pwrite = _fs_pwrite,
     .getdents64 = _fs_getdents64,
     .fstat = _fs_fstat,
+    .ftruncate = _fs_ftruncate,
     .fsync = _fs_fsync,
     .fdatasync = _fs_fsync,
 };

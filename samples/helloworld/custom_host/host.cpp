@@ -38,8 +38,10 @@ int main(int argc, char* argv[])
     }
 
     // call the enclave entry function
-    if (emain(enclave) != OE_OK)
+    int ret = 1;
+    if (emain(enclave, &ret) != OE_OK)
         cout << "ecall failed\n";
 
     oe_terminate_enclave(enclave);
+    return ret;
 }
