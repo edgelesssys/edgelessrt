@@ -2,10 +2,9 @@
 # Copyright (c) Edgeless Systems GmbH.
 # Licensed under the MIT License.
 
-set(LIBCDIR ${CMAKE_SOURCE_DIR}/libc)
-
 # Build the C library, using local sources and sources from musl.
 set(MUSLSRC ${PROJECT_SOURCE_DIR}/3rdparty/musl/musl/src)
+set(LIBCDIR ${PROJECT_SOURCE_DIR}/libc)
 
 if (OE_SGX)
   add_enclave_library(
@@ -793,6 +792,7 @@ add_enclave_library(
   ${MUSLSRC}/unistd/close.c
   ${MUSLSRC}/unistd/fdatasync.c
   ${MUSLSRC}/unistd/fsync.c
+  ${MUSLSRC}/unistd/ftruncate.c
   ${MUSLSRC}/unistd/getgid.c
   ${MUSLSRC}/unistd/getegid.c
   ${MUSLSRC}/unistd/getuid.c
@@ -818,6 +818,7 @@ add_enclave_library(
   ${MUSLSRC}/unistd/unlink.c
   ${MUSLSRC}/unistd/write.c
   ${MUSLSRC}/unistd/writev.c
+  ${MUSLSRC}/unistd/usleep.c
   ${MUSLSRC}/aio/aio.c
   ${MUSLSRC}/aio/aio_suspend.c
   ${MUSLSRC}/aio/lio_listio.c
@@ -1237,7 +1238,6 @@ add_enclave_library(
   ${MUSLSRC}/thread/pthread_mutexattr_setprotocol.c
   ${MUSLSRC}/thread/pthread_mutexattr_setpshared.c
   ${MUSLSRC}/thread/pthread_mutexattr_setrobust.c
-  #${MUSLSRC}/thread/pthread_mutexattr_settype.c
   ${MUSLSRC}/thread/pthread_once.c
   ${MUSLSRC}/thread/pthread_rwlock_destroy.c
   ${MUSLSRC}/thread/pthread_rwlock_init.c
@@ -1319,7 +1319,6 @@ add_enclave_library(
   ${MUSLSRC}/unistd/fchdir.c
   ${MUSLSRC}/unistd/fchown.c
   ${MUSLSRC}/unistd/fchownat.c
-  ${MUSLSRC}/unistd/ftruncate.c
   ${MUSLSRC}/unistd/getlogin.c
   ${MUSLSRC}/unistd/getlogin_r.c
   ${MUSLSRC}/unistd/getpgid.c
@@ -1358,7 +1357,6 @@ add_enclave_library(
   ${MUSLSRC}/unistd/ttyname_r.c
   ${MUSLSRC}/unistd/ualarm.c
   ${MUSLSRC}/unistd/unlinkat.c
-  ${MUSLSRC}/unistd/usleep.c
   ${PLATFORM_SRC})
 
 maybe_build_using_clangw(oelibc)

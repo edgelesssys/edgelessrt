@@ -46,6 +46,6 @@ file(
   COPY ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake/openenclave-config.cmake
   DESTINATION .)
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
-     include (\${CMAKE_CURRENT_LIST_DIR}/ert-targets.cmake))
+     "include(\${CMAKE_CURRENT_LIST_DIR}/ert-targets.cmake)")
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/cmake)

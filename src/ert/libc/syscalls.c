@@ -71,22 +71,20 @@ long __syscall_cp(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 }
 
 // copied from libc/syscalls.c
-static long _syscall_clock_gettime(long n, long x1, long x2)
+static long _syscall_clock_gettime(long x1, long x2)
 {
     static const uint64_t _SEC_TO_MSEC = 1000UL;
     static const uint64_t _MSEC_TO_NSEC = 1000000UL;
 
-    clockid_t clk_id = (clockid_t)x1;
+    clockid_t clock_id = (clockid_t)x1;
     struct timespec* tp = (struct timespec*)x2;
     int ret = -1;
     uint64_t msec;
 
-    OE_UNUSED(n);
-
     if (!tp)
         goto done;
 
-    if (clk_id != CLOCK_REALTIME)
+    if (clock_id != CLOCK_REALTIME)
     {
         /* Only supporting CLOCK_REALTIME */
         oe_assert("clock_gettime(): panic" == NULL);
@@ -122,7 +120,7 @@ ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     }
 
     if (n == OE_SYS_clock_gettime)
-        return _syscall_clock_gettime(n, x1, x2);
+        return _syscall_clock_gettime(x1, x2);
 
     return -ENOSYS;
 }
