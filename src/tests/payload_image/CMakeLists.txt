@@ -30,6 +30,6 @@ add_custom_target(erttest_payload_image_sign ALL DEPENDS signed)
 add_test(
   NAME tests/ert/payload_image
   COMMAND
-    $<TARGET_FILE:erttest_host>
-    "$<TARGET_FILE:erttest_payload_image>:$<TARGET_FILE:erttest_payload_image_payload>"
+    sh -c
+    "$<TARGET_FILE:erttest_host> '$<TARGET_FILE:erttest_payload_image>:$<TARGET_FILE:erttest_payload_image_payload>' ; test $? -eq 3"
 )
