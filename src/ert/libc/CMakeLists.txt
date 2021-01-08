@@ -107,6 +107,7 @@ add_enclave_library(
   ertfutex.c
   locale.c
   mman.c
+  payload_image.c
   pthreadhooks.c
   threaded.c
   ../common/bitset.c

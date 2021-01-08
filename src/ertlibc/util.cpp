@@ -1,4 +1,5 @@
 #include <openenclave/ert.h>
+#include <openenclave/internal/globals.h>
 #include <openenclave/internal/safemath.h>
 #include <cassert>
 #include <cstdlib>
@@ -6,6 +7,7 @@
 #include <vector>
 
 using namespace std;
+using namespace ert;
 
 static void _check(oe_result_t result)
 {
@@ -64,4 +66,10 @@ void ert_copy_strings_from_host_to_enclave(
     }
 
     *enclave_array = arr;
+}
+
+const void* payload::get_base() noexcept
+{
+    // payload image starts after relocs from main image
+    return __oe_get_reloc_end();
 }

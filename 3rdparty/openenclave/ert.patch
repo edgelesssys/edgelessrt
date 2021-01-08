@@ -560,10 +560,109 @@ index 449af159e..6c2b8d6a4 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index fa2f97e85..a2dd19a54 100644
+index fa2f97e85..22dd0843b 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
-@@ -1185,6 +1185,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -772,7 +772,8 @@ oe_result_t oe_sgx_build_enclave(
+     oe_sgx_load_context_t* context,
+     const char* path,
+     const oe_sgx_enclave_properties_t* properties,
+-    oe_enclave_t* enclave)
++    oe_enclave_t* enclave,
++    const char* payload_path)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     size_t loaded_enclave_pages_size = 0;
+@@ -784,6 +785,7 @@ oe_result_t oe_sgx_build_enclave(
+     size_t tls_page_count;
+     uint64_t vaddr = 0;
+     oe_sgx_enclave_properties_t props;
++    oe_enclave_image_t oeimage_payload = {0};
+ 
+     if (!enclave)
+         OE_RAISE(OE_INVALID_PARAMETER);
+@@ -832,6 +834,37 @@ oe_result_t oe_sgx_build_enclave(
+             sizeof(props));
+     }
+ 
++    // EDG: load payload image
++    if (payload_path)
++    {
++        OE_CHECK(oe_load_enclave_image(payload_path, &oeimage_payload));
++        context->payload_image_size = oeimage_payload.elf.image_size;
++        context->payload_reloc_size = oeimage_payload.elf.reloc_size;
++
++        // use props from payload
++        if (properties)
++            memcpy(
++                oeimage_payload.elf.image_base + oeimage_payload.elf.oeinfo_rva,
++                &props,
++                sizeof(props));
++        else
++        {
++            memcpy(
++                &props,
++                oeimage_payload.elf.image_base + oeimage_payload.elf.oeinfo_rva,
++                sizeof(props));
++            memcpy(
++                oeimage.elf.image_base + oeimage.elf.oeinfo_rva,
++                &props,
++                sizeof(props));
++        }
++
++        // Clear the hash when taking the measure
++        oe_sgx_enclave_properties_t* const props_payload =
++        (oe_sgx_enclave_properties_t*)(oeimage_payload.elf.image_base + oeimage_payload.elf.oeinfo_rva);
++        memset(props_payload->sigstruct, 0, sizeof(props_payload->sigstruct));
++    }
++
+     /* Validate the enclave prop_override structure */
+     OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
+ 
+@@ -868,7 +901,8 @@ oe_result_t oe_sgx_build_enclave(
+ 
+     /* Calculate the size of this enclave in memory */
+     OE_CHECK(_calculate_enclave_size(
+-        image_size,
++        image_size + oeimage_payload.elf.image_size +
++            oeimage_payload.elf.reloc_size,
+         tls_page_count,
+         &props,
+         &loaded_enclave_pages_size,
+@@ -902,6 +936,9 @@ oe_result_t oe_sgx_build_enclave(
+ 
+     /* Add image to enclave */
+     OE_CHECK(oeimage.add_pages(&oeimage, context, enclave, &vaddr));
++    if (payload_path)
++        OE_CHECK(oeimage_payload.add_pages(
++            &oeimage_payload, context, enclave, &vaddr));
+ 
+ #ifdef OE_WITH_EXPERIMENTAL_EEID
+     OE_CHECK(_add_eeid_marker_page(
+@@ -1084,8 +1121,20 @@ oe_result_t oe_create_enclave(
+         }
+ #endif
+ 
+-    /* Build the enclave */
+-    OE_CHECK(oe_sgx_build_enclave(&context, enclave_path, NULL, enclave));
++    // EDG: split enclave_path which is either "main_image" or
++    // "main_image:payload_image"
++    if (!*enclave_path)
++        OE_RAISE(OE_FAILURE);
++    {
++        char* const paths = strdup(enclave_path);
++        enclave_path = strtok(paths, ":");
++        const char* const payload_path = strtok(NULL, ":");
++
++        /* Build the enclave */
++        OE_CHECK(oe_sgx_build_enclave(
++            &context, enclave_path, NULL, enclave, payload_path));
++        free(paths);
++    }
+ 
+     /* Push the new created enclave to the global list. */
+     if (oe_push_enclave_instance(enclave) != 0)
+@@ -1185,6 +1234,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      /* Shut down the switchless manager */
      OE_CHECK(oe_stop_switchless_manager(enclave));
  
@@ -616,6 +715,79 @@ index 6242e15f5..300d50a8c 100644
  
      // Call platform neutral handler.
      uint64_t action = oe_host_handle_exception(&host_context);
+diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
+index e49b6e8e8..c4050c565 100644
+--- a/host/sgx/loadelf.c
++++ b/host/sgx/loadelf.c
+@@ -573,7 +573,9 @@ static oe_result_t _add_segment_pages(
+     oe_sgx_load_context_t* context,
+     uint64_t enclave_addr,
+     const oe_elf_segment_t* segment,
+-    void* image)
++    void* image,
++    uint64_t vaddr) // EDG: added vaddr param so that this function can also be
++                    // used for the payload image which is not at vaddr 0
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     uint64_t flags;
+@@ -602,7 +604,7 @@ static oe_result_t _add_segment_pages(
+         OE_CHECK(oe_sgx_load_enclave_data(
+             context,
+             enclave_addr,
+-            enclave_addr + page_rva,
++            enclave_addr + vaddr + page_rva,
+             (uint64_t)image + page_rva,
+             flags,
+             true));
+@@ -625,7 +627,7 @@ static oe_result_t _add_elf_image_pages(
+     assert(context);
+     assert(enclave);
+     assert(image);
+-    assert(vaddr && (*vaddr == 0));
++    assert(vaddr);
+     assert((image->image_size & (OE_PAGE_SIZE - 1)) == 0);
+     assert(enclave->size > image->image_size);
+ 
+@@ -633,10 +635,14 @@ static oe_result_t _add_elf_image_pages(
+     for (size_t i = 0; i < image->num_segments; i++)
+     {
+         OE_CHECK(_add_segment_pages(
+-            context, enclave->addr, &image->segments[i], image->image_base));
++            context,
++            enclave->addr,
++            &image->segments[i],
++            image->image_base,
++            *vaddr));
+     }
+ 
+-    *vaddr = image->image_size;
++    *vaddr += image->image_size;
+ 
+     /* Add the relocation pages (contain relocation entries) */
+     OE_CHECK(_add_relocation_pages(
+@@ -748,9 +754,21 @@ static oe_result_t _patch_elf_image(
+         image, "_reloc_rva", image->image_size));
+     OE_CHECK(_set_uint64_t_dynamic_symbol_value(
+         image, "_reloc_size", image->reloc_size));
++    if (context->payload_image_size)
++    {
++        OE_CHECK(_set_uint64_t_dynamic_symbol_value(
++            image,
++            "_payload_reloc_rva",
++            image->image_size + image->reloc_size +
++                context->payload_image_size));
++        OE_CHECK(_set_uint64_t_dynamic_symbol_value(
++            image, "_payload_reloc_size", context->payload_reloc_size));
++    }
+ 
+     /* heap right after image */
+-    oeprops->image_info.heap_rva = image->image_size + image->reloc_size;
++    oeprops->image_info.heap_rva = image->image_size + image->reloc_size +
++                                   context->payload_image_size +
++                                   context->payload_reloc_size;
+ 
+     if (image->tdata_size)
+     {
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
 index 7b86fc8b8..89d2643bc 100644
 --- a/include/openenclave/edl/sgx/debug.edl
@@ -722,6 +894,31 @@ index 986fd0b61..3b5f7723e 100644
  OE_EXTERNC_END
  
  #endif /* _OE_GLOBALS_H */
+diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
+index 24749af7a..46dec043c 100644
+--- a/include/openenclave/internal/sgxcreate.h
++++ b/include/openenclave/internal/sgxcreate.h
+@@ -65,6 +65,10 @@ struct _oe_sgx_load_context
+     /* EEID data needed during enclave creation */
+     oe_eeid_t* eeid;
+ #endif
++
++    // EDG: payload properties
++    size_t payload_image_size;
++    size_t payload_reloc_size;
+ };
+ 
+ oe_result_t oe_sgx_initialize_load_context(
+@@ -78,7 +82,8 @@ oe_result_t oe_sgx_build_enclave(
+     oe_sgx_load_context_t* context,
+     const char* path,
+     const oe_sgx_enclave_properties_t* properties,
+-    oe_enclave_t* enclave);
++    oe_enclave_t* enclave,
++    const char* payload_path);
+ 
+ /**
+  * Validate certain fields of an SGX enclave properties structure.
 diff --git a/include/openenclave/internal/syscall/device.h b/include/openenclave/internal/syscall/device.h
 index fc9a2806c..33afd42b2 100644
 --- a/include/openenclave/internal/syscall/device.h
@@ -2339,10 +2536,17 @@ index 26fc27474..8b12b392f 100644
    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
    BUILD_ALWAYS on
 diff --git a/tools/oesign/main.c b/tools/oesign/main.c
-index 450a88271..222b5d5bb 100644
+index 450a88271..372ad20c7 100644
 --- a/tools/oesign/main.c
 +++ b/tools/oesign/main.c
-@@ -30,15 +30,19 @@ int oedigest(
+@@ -25,20 +25,25 @@ int oesign(
+     const char* x509,
+     const char* engine_id,
+     const char* engine_load_path,
+-    const char* key_id);
++    const char* key_id,
++    const char* payload_path);
+ int oedigest(
      const char* enclave,
      const char* conffile,
      const char* digest_file);
@@ -2365,7 +2569,7 @@ index 450a88271..222b5d5bb 100644
      "\n"
      "For help with a specific command, enter \"%s <command> --help\"\n";
  
-@@ -142,6 +146,24 @@ static const char _usage_dump[] =
+@@ -142,6 +147,24 @@ static const char _usage_dump[] =
      "signature information for the specified enclave.\n"
      "\n";
  
@@ -2390,7 +2594,43 @@ index 450a88271..222b5d5bb 100644
  int dump_parser(int argc, const char* argv[])
  {
      int ret = 0;
-@@ -523,6 +545,122 @@ done:
+@@ -289,6 +312,7 @@ int sign_parser(int argc, const char* argv[])
+     const char* engine_id = NULL;
+     const char* engine_load_path = NULL;
+     const char* key_id = NULL;
++    const char* payload_path = NULL;
+ 
+     const struct option long_options[] = {
+         {"help", no_argument, NULL, 'h'},
+@@ -302,6 +326,7 @@ int sign_parser(int argc, const char* argv[])
+         {"load-path", required_argument, NULL, 'p'},
+         {"key-id", required_argument, NULL, 'i'},
+ #endif
++        {"payload", required_argument, NULL, 0x101},
+         {NULL, 0, NULL, 0},
+     };
+     const char short_options[] = "he:c:k:n:p:i:d:x:";
+@@ -356,6 +381,9 @@ int sign_parser(int argc, const char* argv[])
+                 key_id = optarg;
+                 break;
+ #endif
++            case 0x101:
++                payload_path = optarg;
++                break;
+             case ':':
+                 // Missing option argument
+                 ret = 1;
+@@ -432,7 +460,8 @@ int sign_parser(int argc, const char* argv[])
+             x509,
+             engine_id,
+             engine_load_path,
+-            key_id);
++            key_id,
++            payload_path);
+     }
+ 
+ done:
+@@ -523,6 +552,122 @@ done:
      return ret;
  }
  
@@ -2513,7 +2753,7 @@ index 450a88271..222b5d5bb 100644
  int arg_handler(int argc, const char* argv[])
  {
      int ret = 1;
-@@ -536,6 +674,10 @@ int arg_handler(int argc, const char* argv[])
+@@ -536,6 +681,10 @@ int arg_handler(int argc, const char* argv[])
          ret = sign_parser(argc, argv);
      else if ((strcmp(argv[1], "digest") == 0))
          ret = digest_parser(argc, argv);
@@ -2524,8 +2764,54 @@ index 450a88271..222b5d5bb 100644
      else
      {
          fprintf(stderr, _usage_gen, argv[0], argv[0]);
+diff --git a/tools/oesign/oeinfo.c b/tools/oesign/oeinfo.c
+index bddf5c8aa..456d6fbd8 100644
+--- a/tools/oesign/oeinfo.c
++++ b/tools/oesign/oeinfo.c
+@@ -53,7 +53,8 @@ static char* _make_signed_lib_name(const char* path)
+ 
+ oe_result_t oe_write_oeinfo_sgx(
+     const char* path,
+-    const oe_sgx_enclave_properties_t* properties)
++    const oe_sgx_enclave_properties_t* properties,
++    bool overwrite)
+ {
+     oe_result_t result = OE_FAILURE;
+     oe_enclave_image_t oeimage;
+@@ -74,7 +75,10 @@ oe_result_t oe_write_oeinfo_sgx(
+ 
+     /* Write new signed executable */
+     {
+-        char* p = _make_signed_lib_name(path);
++        char* signed_name = _make_signed_lib_name(path);
++        const char* p = signed_name;
++        if (overwrite)
++            p = path;
+ 
+         if (!p)
+         {
+@@ -104,7 +108,7 @@ oe_result_t oe_write_oeinfo_sgx(
+ 
+         printf("Created %s\n", p);
+ 
+-        free(p);
++        free(signed_name);
+     }
+ 
+     result = OE_OK;
+diff --git a/tools/oesign/oeinfo.h b/tools/oesign/oeinfo.h
+index 857ee354e..136063c01 100644
+--- a/tools/oesign/oeinfo.h
++++ b/tools/oesign/oeinfo.h
+@@ -9,4 +9,5 @@ oe_result_t oe_read_oeinfo_sgx(
+ 
+ oe_result_t oe_write_oeinfo_sgx(
+     const char* path,
+-    const oe_sgx_enclave_properties_t* properties);
++    const oe_sgx_enclave_properties_t* properties,
++    bool overwrite);
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index cbfe236ba..4effe10ac 100644
+index cbfe236ba..f4b6939d4 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
 @@ -399,7 +399,7 @@ done:
@@ -2537,7 +2823,46 @@ index cbfe236ba..4effe10ac 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -638,7 +638,7 @@ int oesign(
+@@ -528,7 +528,8 @@ done:
+ oe_result_t _get_sgx_enclave_hash(
+     const char* enclave,
+     const oe_sgx_enclave_properties_t* properties,
+-    OE_SHA256* hash)
++    OE_SHA256* hash,
++    const char* payload_path)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     oe_enclave_t enc;
+@@ -544,7 +545,7 @@ oe_result_t _get_sgx_enclave_hash(
+ 
+     /* Build an enclave to obtain the MRENCLAVE measurement */
+     OE_CHECK_ERR(
+-        oe_sgx_build_enclave(&context, enclave, properties, &enc),
++        oe_sgx_build_enclave(&context, enclave, properties, &enc, payload_path),
+         "oe_sgx_build_enclave(): result=%s (%#x)",
+         oe_result_str(result),
+         result);
+@@ -600,7 +601,8 @@ int oesign(
+     const char* x509,
+     const char* engine_id,
+     const char* engine_load_path,
+-    const char* key_id)
++    const char* key_id,
++    const char* payload_path)
+ {
+     int ret = 1;
+     oe_result_t result = OE_UNEXPECTED;
+@@ -614,7 +616,8 @@ int oesign(
+     OE_CHECK_NO_TRACE(
+         _initialize_enclave_properties(enclave, conffile, &properties));
+ 
+-    OE_CHECK_NO_TRACE(_get_sgx_enclave_hash(enclave, &properties, &hash));
++    OE_CHECK_NO_TRACE(
++        _get_sgx_enclave_hash(enclave, &properties, &hash, payload_path));
+ 
+     if (engine_id)
+     {
+@@ -638,7 +641,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -2546,7 +2871,7 @@ index cbfe236ba..4effe10ac 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -688,7 +688,7 @@ int oesign(
+@@ -688,7 +691,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -2555,3 +2880,25 @@ index cbfe236ba..4effe10ac 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
+@@ -713,7 +716,10 @@ int oesign(
+ 
+     /* Create signature section and write out new file */
+     OE_CHECK_ERR(
+-        oe_write_oeinfo_sgx(enclave, &properties),
++        oe_write_oeinfo_sgx(
++            payload_path ? payload_path : enclave,
++            &properties,
++            payload_path ? true : false),
+         "oe_write_oeinfo_sgx(): result=%s (%#x)",
+         oe_result_str(result),
+         result);
+@@ -741,7 +747,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+     OE_CHECK_NO_TRACE(
+         _initialize_enclave_properties(enclave, conffile, &properties));
+ 
+-    OE_CHECK_NO_TRACE(_get_sgx_enclave_hash(enclave, &properties, &mrenclave));
++    OE_CHECK_NO_TRACE(
++        _get_sgx_enclave_hash(enclave, &properties, &mrenclave, NULL));
+ 
+     /* Construct the unsigned sigstruct with the MRENCLAVE and get its digest */
+     OE_CHECK_ERR(
