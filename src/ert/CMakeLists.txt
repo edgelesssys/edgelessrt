@@ -6,6 +6,8 @@ target_sources(oecore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/ringbuffer.c
 target_sources(oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/eventfd.c)
 target_sources(oehostsock
                PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/enclave/internalsock.c)
+target_sources(oesign PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oesign/eradump.cpp
+                              ${CMAKE_CURRENT_SOURCE_DIR}/oesign/oesignerid.c)
 
 add_subdirectory(libc)
 
