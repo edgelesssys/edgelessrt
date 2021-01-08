@@ -132,6 +132,21 @@ class Memfs
 
     static memfs::Filesystem& to_fs(void* context);
 };
+
+/**
+ * An enclave can optionally contain a second executable image that we call the
+ * payload.
+ */
+namespace payload
+{
+/**
+ * Get the base address of the payload image.
+ *
+ * @return base address
+ */
+const void* get_base() noexcept;
+} // namespace payload
+
 } // namespace ert
 
 #endif // __cplusplus
