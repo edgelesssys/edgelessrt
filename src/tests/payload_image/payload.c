@@ -1,7 +1,9 @@
 #include <openenclave/bits/properties.h>
+#include <stdio.h>
 
 int main()
 {
+    puts("hello from payload");
     return 2;
 }
 

@@ -1465,10 +1465,16 @@ endif ()
 set_enclave_property(TARGET oelibc PROPERTY ARCHIVE_OUTPUT_DIRECTORY
                      ${OE_LIBDIR}/openenclave/enclave)
 
+# libc symbols must be visible to make dlsym work. We cannot add this flag directly to oelibc because one of its dependencies would override it. As this is the last dependency, it will finally override it with 'default'.
+add_library(oelibc_visibility INTERFACE)
+target_compile_options(oelibc_visibility INTERFACE -fvisibility=default)
+enclave_link_libraries(oelibc PRIVATE oelibc_visibility)
+
 install_enclaves(
   TARGETS
   oelibc
   oelibasm
+  oelibc_visibility
   EXPORT
   openenclave-targets
   ARCHIVE
