@@ -107,6 +107,19 @@ index ca0e0f893..ea04aa53b 100644
              for j in range(i):
                  gdbcmd += Out[j][0] + " " + Out[j][1] + " " + '%(Location)#08x' % {'Location' : int(Out[j][2])} + " " + Out[j][3]
          else:
+diff --git a/enclave/core/__stack_chk_fail.c b/enclave/core/__stack_chk_fail.c
+index 825e5d10f..ffc34fa20 100644
+--- a/enclave/core/__stack_chk_fail.c
++++ b/enclave/core/__stack_chk_fail.c
+@@ -3,7 +3,7 @@
+ 
+ #include <openenclave/enclave.h>
+ 
+-void __stack_chk_fail(void)
++OE_EXPORT void __stack_chk_fail(void)
+ {
+     __oe_assert_fail(
+         "Stack smashing detected!", __FILE__, __LINE__, __FUNCTION__);
 diff --git a/enclave/core/init_fini.c b/enclave/core/init_fini.c
 index 2c3141dba..da52fbd58 100644
 --- a/enclave/core/init_fini.c
