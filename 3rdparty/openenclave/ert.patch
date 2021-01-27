@@ -94,6 +94,43 @@ index 47fa9b93f..fd1a72b9c 100644
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
+diff --git a/debugger/pythonExtension/gdb_sgx_plugin.py b/debugger/pythonExtension/gdb_sgx_plugin.py
+index 2f30cf2a9..4e5da0c88 100644
+--- a/debugger/pythonExtension/gdb_sgx_plugin.py
++++ b/debugger/pythonExtension/gdb_sgx_plugin.py
+@@ -45,6 +45,10 @@ class oe_debug_enclave_t:
+     MASK_DEBUG = 0x01
+     MASK_SIMULATE = 0x02
+ 
++    OFFSETOF_BASE_ADDRESS_PAYLOAD = 80
++    OFFSETOF_PATH_PAYLOAD = 88
++    OFFSETOF_PATH_LENGTH_PAYLOAD = 96
++
+     def __init__(self, addr):
+         if addr:
+             self.magic = read_int_from_memory(addr + self.OFFSETOF_MAGIC, self.SIZEOF_MAGIC)
+@@ -72,6 +76,12 @@ class oe_debug_enclave_t:
+         self.debug = bool(flags & self.MASK_DEBUG)
+         self.simulate = bool(flags & self.MASK_SIMULATE)
+ 
++        self.base_address_payload = read_int_from_memory(addr + self.OFFSETOF_BASE_ADDRESS_PAYLOAD, self.SIZEOF_BASE_ADDRESS)
++        if self.base_address_payload:
++            path = read_int_from_memory(addr + self.OFFSETOF_PATH_PAYLOAD, self.SIZEOF_PATH)
++            path_length = read_int_from_memory(addr + self.OFFSETOF_PATH_LENGTH_PAYLOAD, self.SIZEOF_PATH_LENGTH)
++            self.path_payload = bytes(read_from_memory(path, path_length)).decode('utf-8')
++
+ 
+     def is_valid(self):
+         return self.magic == self.MAGIC_VALUE
+@@ -208,6 +218,8 @@ def enable_oeenclave_debug(oe_enclave_addr):
+     # Load symbols for the enclave
+     if load_enclave_symbol(enclave.path, enclave.base_address) != 1:
+         return False
++    if enclave.base_address_payload and load_enclave_symbol(enclave.path_payload, enclave.base_address_payload) != 1:
++        return False
+ 
+     print("oegdb: Symbols loaded for enclave \n")
+     for tcs in enclave.tcs:
 diff --git a/debugger/pythonExtension/load_symbol_cmd.py b/debugger/pythonExtension/load_symbol_cmd.py
 index ca0e0f893..ea04aa53b 100644
 --- a/debugger/pythonExtension/load_symbol_cmd.py
@@ -573,7 +610,7 @@ index 449af159e..6c2b8d6a4 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index fa2f97e85..22dd0843b 100644
+index fa2f97e85..e96dd4f2c 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -772,7 +772,8 @@ oe_result_t oe_sgx_build_enclave(
@@ -642,17 +679,28 @@ index fa2f97e85..22dd0843b 100644
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -902,6 +936,9 @@ oe_result_t oe_sgx_build_enclave(
+@@ -902,6 +936,12 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Add image to enclave */
      OE_CHECK(oeimage.add_pages(&oeimage, context, enclave, &vaddr));
 +    if (payload_path)
++    {
 +        OE_CHECK(oeimage_payload.add_pages(
 +            &oeimage_payload, context, enclave, &vaddr));
++        context->payload_offset = image_size;
++    }
  
  #ifdef OE_WITH_EXPERIMENTAL_EEID
      OE_CHECK(_add_eeid_marker_page(
-@@ -1084,8 +1121,20 @@ oe_result_t oe_create_enclave(
+@@ -1022,6 +1062,7 @@ oe_result_t oe_create_enclave(
+     oe_result_t result = OE_UNEXPECTED;
+     oe_enclave_t* enclave = NULL;
+     oe_sgx_load_context_t context;
++    char* debug_payload_path = NULL;
+ 
+     _initialize_enclave_host();
+ 
+@@ -1084,8 +1125,23 @@ oe_result_t oe_create_enclave(
          }
  #endif
  
@@ -670,12 +718,41 @@ index fa2f97e85..22dd0843b 100644
 +        /* Build the enclave */
 +        OE_CHECK(oe_sgx_build_enclave(
 +            &context, enclave_path, NULL, enclave, payload_path));
++
++        if (payload_path && enclave->debug)
++            debug_payload_path = strdup(payload_path);
 +        free(paths);
 +    }
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1185,6 +1234,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1109,6 +1165,15 @@ oe_result_t oe_create_enclave(
+         debug_enclave->base_address = (void*)enclave->addr;
+         debug_enclave->size = enclave->size;
+ 
++        if (debug_payload_path)
++        {
++            debug_enclave->path_payload = debug_payload_path;
++            debug_enclave->path_length_payload = strlen(debug_payload_path);
++            debug_payload_path = NULL;
++            debug_enclave->base_address_payload =
++                (void*)(enclave->addr + context.payload_offset);
++        }
++
+         debug_enclave->tcs_array =
+             (sgx_tcs_t**)calloc(enclave->num_bindings, sizeof(sgx_tcs_t*));
+         for (uint64_t i = 0; i < enclave->num_bindings; ++i)
+@@ -1171,6 +1236,9 @@ done:
+ 
+     oe_sgx_cleanup_load_context(&context);
+ 
++    if (debug_payload_path)
++        free(debug_payload_path);
++
+     return result;
+ }
+ 
+@@ -1185,6 +1253,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      /* Shut down the switchless manager */
      OE_CHECK(oe_stop_switchless_manager(enclave));
  
@@ -685,6 +762,14 @@ index fa2f97e85..22dd0843b 100644
 +
      /* Call the enclave destructor */
      OE_CHECK(oe_ecall(enclave, OE_ECALL_DESTRUCTOR, 0, NULL));
+ 
+@@ -1192,6 +1264,7 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+     {
+         oe_debug_notify_enclave_terminated(enclave->debug_enclave);
+         free(enclave->debug_enclave->tcs_array);
++        free(enclave->debug_enclave->path_payload);
+         free(enclave->debug_enclave);
+     }
  
 diff --git a/host/sgx/exception.c b/host/sgx/exception.c
 index e908e9f9a..e8c81440a 100644
@@ -884,6 +969,32 @@ index 23017cd2b..3407398b9 100644
  /**
   * Terminate an enclave and reclaims its resources.
   *
+diff --git a/include/openenclave/internal/debugrt/host.h b/include/openenclave/internal/debugrt/host.h
+index bc19bb871..72cb445a0 100644
+--- a/include/openenclave/internal/debugrt/host.h
++++ b/include/openenclave/internal/debugrt/host.h
+@@ -63,6 +63,11 @@ typedef struct _debug_enclave_t
+     uint64_t num_tcs;
+ 
+     uint64_t flags;
++
++    // EDG: payload properties
++    const void* base_address_payload;
++    char* path_payload;
++    uint64_t path_length_payload;
+ } oe_debug_enclave_t;
+ 
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, magic) == 0);
+@@ -75,6 +80,9 @@ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, size) == 48);
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, tcs_array) == 56);
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, num_tcs) == 64);
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, flags) == 72);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, base_address_payload) == 80);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_payload) == 88);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_length_payload) == 96);
+ 
+ #define OE_DEBUG_THREAD_BINDING_MAGIC 0x24cb0317d077d636
+ 
 diff --git a/include/openenclave/internal/globals.h b/include/openenclave/internal/globals.h
 index 986fd0b61..3b5f7723e 100644
 --- a/include/openenclave/internal/globals.h
@@ -908,10 +1019,10 @@ index 986fd0b61..3b5f7723e 100644
  
  #endif /* _OE_GLOBALS_H */
 diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
-index 24749af7a..46dec043c 100644
+index 24749af7a..9ee4a40b7 100644
 --- a/include/openenclave/internal/sgxcreate.h
 +++ b/include/openenclave/internal/sgxcreate.h
-@@ -65,6 +65,10 @@ struct _oe_sgx_load_context
+@@ -65,6 +65,11 @@ struct _oe_sgx_load_context
      /* EEID data needed during enclave creation */
      oe_eeid_t* eeid;
  #endif
@@ -919,10 +1030,11 @@ index 24749af7a..46dec043c 100644
 +    // EDG: payload properties
 +    size_t payload_image_size;
 +    size_t payload_reloc_size;
++    size_t payload_offset;
  };
  
  oe_result_t oe_sgx_initialize_load_context(
-@@ -78,7 +82,8 @@ oe_result_t oe_sgx_build_enclave(
+@@ -78,7 +83,8 @@ oe_result_t oe_sgx_build_enclave(
      oe_sgx_load_context_t* context,
      const char* path,
      const oe_sgx_enclave_properties_t* properties,
