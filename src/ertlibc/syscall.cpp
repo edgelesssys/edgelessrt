@@ -85,6 +85,41 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                     static_cast<size_t>(x4),
                     reinterpret_cast<uint8_t**>(x5),
                     reinterpret_cast<size_t*>(x6));
+
+            case 1001:
+                oe_free_report(reinterpret_cast<uint8_t*>(x1));
+                return 0;
+
+            case 1002:
+                return oe_verify_report(
+                    reinterpret_cast<uint8_t*>(x1),
+                    static_cast<size_t>(x2),
+                    reinterpret_cast<oe_report_t*>(x3));
+
+            case 1003:
+                return oe_get_seal_key_v2(
+                    reinterpret_cast<uint8_t*>(x1),
+                    static_cast<size_t>(x2),
+                    reinterpret_cast<uint8_t**>(x3),
+                    reinterpret_cast<size_t*>(x4));
+
+            case 1004:
+                oe_free_seal_key(
+                    reinterpret_cast<uint8_t*>(x1),
+                    reinterpret_cast<uint8_t*>(x2));
+                return 0;
+
+            case 1005:
+                return oe_get_seal_key_by_policy_v2(
+                    static_cast<oe_seal_policy_t>(x1),
+                    reinterpret_cast<uint8_t**>(x2),
+                    reinterpret_cast<size_t*>(x3),
+                    reinterpret_cast<uint8_t**>(x4),
+                    reinterpret_cast<size_t*>(x5));
+
+            case 1006:
+                return strtol(
+                    oe_result_str(static_cast<oe_result_t>(x1)), NULL, 10);
         }
     }
     catch (const system_error& e)
