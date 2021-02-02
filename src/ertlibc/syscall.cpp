@@ -118,8 +118,8 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                     reinterpret_cast<size_t*>(x5));
 
             case 1006:
-                return strtol(
-                    oe_result_str(static_cast<oe_result_t>(x1)), NULL, 10);
+                return reinterpret_cast<long>(
+                    oe_result_str(static_cast<oe_result_t>(x1)));
         }
     }
     catch (const system_error& e)
