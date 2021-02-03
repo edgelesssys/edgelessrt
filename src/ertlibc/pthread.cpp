@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
+#include <openenclave/internal/calls.h>
 #include <openenclave/internal/jump.h>
 #include <openenclave/internal/trace.h>
 #include <pthread.h>
@@ -151,6 +152,24 @@ void pthread_exit(void* retval)
     abort();
 }
 
+int pthread_cancel(pthread_t thread)
+{
+    if (!thread)
+        return ESRCH;
+
+    ert_thread_t* const t = _to_ert_thread(thread);
+    __atomic_store_n(&t->cancel, true, __ATOMIC_SEQ_CST);
+
+    return 0;
+}
+
+void pthread_testcancel()
+{
+    ert_thread_t* const self = _to_ert_thread(pthread_self());
+    if (__atomic_load_n(&self->cancel, __ATOMIC_SEQ_CST) && self->cancelable)
+        pthread_exit(PTHREAD_CANCELED);
+}
+
 void ert_create_thread_ecall()
 {
     oe_new_thread_t* const new_thread = oe_new_thread_queue_pop_front();
@@ -164,8 +183,10 @@ void ert_create_thread_ecall()
 
     // run the thread function
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_RUNNING);
+    new_thread->self->cancelable = true;
     if (oe_setjmp(&new_thread->jmp_exit) == 0)
         new_thread->return_value = new_thread->func(new_thread->arg);
+    new_thread->self->cancelable = false;
     oe_new_thread_state_update(new_thread, OE_NEWTHREADSTATE_DONE);
 
     // wait for join before releasing the thread
