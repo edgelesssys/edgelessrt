@@ -5,6 +5,7 @@
 #include <array>
 #include <atomic>
 #include <cerrno>
+#include <mutex>
 #include "test_t.h"
 
 using namespace std;
@@ -278,6 +279,24 @@ static void _test_cancel()
     OE_TEST(ret == PTHREAD_CANCELED);
 }
 
+static void _test_cancel_blocked()
+{
+    const auto start_routine = [](void* arg) -> void* {
+        lock_guard(*static_cast<mutex*>(arg));
+        OE_TEST(false);
+    };
+
+    pthread_t thread{};
+    mutex mut;
+    const lock_guard lock(mut);
+    OE_TEST(pthread_create(&thread, nullptr, start_routine, &mut) == 0);
+    OE_TEST(pthread_cancel(thread) == 0);
+
+    void* ret = nullptr;
+    OE_TEST(pthread_join(thread, &ret) == 0);
+    OE_TEST(ret == PTHREAD_CANCELED);
+}
+
 static void _test_attr()
 {
     pthread_attr_t attr{};
@@ -318,6 +337,7 @@ void test_ecall()
     _test_detached();
     _test_exit();
     _test_cancel();
+    _test_cancel_blocked();
     _test_attr();
     _test_mutexattr();
 }

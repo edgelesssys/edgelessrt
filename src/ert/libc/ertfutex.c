@@ -64,6 +64,16 @@ static __thread info_t _thread;
 static info_t* _front;
 static info_t* _back;
 
+static void _list_unlink(const info_t* p, info_t* prev)
+{
+    if (p == _front)
+        _front = p->next;
+    if (p == _back)
+        _back = prev;
+    if (prev)
+        prev->next = p->next;
+}
+
 static void _list_push_back(info_t* info)
 {
     assert(info);
@@ -88,12 +98,7 @@ static info_t* _list_pop(const int* uaddr)
     {
         if (p->uaddr == uaddr)
         {
-            if (p == _front)
-                _front = p->next;
-            if (p == _back)
-                _back = prev;
-            if (prev)
-                prev->next = p->next;
+            _list_unlink(p, prev);
             return p;
         }
         prev = p;
@@ -125,16 +130,30 @@ static void _list_remove(const info_t* info)
     {
         if (p == info)
         {
-            if (p == _front)
-                _front = p->next;
-            if (p == _back)
-                _back = prev;
-            if (prev)
-                prev->next = p->next;
+            _list_unlink(p, prev);
             return;
         }
         prev = p;
     }
+}
+
+static bool _list_remove_tcs(uint64_t tcs)
+{
+    assert(tcs);
+
+    info_t* prev = NULL;
+
+    for (info_t* p = _front; p; p = p->next)
+    {
+        if (p->tcs == tcs)
+        {
+            _list_unlink(p, prev);
+            return true;
+        }
+        prev = p;
+    }
+
+    return false;
 }
 
 static void _list_replace(const int* uaddr, const int* uaddr2)
@@ -260,4 +279,15 @@ int ert_futex(
 
     OE_TRACE_FATAL("unsupported futex operation %d", op);
     abort();
+}
+
+void ert_futex_wake_tcs(const void* tcs)
+{
+    const uint64_t t = (uint64_t)tcs;
+    oe_spin_lock(&_lock);
+    const bool exist = _list_remove_tcs(t);
+    oe_spin_unlock(&_lock);
+    if (exist &&
+        oe_sgx_thread_wake_multiple_ocall(oe_get_enclave(), &t, 1) != OE_OK)
+        abort();
 }

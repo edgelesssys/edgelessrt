@@ -12,6 +12,7 @@
 #include <exception>
 #include <stdexcept>
 #include <system_error>
+#include "../libc/ertfutex.h"
 #include "ertlibc_t.h"
 #include "ertthread.h"
 #include "new_thread.h"
@@ -159,6 +160,9 @@ int pthread_cancel(pthread_t thread)
 
     ert_thread_t* const t = _to_ert_thread(thread);
     __atomic_store_n(&t->cancel, true, __ATOMIC_SEQ_CST);
+
+    // thread may sleep, so wake it
+    ert_futex_wake_tcs(t->tcs);
 
     return 0;
 }
