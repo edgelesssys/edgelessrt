@@ -40,4 +40,20 @@ size_t ert_bitset_find_unset_range(
     size_t bitset_size,
     size_t count);
 
+/**
+ * Finds the first position of 1 bits.
+ *
+ * @param bitset Pointer to the bitset.
+ * @param bitset_size Bitset size in bits.
+ * @param pos Positon to start searching.
+ * @param count Returnes the number of consecutive 1 bits found.
+ *
+ * @return If found, the position of the found range; otherwise, SIZE_MAX.
+ */
+size_t ert_bitset_find_set_range(
+    const void* bitset,
+    size_t bitset_size,
+    size_t pos,
+    size_t* count);
+
 OE_EXTERNC_END
