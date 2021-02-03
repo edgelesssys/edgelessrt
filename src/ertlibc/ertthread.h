@@ -4,11 +4,14 @@
 #pragma once
 
 #include <openenclave/bits/defs.h>
+#include <stdbool.h>
 
 typedef struct _ert_thread
 {
     struct _oe_new_thread* new_thread;
     long tid;
+    bool cancel;
+    bool cancelable;
 } ert_thread_t;
 
 OE_EXTERNC_BEGIN

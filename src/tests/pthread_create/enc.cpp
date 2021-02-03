@@ -73,6 +73,7 @@ static void _test_invalid_arguments()
 {
     OE_TEST(pthread_join(pthread_t(), nullptr) == ESRCH);
     OE_TEST(pthread_detach(pthread_t()) == ESRCH);
+    OE_TEST(pthread_cancel(pthread_t()) == ESRCH);
 }
 
 static void _test_created_thread_runs_concurrently()
@@ -257,6 +258,26 @@ static void _test_exit()
     OE_TEST(ret == 2);
 }
 
+static void _test_cancel()
+{
+    const auto start_routine = [](void*) -> void* {
+        for (;;)
+        {
+            oe_sched_yield();
+            pthread_testcancel();
+        }
+        OE_TEST(false);
+    };
+
+    pthread_t thread{};
+    OE_TEST(pthread_create(&thread, nullptr, start_routine, nullptr) == 0);
+    OE_TEST(pthread_cancel(thread) == 0);
+
+    void* ret = nullptr;
+    OE_TEST(pthread_join(thread, &ret) == 0);
+    OE_TEST(ret == PTHREAD_CANCELED);
+}
+
 static void _test_attr()
 {
     pthread_attr_t attr{};
@@ -296,6 +317,7 @@ void test_ecall()
     _test_detach();
     _test_detached();
     _test_exit();
+    _test_cancel();
     _test_attr();
     _test_mutexattr();
 }

@@ -37,9 +37,13 @@ pthread_t __pthread_self()
     return &self.pt;
 }
 
-int pthread_cancel(pthread_t thread)
+__attribute__((__weak__)) int pthread_cancel(pthread_t thread)
 {
     return -1;
+}
+
+__attribute__((__weak__)) void pthread_testcancel()
+{
 }
 
 int pthread_key_create(pthread_key_t* key, void (*destructor)(void* value))
