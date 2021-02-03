@@ -11,7 +11,7 @@ OE_EXTERNC void ert_stub_trace(const char* msg);
 #define ERT_STUB_ERRNO(x, ret, err) \
     OE_EXTERNC int x()              \
     {                               \
-        ERT_STUB_trace(#x);         \
+        ert_stub_trace(#x);         \
         errno = err;                \
         return ret;                 \
     }
