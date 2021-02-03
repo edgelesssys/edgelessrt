@@ -225,7 +225,7 @@ index b9d64b1b4..4c5f03803 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index adf260715..c9344f06e 100644
+index adf260715..ce1973063 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
 @@ -46,6 +46,22 @@
@@ -319,6 +319,18 @@ index adf260715..c9344f06e 100644
      oe_result_t result = OE_UNEXPECTED;
      oe_sgx_td_t* td = oe_sgx_get_td();
      oe_callsite_t* callsite = td->callsites;
+@@ -689,6 +733,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
+         /* ORET here */
+     }
+ 
++    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
++    // that pthread_cancel works as expected.
++    void pthread_testcancel();
++    pthread_testcancel();
++
+     result = OE_OK;
+ 
+ done:
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
 index da7a16a9d..02a038e9d 100644
 --- a/enclave/core/sgx/exception.c

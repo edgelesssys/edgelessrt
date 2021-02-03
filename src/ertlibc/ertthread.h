@@ -10,6 +10,7 @@ typedef struct _ert_thread
 {
     struct _oe_new_thread* new_thread;
     long tid;
+    const void* tcs;
     bool cancel;
     bool cancelable;
 } ert_thread_t;

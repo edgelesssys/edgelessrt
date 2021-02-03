@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include <openenclave/bits/defs.h>
 #include <time.h>
+
+OE_EXTERNC_BEGIN
 
 int ert_futex(
     const int* uaddr,
@@ -11,3 +14,7 @@ int ert_futex(
     int val,
     const struct timespec* timeout,
     const int* uaddr2);
+
+void ert_futex_wake_tcs(const void* tcs);
+
+OE_EXTERNC_END
