@@ -142,3 +142,13 @@ int ert_munmap(void* addr, size_t length)
 
     return result;
 }
+
+const void* ert_get_heap_base(void)
+{
+    return __oe_get_heap_base();
+}
+
+size_t ert_get_heap_size(void)
+{
+    return __oe_get_heap_size();
+}

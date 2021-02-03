@@ -92,6 +92,20 @@ uint64_t oe_load_module_custom_file_system(
     oe_customfs_t* ops,
     void* context);
 
+/**
+ * Get the base address of the heap.
+ *
+ * @retval base address.
+ */
+const void* ert_get_heap_base(void);
+
+/**
+ * Get the size of the heap.
+ *
+ * @retval heap size.
+ */
+size_t ert_get_heap_size(void);
+
 OE_EXTERNC_END
 
 #ifdef __cplusplus
