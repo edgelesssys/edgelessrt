@@ -157,7 +157,7 @@ void test_ecall()
     //
 
     bitset.fill(numeric_limits<uint64_t>::max());
-    _test_find_set_range(bitset, 0, 1, bit_count);
+    _test_find_set_range(bitset, 0, 0, bit_count);
     _test_find_set_range(bitset, 1, 1, bit_count - 1);
     _test_find_set_range(bitset, 2, 2, bit_count - 2);
     _test_find_set_range(bitset, 62, 62, bit_count - 62);
@@ -170,9 +170,6 @@ void test_ecall()
     _test_find_set_range(bitset, 129, 129, bit_count - 129);
     _test_find_set_range(bitset, bit_count - 2, bit_count - 2, 2);
     _test_find_set_range(bitset, bit_count - 1, bit_count - 1, 1);
-    _test_find_set_range(bitset, bit_count, -1, -1);
-    _test_find_set_range(bitset, bit_count + 1, -1, -1);
-    _test_find_set_range(bitset, bit_count + 2, -1, -1);
 
     bitset.fill(0);
     _test_find_set_range(bitset, 0, -1, -1);
@@ -188,29 +185,24 @@ void test_ecall()
     _test_find_set_range(bitset, 129, -1, -1);
     _test_find_set_range(bitset, bit_count - 2, -1, -1);
     _test_find_set_range(bitset, bit_count - 1, -1, -1);
-    _test_find_set_range(bitset, bit_count, -1, -1);
-    _test_find_set_range(bitset, bit_count + 1, -1, -1);
-    _test_find_set_range(bitset, bit_count + 2, -1, -1);
 
     bitset[0] = 1;
     bitset[1] = 6;
-    bitset[4] = 0xf000'0000'0000'0001;
-    _test_find_set_range(bitset, 0, 1, 1);
+    bitset[4] = 0x7000'0000'0000'0001;
+    _test_find_set_range(bitset, 0, 0, 1);
     _test_find_set_range(bitset, 1, 65, 2);
     _test_find_set_range(bitset, 2, 65, 2);
     _test_find_set_range(bitset, 63, 65, 2);
     _test_find_set_range(bitset, 64, 65, 2);
     _test_find_set_range(bitset, 65, 65, 2);
-    _test_find_set_range(bitset, 66, 320, 4);
-    _test_find_set_range(bitset, 188, 320, 4);
-    _test_find_set_range(bitset, 189, 320, 4);
-    _test_find_set_range(bitset, 190, 320, 4);
-    _test_find_set_range(bitset, 191, 320, 4);
-    _test_find_set_range(bitset, 320, 320, 4);
-    _test_find_set_range(bitset, 321, 321, 3);
-    _test_find_set_range(bitset, 322, 322, 2);
-    _test_find_set_range(bitset, 323, 323, 1);
-    _test_find_set_range(bitset, 324, -1, -1);
+    _test_find_set_range(bitset, 66, 66, 1);
+    _test_find_set_range(bitset, 67, 256, 1);
+    _test_find_set_range(bitset, 256, 256, 1);
+    _test_find_set_range(bitset, 257, 316, 3);
+    _test_find_set_range(bitset, 316, 316, 3);
+    _test_find_set_range(bitset, 317, 317, 2);
+    _test_find_set_range(bitset, 318, 318, 1);
+    _test_find_set_range(bitset, 319, -1, -1);
 }
 
 OE_SET_ENCLAVE_SGX(
