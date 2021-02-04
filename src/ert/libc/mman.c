@@ -145,10 +145,10 @@ int ert_munmap(void* addr, size_t length)
 
 const void* ert_get_heap_base(void)
 {
-    return __oe_get_heap_base();
+    return _base;
 }
 
 size_t ert_get_heap_size(void)
 {
-    return __oe_get_heap_size();
+    return _size;
 }
