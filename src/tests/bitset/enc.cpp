@@ -56,7 +56,10 @@ static void _test_find_set_range(
             bitset.size() * sizeof bitset.front() * CHAR_BIT,
             pos,
             &count) == static_cast<size_t>(expect_idx));
-    OE_TEST(count == static_cast<size_t>(expect_size));
+    if (expect_idx != -1)
+    {
+        OE_TEST(count == static_cast<size_t>(expect_size));
+    }
 }
 
 void test_ecall()
