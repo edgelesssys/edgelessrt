@@ -2,6 +2,8 @@
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
 #include <pthread.h>
+#include <sys/epoll.h>
+#include <unistd.h>
 #include <array>
 #include <atomic>
 #include <cerrno>
@@ -9,6 +11,8 @@
 #include "test_t.h"
 
 using namespace std;
+
+extern "C" int oe_epoll_wake();
 
 namespace
 {
@@ -297,6 +301,36 @@ static void _test_cancel_blocked()
     OE_TEST(ret == PTHREAD_CANCELED);
 }
 
+static void _test_cancel_epoll()
+{
+    const auto start_routine = [](void* arg) -> void* {
+        const int epfd = reinterpret_cast<intptr_t>(arg);
+        epoll_event ev{};
+        for (;;)
+            OE_TEST(epoll_wait(epfd, &ev, 1, -1) == 0);
+        OE_TEST(false);
+    };
+
+    const int epfd = epoll_create(0);
+    OE_TEST(epfd > 0);
+
+    pthread_t thread{};
+    OE_TEST(
+        pthread_create(
+            &thread, nullptr, start_routine, reinterpret_cast<void*>(epfd)) ==
+        0);
+
+    _sleep();
+    OE_TEST(pthread_cancel(thread) == 0);
+    OE_TEST(oe_epoll_wake() == 0);
+
+    void* ret = nullptr;
+    OE_TEST(pthread_join(thread, &ret) == 0);
+    OE_TEST(ret == PTHREAD_CANCELED);
+
+    OE_TEST(close(epfd) == 0);
+}
+
 static void _test_attr()
 {
     pthread_attr_t attr{};
@@ -327,6 +361,8 @@ static void _test_mutexattr()
 
 void test_ecall()
 {
+    OE_TEST(oe_load_module_host_epoll() == OE_OK);
+
     _test_invalid_arguments();
     _test_created_thread_runs_concurrently();
     _test_join_retval_nullptr();
@@ -338,6 +374,7 @@ void test_ecall()
     _test_exit();
     _test_cancel();
     _test_cancel_blocked();
+    _test_cancel_epoll();
     _test_attr();
     _test_mutexattr();
 }
