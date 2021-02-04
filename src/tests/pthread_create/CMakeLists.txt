@@ -13,7 +13,7 @@ set_property(TARGET erttest_pthread_create_lib
 
 add_enclave(TARGET erttest_pthread_create SOURCES ../empty.c)
 enclave_link_libraries(erttest_pthread_create erttest_pthread_create_lib
-                       ertlibc)
+                       ertlibc openenclave::oehostepoll)
 
 add_test(NAME tests/ert/pthread_create COMMAND erttest_host
                                                erttest_pthread_create)
