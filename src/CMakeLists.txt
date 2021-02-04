@@ -20,6 +20,7 @@ target_include_directories(
                         ${OEBUILDDIR}/openenclave/output/include)
 
 add_subdirectory(ertlibc)
+add_subdirectory(meshpremain)
 add_subdirectory(tools/erthost)
 add_subdirectory(tools/ertgo)
 
@@ -36,7 +37,7 @@ install(
 install(FILES ${PROJECT_SOURCE_DIR}/ert/include/openenclave/edl/ertlibc.edl
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openenclave/edl)
 
-# install ert-targets.cmake and patch openenclave-config.cmake such that it includes ert-targets.cmake
+# install ert-targets.cmake and patch openenclave-config.cmake such that it includes ert-config.cmake
 install(
   EXPORT openenclave-targets
   NAMESPACE openenclave::
@@ -46,6 +47,7 @@ file(
   COPY ${OEBUILDDIR}/openenclave-install/lib/openenclave/cmake/openenclave-config.cmake
   DESTINATION .)
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
-     "include(\${CMAKE_CURRENT_LIST_DIR}/ert-targets.cmake)")
+     "include(\${CMAKE_CURRENT_LIST_DIR}/ert-config.cmake)")
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/openenclave-config.cmake
+              ert-config.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/cmake)
