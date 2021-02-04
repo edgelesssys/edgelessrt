@@ -136,11 +136,13 @@ size_t ert_bitset_find_set_range(
     size_t* count)
 {
     assert(bitset);
+    assert(count);
 
     // find next 1 bit
     const size_t pos0 = _find_next_bit(bitset, bitset_size, pos, 0);
     if (pos0 == bitset_size)
     {
+        *count = SIZE_MAX;
         return SIZE_MAX;
     }
 
