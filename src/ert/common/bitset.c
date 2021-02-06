@@ -128,3 +128,28 @@ size_t ert_bitset_find_unset_range(
         i = pos1 + 1;
     }
 }
+
+size_t ert_bitset_find_set_range(
+    const void* bitset,
+    size_t bitset_size,
+    size_t pos,
+    size_t* count)
+{
+    assert(bitset);
+    assert(count);
+
+    // find next 1 bit
+    const size_t pos0 = _find_next_bit(bitset, bitset_size, pos, 0);
+    if (pos0 == bitset_size)
+    {
+        return SIZE_MAX;
+    }
+
+    // find next 0 bit
+    const size_t pos1 = _find_next_bit(bitset, bitset_size, pos0, UINTPTR_MAX);
+
+    // return count
+    *count = pos1 - pos0;
+
+    return pos0;
+}
