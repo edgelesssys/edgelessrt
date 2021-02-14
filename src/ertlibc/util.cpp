@@ -9,6 +9,9 @@
 using namespace std;
 using namespace ert;
 
+extern "C" const uint64_t _payload_data;
+extern "C" const uint64_t _payload_data_size;
+
 static void _check(oe_result_t result)
 {
     if (result != OE_OK)
@@ -72,4 +75,9 @@ const void* payload::get_base() noexcept
 {
     // payload image starts after relocs from main image
     return __oe_get_reloc_end();
+}
+
+std::pair<const void*, size_t> payload::get_data() noexcept
+{
+    return {reinterpret_cast<void*>(_payload_data), _payload_data_size};
 }
