@@ -98,6 +98,7 @@ OE_EXTERNC_END
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace ert
 {
@@ -156,6 +157,13 @@ const void* get_base() noexcept;
  * @throw logic_error relocation failed
  */
 void apply_relocations(void start_main(int payload_main(...)));
+
+/**
+ * Get the payload data.
+ *
+ * @return payload data
+ */
+std::pair<const void*, size_t> get_data() noexcept;
 } // namespace payload
 
 } // namespace ert
