@@ -16,7 +16,7 @@ git commit -a -m ert
 ```
 Now you can make changes to both ERT and OE. You only need to build ERT which automatically builds the modified OE.
 
-Once you are done, create a new patch file (within the IDE opened at OE):
+Once you are done, create a new patch file (within `3rdparty/openenclave/openenclave`):
 ```sh
 git diff HEAD^ > ../ert.patch
 ```
