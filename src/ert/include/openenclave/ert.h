@@ -49,6 +49,13 @@ void ert_copy_strings_from_host_to_enclave(
     char*** enclave_array,
     size_t count);
 
+/**
+ * Initialize Transparent TLS.
+ *
+ * @param config Configuration string as JSON.
+ */
+void ert_init_ttls(const char* config);
+
 typedef struct _oe_customfs
 {
     uint8_t reserved[4248];

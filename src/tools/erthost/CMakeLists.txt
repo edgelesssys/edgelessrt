@@ -27,8 +27,12 @@ target_link_libraries(
   PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc)
 
+add_library(ertttls ttls.cpp)
+target_link_libraries(ertttls PRIVATE $<BUILD_INTERFACE:oe_includes>)
+set_property(TARGET ertttls PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 install(
-  TARGETS ertdeventry ertmeshentry ertcalls
+  TARGETS ertdeventry ertmeshentry ertcalls ertttls
   EXPORT openenclave-targets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
