@@ -13,6 +13,10 @@ add_executable(erttest_payload_data_payload payload.c)
 set_property(TARGET erttest_payload_data_payload
              PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(erttest_payload_data_payload -pie oe_includes)
+add_custom_command(
+TARGET erttest_payload_data_payload POST_BUILD
+COMMAND go run ${CMAKE_CURRENT_SOURCE_DIR}/patch.go erttest_payload_data_payload
+)
 
 add_custom_command(OUTPUT private.pem COMMAND openssl genrsa -out private.pem
                                               -3 3072)
