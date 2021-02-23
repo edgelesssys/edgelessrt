@@ -9,7 +9,8 @@
 using namespace std;
 using namespace ert;
 
-extern "C" const uint64_t _payload_data;
+extern "C" const uint64_t _payload_reloc_rva;
+extern "C" const uint64_t _payload_reloc_size;
 extern "C" const uint64_t _payload_data_size;
 
 static void _check(oe_result_t result)
@@ -79,5 +80,8 @@ const void* payload::get_base() noexcept
 
 std::pair<const void*, size_t> payload::get_data() noexcept
 {
-    return {reinterpret_cast<void*>(_payload_data), _payload_data_size};
+    // payload data resides after relocs
+    return {static_cast<const uint8_t*>(__oe_get_enclave_base()) +
+                _payload_reloc_rva + _payload_reloc_size,
+            _payload_data_size};
 }

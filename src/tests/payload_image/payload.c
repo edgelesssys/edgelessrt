@@ -7,6 +7,5 @@ int main()
     return 2;
 }
 
-// This will add the .oeinfo section to the payload executable. oesign will fill
-// in valid values.
-OE_SET_ENCLAVE_SGX(0, 0, false, 0, 0, 0);
+__attribute__((section(OE_INFO_SECTION_NAME))) volatile const char
+    oe_enclave_properties_sgx[0x1000];
