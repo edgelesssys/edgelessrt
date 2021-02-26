@@ -1,5 +1,5 @@
 diff --git a/src/f_emitter.h b/src/f_emitter.h
-index 3885327..6db5b70 100644
+index 784c2b6..9437dd9 100644
 --- a/src/f_emitter.h
 +++ b/src/f_emitter.h
 @@ -43,7 +43,7 @@ class FEmitter
@@ -12,7 +12,7 @@ index 3885327..6db5b70 100644
                << "    size_t input_buffer_size,"
                << "    uint8_t* output_buffer,"
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 03d23c4..9eb6e4c 100644
+index 92ba803..f924c1b 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
 @@ -4,11 +4,11 @@
@@ -27,5 +27,5 @@ index 03d23c4..9eb6e4c 100644
 -add_subdirectory(prefix)
 +#add_subdirectory(prefix)
  add_subdirectory(preprocessor)
-
- # Virtual Mode execution for tests.
+ add_subdirectory(safe_math)
+ add_subdirectory(warnings)
