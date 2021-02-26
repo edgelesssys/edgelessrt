@@ -29,7 +29,7 @@ RUN wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key
     apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN add-apt-repository ppa:git-core/ppa
 RUN apt update && \
-    apt install -y protobuf-compiler golang-goprotobuf-dev cmake git python ninja-build build-essential gdb ca-certificates zlib1g-dev doxygen nano vim curl clang-tidy-10 && \
+    apt install -y protobuf-compiler golang-goprotobuf-dev cmake git python ninja-build build-essential gdb ca-certificates zlib1g-dev doxygen nano vim curl clang-8 clang-tidy-10 && \
     apt clean && apt autoclean
 
 FROM alpine/git:latest AS pull
