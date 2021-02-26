@@ -225,7 +225,7 @@ index b9d64b1b4..4c5f03803 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index 965093095..abd07b6f0 100644
+index 3dd6a68ed..7e924a189 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
 @@ -46,6 +46,22 @@
@@ -612,10 +612,10 @@ index 449af159e..6c2b8d6a4 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index fa2f97e85..e96dd4f2c 100644
+index cf814d36a..5de0c930d 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
-@@ -772,7 +772,8 @@ oe_result_t oe_sgx_build_enclave(
+@@ -776,13 +776,16 @@ oe_result_t oe_sgx_build_enclave(
      oe_sgx_load_context_t* context,
      const char* path,
      const oe_sgx_enclave_properties_t* properties,
@@ -625,15 +625,16 @@ index fa2f97e85..e96dd4f2c 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      size_t loaded_enclave_pages_size = 0;
-@@ -784,6 +785,7 @@ oe_result_t oe_sgx_build_enclave(
+     size_t enclave_size = 0;
+     uint64_t enclave_addr = 0;
+-    oe_enclave_image_t oeimage;
++    oe_enclave_image_t oeimages[2] = {};
++#define oeimage (oeimages[0])
++#define oeimage_payload (oeimages[1])
+     void* ecall_data = NULL;
+     size_t image_size;
      size_t tls_page_count;
-     uint64_t vaddr = 0;
-     oe_sgx_enclave_properties_t props;
-+    oe_enclave_image_t oeimage_payload = {0};
- 
-     if (!enclave)
-         OE_RAISE(OE_INVALID_PARAMETER);
-@@ -832,6 +834,37 @@ oe_result_t oe_sgx_build_enclave(
+@@ -836,6 +839,35 @@ oe_result_t oe_sgx_build_enclave(
              sizeof(props));
      }
  
@@ -641,8 +642,6 @@ index fa2f97e85..e96dd4f2c 100644
 +    if (payload_path)
 +    {
 +        OE_CHECK(oe_load_enclave_image(payload_path, &oeimage_payload));
-+        context->payload_image_size = oeimage_payload.elf.image_size;
-+        context->payload_reloc_size = oeimage_payload.elf.reloc_size;
 +
 +        // use props from payload
 +        if (properties)
@@ -671,7 +670,7 @@ index fa2f97e85..e96dd4f2c 100644
      /* Validate the enclave prop_override structure */
      OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
  
-@@ -868,7 +901,8 @@ oe_result_t oe_sgx_build_enclave(
+@@ -872,7 +904,8 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Calculate the size of this enclave in memory */
      OE_CHECK(_calculate_enclave_size(
@@ -681,7 +680,7 @@ index fa2f97e85..e96dd4f2c 100644
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -902,6 +936,12 @@ oe_result_t oe_sgx_build_enclave(
+@@ -925,6 +958,12 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Add image to enclave */
      OE_CHECK(oeimage.add_pages(&oeimage, context, enclave, &vaddr));
@@ -694,7 +693,16 @@ index fa2f97e85..e96dd4f2c 100644
  
  #ifdef OE_WITH_EXPERIMENTAL_EEID
      OE_CHECK(_add_eeid_marker_page(
-@@ -1022,6 +1062,7 @@ oe_result_t oe_create_enclave(
+@@ -976,6 +1015,8 @@ done:
+         free(ecall_data);
+ 
+     oe_unload_enclave_image(&oeimage);
++#undef oeimage
++#undef oeimage_payload
+ 
+     return result;
+ }
+@@ -1045,6 +1086,7 @@ oe_result_t oe_create_enclave(
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t* enclave = NULL;
      oe_sgx_load_context_t context;
@@ -702,9 +710,9 @@ index fa2f97e85..e96dd4f2c 100644
  
      _initialize_enclave_host();
  
-@@ -1084,8 +1125,23 @@ oe_result_t oe_create_enclave(
-         }
+@@ -1114,8 +1156,23 @@ oe_result_t oe_create_enclave(
  #endif
+     }
  
 -    /* Build the enclave */
 -    OE_CHECK(oe_sgx_build_enclave(&context, enclave_path, NULL, enclave));
@@ -728,7 +736,7 @@ index fa2f97e85..e96dd4f2c 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1109,6 +1165,15 @@ oe_result_t oe_create_enclave(
+@@ -1139,6 +1196,15 @@ oe_result_t oe_create_enclave(
          debug_enclave->base_address = (void*)enclave->addr;
          debug_enclave->size = enclave->size;
  
@@ -744,7 +752,7 @@ index fa2f97e85..e96dd4f2c 100644
          debug_enclave->tcs_array =
              (sgx_tcs_t**)calloc(enclave->num_bindings, sizeof(sgx_tcs_t*));
          for (uint64_t i = 0; i < enclave->num_bindings; ++i)
-@@ -1171,6 +1236,9 @@ done:
+@@ -1201,6 +1267,9 @@ done:
  
      oe_sgx_cleanup_load_context(&context);
  
@@ -754,7 +762,7 @@ index fa2f97e85..e96dd4f2c 100644
      return result;
  }
  
-@@ -1185,6 +1253,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1215,6 +1284,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      /* Shut down the switchless manager */
      OE_CHECK(oe_stop_switchless_manager(enclave));
  
@@ -765,7 +773,7 @@ index fa2f97e85..e96dd4f2c 100644
      /* Call the enclave destructor */
      OE_CHECK(oe_ecall(enclave, OE_ECALL_DESTRUCTOR, 0, NULL));
  
-@@ -1192,6 +1264,7 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1222,6 +1295,7 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      {
          oe_debug_notify_enclave_terminated(enclave->debug_enclave);
          free(enclave->debug_enclave->tcs_array);
@@ -816,30 +824,10 @@ index 6242e15f5..300d50a8c 100644
      // Call platform neutral handler.
      uint64_t action = oe_host_handle_exception(&host_context);
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index e49b6e8e8..c4050c565 100644
+index 2af39a2ad..81c26fa54 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -573,7 +573,9 @@ static oe_result_t _add_segment_pages(
-     oe_sgx_load_context_t* context,
-     uint64_t enclave_addr,
-     const oe_elf_segment_t* segment,
--    void* image)
-+    void* image,
-+    uint64_t vaddr) // EDG: added vaddr param so that this function can also be
-+                    // used for the payload image which is not at vaddr 0
- {
-     oe_result_t result = OE_UNEXPECTED;
-     uint64_t flags;
-@@ -602,7 +604,7 @@ static oe_result_t _add_segment_pages(
-         OE_CHECK(oe_sgx_load_enclave_data(
-             context,
-             enclave_addr,
--            enclave_addr + page_rva,
-+            enclave_addr + vaddr + page_rva,
-             (uint64_t)image + page_rva,
-             flags,
-             true));
-@@ -625,7 +627,7 @@ static oe_result_t _add_elf_image_pages(
+@@ -627,7 +627,7 @@ static oe_result_t _add_elf_image_pages(
      assert(context);
      assert(enclave);
      assert(image);
@@ -848,46 +836,49 @@ index e49b6e8e8..c4050c565 100644
      assert((image->image_size & (OE_PAGE_SIZE - 1)) == 0);
      assert(enclave->size > image->image_size);
  
-@@ -633,10 +635,14 @@ static oe_result_t _add_elf_image_pages(
-     for (size_t i = 0; i < image->num_segments; i++)
-     {
-         OE_CHECK(_add_segment_pages(
--            context, enclave->addr, &image->segments[i], image->image_base));
-+            context,
-+            enclave->addr,
-+            &image->segments[i],
-+            image->image_base,
-+            *vaddr));
-     }
- 
--    *vaddr = image->image_size;
-+    *vaddr += image->image_size;
- 
-     /* Add the relocation pages (contain relocation entries) */
-     OE_CHECK(_add_relocation_pages(
-@@ -748,9 +754,21 @@ static oe_result_t _patch_elf_image(
-         image, "_reloc_rva", image->image_size));
+@@ -696,7 +696,8 @@ done:
+ static oe_result_t _patch_elf_image(
+     oe_enclave_elf_image_t* image,
+     size_t enclave_size,
+-    size_t tls_page_count)
++    size_t tls_page_count,
++    const oe_enclave_elf_image_t* image_payload)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     oe_sgx_enclave_properties_t* oeprops;
+@@ -740,10 +741,21 @@ static oe_result_t _patch_elf_image(
+         image, "_reloc_rva", oeprops->image_info.reloc_rva));
      OE_CHECK(_set_uint64_t_dynamic_symbol_value(
-         image, "_reloc_size", image->reloc_size));
-+    if (context->payload_image_size)
+         image, "_reloc_size", oeprops->image_info.reloc_size));
++    if (image_payload->image_size)
 +    {
 +        OE_CHECK(_set_uint64_t_dynamic_symbol_value(
 +            image,
 +            "_payload_reloc_rva",
-+            image->image_size + image->reloc_size +
-+                context->payload_image_size));
++            oeprops->image_info.reloc_rva + oeprops->image_info.reloc_size +
++                image_payload->image_size));
 +        OE_CHECK(_set_uint64_t_dynamic_symbol_value(
-+            image, "_payload_reloc_size", context->payload_reloc_size));
++            image, "_payload_reloc_size", image_payload->reloc_size));
 +    }
  
-     /* heap right after image */
--    oeprops->image_info.heap_rva = image->image_size + image->reloc_size;
-+    oeprops->image_info.heap_rva = image->image_size + image->reloc_size +
-+                                   context->payload_image_size +
-+                                   context->payload_reloc_size;
+     /* heap is right after all the relocs */
+     oeprops->image_info.heap_rva =
+-        oeprops->image_info.reloc_rva + oeprops->image_info.reloc_size;
++        oeprops->image_info.reloc_rva + oeprops->image_info.reloc_size +
++        image_payload->image_size + image_payload->reloc_size;
  
      if (image->tdata_size)
      {
+@@ -781,7 +793,8 @@ static oe_result_t _patch(oe_enclave_image_t* image, size_t enclave_size)
+     size_t tls_page_count;
+ 
+     OE_CHECK(image->get_tls_page_count(image, &tls_page_count));
+-    OE_CHECK(_patch_elf_image(&image->elf, enclave_size, tls_page_count));
++    OE_CHECK(_patch_elf_image(
++        &image->elf, enclave_size, tls_page_count, &image[1].elf));
+ 
+     result = OE_OK;
+ done:
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
 index 7b86fc8b8..89d2643bc 100644
 --- a/include/openenclave/edl/sgx/debug.edl
@@ -949,10 +940,10 @@ index 38f075434..7b7a083f7 100644
 +    };
  };
 diff --git a/include/openenclave/host.h b/include/openenclave/host.h
-index 23017cd2b..3407398b9 100644
+index 7acc8a107..04acea35b 100644
 --- a/include/openenclave/host.h
 +++ b/include/openenclave/host.h
-@@ -204,6 +204,18 @@ oe_result_t oe_create_enclave(
+@@ -216,6 +216,18 @@ oe_result_t oe_create_enclave(
      uint32_t ecall_count,
      oe_enclave_t** enclave);
  
@@ -1021,22 +1012,20 @@ index 986fd0b61..3b5f7723e 100644
  
  #endif /* _OE_GLOBALS_H */
 diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
-index 24749af7a..9ee4a40b7 100644
+index d3b98e096..8a9ab0cb8 100644
 --- a/include/openenclave/internal/sgxcreate.h
 +++ b/include/openenclave/internal/sgxcreate.h
-@@ -65,6 +65,11 @@ struct _oe_sgx_load_context
-     /* EEID data needed during enclave creation */
-     oe_eeid_t* eeid;
- #endif
+@@ -70,6 +70,9 @@ struct _oe_sgx_load_context
+ 
+     const oe_config_data_t* config_data;
+     bool use_config_id;
 +
 +    // EDG: payload properties
-+    size_t payload_image_size;
-+    size_t payload_reloc_size;
 +    size_t payload_offset;
  };
  
  oe_result_t oe_sgx_initialize_load_context(
-@@ -78,7 +83,8 @@ oe_result_t oe_sgx_build_enclave(
+@@ -83,7 +86,8 @@ oe_result_t oe_sgx_build_enclave(
      oe_sgx_load_context_t* context,
      const char* path,
      const oe_sgx_enclave_properties_t* properties,
@@ -2012,10 +2001,10 @@ index 943528b51..11ef0abc5 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 8d188a458..c886a1ecc 100644
+index 5a2506f0a..2b592475d 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -95,7 +95,7 @@ if (UNIX
+@@ -96,7 +96,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
@@ -2024,7 +2013,7 @@ index 8d188a458..c886a1ecc 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -166,7 +166,7 @@ if (UNIX)
+@@ -167,7 +167,7 @@ if (UNIX)
      # process does. At this point, the host fs that libgcov requires can no
      # longer be used.
      if (NOT CODE_COVERAGE)
@@ -2639,7 +2628,7 @@ index f116c9051..6afc87535 100644
  #include <openenclave/internal/tests.h>
  #include <stdio.h>
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
-index 0878f7b06..9ccb5862c 100644
+index ad5a10b04..5d0e9d0b6 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
 +++ b/tests/tools/oesign/test-enclave/host/host.c
 @@ -4,6 +4,7 @@
@@ -2660,7 +2649,7 @@ index 0878f7b06..9ccb5862c 100644
          result = check_kss_extended_ids(
              enclave,
 diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
-index 78beab573..336e3c66c 100644
+index c885d7493..0df7a69bb 100644
 --- a/tools/CMakeLists.txt
 +++ b/tools/CMakeLists.txt
 @@ -29,7 +29,9 @@ endif ()
@@ -2904,10 +2893,10 @@ index 450a88271..372ad20c7 100644
      {
          fprintf(stderr, _usage_gen, argv[0], argv[0]);
 diff --git a/tools/oesign/oeinfo.c b/tools/oesign/oeinfo.c
-index bddf5c8aa..456d6fbd8 100644
+index 27ccfab7d..de1a0f3f7 100644
 --- a/tools/oesign/oeinfo.c
 +++ b/tools/oesign/oeinfo.c
-@@ -53,7 +53,8 @@ static char* _make_signed_lib_name(const char* path)
+@@ -52,7 +52,8 @@ static char* _make_signed_lib_name(const char* path)
  
  oe_result_t oe_write_oeinfo_sgx(
      const char* path,
@@ -2917,7 +2906,7 @@ index bddf5c8aa..456d6fbd8 100644
  {
      oe_result_t result = OE_FAILURE;
      oe_enclave_image_t oeimage;
-@@ -74,7 +75,10 @@ oe_result_t oe_write_oeinfo_sgx(
+@@ -72,7 +73,10 @@ oe_result_t oe_write_oeinfo_sgx(
  
      /* Write new signed executable */
      {
@@ -2929,7 +2918,7 @@ index bddf5c8aa..456d6fbd8 100644
  
          if (!p)
          {
-@@ -104,7 +108,7 @@ oe_result_t oe_write_oeinfo_sgx(
+@@ -102,7 +106,7 @@ oe_result_t oe_write_oeinfo_sgx(
  
          printf("Created %s\n", p);
  
