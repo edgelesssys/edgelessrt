@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-18.04
     container:
-      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
+      image: ghcr.io/edgelesssys/edgelessrt-dev:nightly
     steps:
 
     - name: Checkout

@@ -1,9 +1,9 @@
-diff --git a/f_emitter.h b/f_emitter.h
-index 6aeefbf..d79db3b 100644
---- a/f_emitter.h
-+++ b/f_emitter.h
-@@ -41,7 +41,7 @@ class FEmitter
-         ecall_ = ecall;
+diff --git a/src/f_emitter.h b/src/f_emitter.h
+index 3885327..6db5b70 100644
+--- a/src/f_emitter.h
++++ b/src/f_emitter.h
+@@ -43,7 +43,7 @@ class FEmitter
+         has_deep_copy_out_ = has_deep_copy_out(edl_, f);
          std::string pfx = ecall_ ? "ecall_" : "ocall_";
          std::string args_t = f->name_ + "_args_t";
 -        out() << "static void " + pfx + f->name_ + "("

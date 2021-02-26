@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.11)
-set(CMAKE_C_COMPILER_NAMES clang-7 cc)
-set(CMAKE_CXX_COMPILER_NAMES clang++-7 c++)
+
+if (NOT DEFINED ENV{CC} AND NOT DEFINED CMAKE_C_COMPILER)
+  find_program(CMAKE_C_COMPILER clang-8 clang)
+endif ()
+if (NOT DEFINED ENV{CXX} AND NOT DEFINED CMAKE_CXX_COMPILER)
+  find_program(CMAKE_CXX_COMPILER clang++-8 clang++)
+endif ()
+
 project(edgelessrt)
 file(STRINGS "VERSION" OE_VERSION_WITH_V)
 string(REGEX REPLACE "^v" "" OE_VERSION ${OE_VERSION_WITH_V})
