@@ -824,10 +824,10 @@ index 6242e15f5..300d50a8c 100644
      // Call platform neutral handler.
      uint64_t action = oe_host_handle_exception(&host_context);
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index 2af39a2ad..81c26fa54 100644
+index 853211e8d..ebef43a58 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -627,7 +627,7 @@ static oe_result_t _add_elf_image_pages(
+@@ -629,7 +629,7 @@ static oe_result_t _add_elf_image_pages(
      assert(context);
      assert(enclave);
      assert(image);
@@ -836,7 +836,7 @@ index 2af39a2ad..81c26fa54 100644
      assert((image->image_size & (OE_PAGE_SIZE - 1)) == 0);
      assert(enclave->size > image->image_size);
  
-@@ -696,7 +696,8 @@ done:
+@@ -698,7 +698,8 @@ done:
  static oe_result_t _patch_elf_image(
      oe_enclave_elf_image_t* image,
      size_t enclave_size,
@@ -846,7 +846,7 @@ index 2af39a2ad..81c26fa54 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_sgx_enclave_properties_t* oeprops;
-@@ -740,10 +741,21 @@ static oe_result_t _patch_elf_image(
+@@ -742,10 +743,21 @@ static oe_result_t _patch_elf_image(
          image, "_reloc_rva", oeprops->image_info.reloc_rva));
      OE_CHECK(_set_uint64_t_dynamic_symbol_value(
          image, "_reloc_size", oeprops->image_info.reloc_size));
@@ -869,7 +869,7 @@ index 2af39a2ad..81c26fa54 100644
  
      if (image->tdata_size)
      {
-@@ -781,7 +793,8 @@ static oe_result_t _patch(oe_enclave_image_t* image, size_t enclave_size)
+@@ -783,7 +795,8 @@ static oe_result_t _patch(oe_enclave_image_t* image, size_t enclave_size)
      size_t tls_page_count;
  
      OE_CHECK(image->get_tls_page_count(image, &tls_page_count));
@@ -1194,17 +1194,26 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index 87920e529..34aa3f807 100644
+index 89ddd865c..e98571039 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
-@@ -71,8 +71,8 @@ else ()
-     # These tests can only run with SGX-FLC, meaning they were built
-     # against SGX.
-     if (HAS_QUOTE_PROVIDER)
--      list(APPEND SAMPLES_LIST attested_tls attested_tls attestation)
--      list(APPEND CRYPTO_LIB_LIST mbedtls openssl mbedtls)
-+      list(APPEND SAMPLES_LIST attested_tls attestation)
-+      list(APPEND CRYPTO_LIB_LIST mbedtls mbedtls)
+@@ -75,18 +75,14 @@ else ()
+         APPEND
+         SAMPLES_LIST
+         attested_tls
+-        attested_tls
+         attestation
+-        file-encryptor
+         file-encryptor)
+       list(
+         APPEND
+         CRYPTO_LIB_LIST
+         mbedtls
+-        openssl
+-        mbedtls
+         mbedtls
+-        openssl)
++        mbedtls)
      endif ()
    endif ()
  endif ()
@@ -2001,10 +2010,10 @@ index 943528b51..11ef0abc5 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 5a2506f0a..2b592475d 100644
+index f0bb565e6..977045216 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -96,7 +96,7 @@ if (UNIX
+@@ -97,7 +97,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
@@ -2013,7 +2022,7 @@ index 5a2506f0a..2b592475d 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -167,7 +167,7 @@ if (UNIX)
+@@ -168,7 +168,7 @@ if (UNIX)
      # process does. At this point, the host fs that libgcov requires can no
      # longer be used.
      if (NOT CODE_COVERAGE)
