@@ -37,7 +37,7 @@ RUN git clone https://github.com/edgelesssys/edgelessrt /edgelessrt
 WORKDIR /edgelessrt
 RUN git submodule update --init 3rdparty/openenclave/openenclave 3rdparty/go
 WORKDIR /edgelessrt/3rdparty/openenclave/openenclave
-RUN git submodule update --init tools/oeedger8r-cpp 3rdparty/mbedtls/mbedtls
+RUN git submodule update --init tools/oeedger8r-cpp 3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
 
 FROM base-dev AS build
 COPY --from=pull /edgelessrt /edgelessrt
