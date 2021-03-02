@@ -363,20 +363,29 @@ void test_ecall()
 {
     OE_TEST(oe_load_module_host_epoll() == OE_OK);
 
-    _test_invalid_arguments();
-    _test_created_thread_runs_concurrently();
-    _test_join_retval_nullptr();
-    _test_join_before_thread_ends();
-    _test_join_after_thread_ends();
-    _test_multiple_threads();
-    _test_detach();
-    _test_detached();
-    _test_exit();
-    _test_cancel();
-    _test_cancel_blocked();
-    _test_cancel_epoll();
-    _test_attr();
-    _test_mutexattr();
+    // slow tests (that sleep)
+    for (int i = 0; i < 3; ++i)
+    {
+        _test_join_before_thread_ends();
+        _test_join_after_thread_ends();
+        _test_multiple_threads();
+        _test_detach();
+        _test_detached();
+        _test_cancel_epoll();
+    }
+
+    // fast tests
+    for (int i = 0; i < 200; ++i)
+    {
+        _test_invalid_arguments();
+        _test_created_thread_runs_concurrently();
+        _test_join_retval_nullptr();
+        _test_exit();
+        _test_cancel();
+        _test_cancel_blocked();
+        _test_attr();
+        _test_mutexattr();
+    }
 }
 
 OE_SET_ENCLAVE_SGX(
