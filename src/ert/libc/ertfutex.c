@@ -137,7 +137,7 @@ static void _list_remove(const info_t* info)
     }
 }
 
-static bool _list_remove_tcs(uint64_t tcs)
+static void _list_remove_tcs(uint64_t tcs)
 {
     assert(tcs);
 
@@ -148,12 +148,10 @@ static bool _list_remove_tcs(uint64_t tcs)
         if (p->tcs == tcs)
         {
             _list_unlink(p, prev);
-            return true;
+            return;
         }
         prev = p;
     }
-
-    return false;
 }
 
 static void _list_replace(const int* uaddr, const int* uaddr2)
@@ -285,9 +283,8 @@ void ert_futex_wake_tcs(const void* tcs)
 {
     const uint64_t t = (uint64_t)tcs;
     oe_spin_lock(&_lock);
-    const bool exist = _list_remove_tcs(t);
+    _list_remove_tcs(t);
     oe_spin_unlock(&_lock);
-    if (exist &&
-        oe_sgx_thread_wake_multiple_ocall(oe_get_enclave(), &t, 1) != OE_OK)
+    if (oe_sgx_thread_wake_multiple_ocall(oe_get_enclave(), &t, 1) != OE_OK)
         abort();
 }
