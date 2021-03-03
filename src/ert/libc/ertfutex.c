@@ -279,12 +279,16 @@ int ert_futex(
     abort();
 }
 
+void ert_futex_remove_tcs(const void* tcs)
+{
+    oe_spin_lock(&_lock);
+    _list_remove_tcs(tcs);
+    oe_spin_unlock(&_lock);
+}
+
 void ert_futex_wake_tcs(const void* tcs)
 {
-    const uint64_t t = (uint64_t)tcs;
-    oe_spin_lock(&_lock);
-    _list_remove_tcs(t);
-    oe_spin_unlock(&_lock);
-    if (oe_sgx_thread_wake_multiple_ocall(oe_get_enclave(), &t, 1) != OE_OK)
+    if (oe_sgx_thread_wake_multiple_ocall(
+            oe_get_enclave(), (uint64_t*)&tcs, 1) != OE_OK)
         abort();
 }
