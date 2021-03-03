@@ -171,7 +171,12 @@ void pthread_testcancel()
 {
     ert_thread_t* const self = _to_ert_thread(pthread_self());
     if (__atomic_load_n(&self->cancel, __ATOMIC_SEQ_CST) && self->cancelable)
+    {
+        // thread may be woken, so clean up futex
+        ert_futex_remove_tcs(self->tcs);
+
         pthread_exit(PTHREAD_CANCELED);
+    }
 }
 
 void ert_create_thread_ecall()

@@ -15,6 +15,7 @@ int ert_futex(
     const struct timespec* timeout,
     const int* uaddr2);
 
+void ert_futex_remove_tcs(const void* tcs);
 void ert_futex_wake_tcs(const void* tcs);
 
 OE_EXTERNC_END
