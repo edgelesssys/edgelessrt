@@ -31,6 +31,9 @@ RUN add-apt-repository ppa:git-core/ppa
 RUN apt update && \
     apt install -y protobuf-compiler golang-goprotobuf-dev cmake git python ninja-build build-essential gdb ca-certificates zlib1g-dev doxygen nano vim curl clang-8 clang-tidy-10 && \
     apt clean && apt autoclean
+# use same Go version as ertgo
+ARG gofile=go1.14.6.linux-amd64.tar.gz
+RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile
 
 FROM alpine/git:latest AS pull
 RUN git clone https://github.com/edgelesssys/edgelessrt /edgelessrt
@@ -48,7 +51,7 @@ FROM base-dev as release_develop
 LABEL description="EdgelessRT is an SDK to build Trusted Execution Environment applications"
 ENV PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/opt/edgelessrt/share/pkgconfig
 ENV CMAKE_PREFIX_PATH=/opt/edgelessrt/lib/openenclave/cmake
-ENV PATH=${PATH}:/opt/edgelessrt/bin/:/opt/edgelessrt/go/bin/
+ENV PATH=${PATH}:/opt/edgelessrt/bin:/usr/local/go/bin
 ENV CGO_CFLAGS="$CGO_CFLAGS -I/opt/edgelessrt/include"
 ENV CGO_LDFLAGS="$CGO_LDFLAGS -L/opt/edgelessrt/lib/openenclave/host"
 COPY --from=build /opt/edgelessrt /opt/edgelessrt
