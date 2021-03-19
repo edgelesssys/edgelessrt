@@ -7,3 +7,6 @@
 [submodule "3rdparty/ttls"]
 	path = 3rdparty/ttls
 	url = https://github.com/edgelesssys/ttls
+[submodule "3rdparty/mystikos/mystikos"]
+	path = 3rdparty/mystikos/mystikos
+	url = https://github.com/deislabs/mystikos
