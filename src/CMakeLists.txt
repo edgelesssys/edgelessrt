@@ -19,6 +19,7 @@ target_include_directories(
   oe_includes INTERFACE ert/include ${OESRCDIR}/include
                         ${OEBUILDDIR}/openenclave/output/include)
 
+add_subdirectory(../3rdparty/ttls ${CMAKE_CURRENT_BINARY_DIR}/ttls)
 add_subdirectory(ertlibc)
 add_subdirectory(meshpremain)
 add_subdirectory(tools/erthost)

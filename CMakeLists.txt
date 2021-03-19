@@ -34,6 +34,8 @@ include(ExternalProject)
 include(GNUInstallDirs)
 
 # update required submodules
+# execute_process(COMMAND git submodule update --init 3rdparty/ttls
+#                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 execute_process(COMMAND git submodule update --init 3rdparty/go
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 if (NOT OEDEV OR NOT EXISTS
@@ -48,6 +50,7 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
 
 add_subdirectory(3rdparty/openenclave)
+add_subdirectory(3rdparty/ttls)
 add_subdirectory(docs/refman)
 
 ExternalProject_Add(
