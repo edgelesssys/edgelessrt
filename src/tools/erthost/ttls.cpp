@@ -38,32 +38,7 @@ class OESocket final : public ttls::Socket
 };
 } // namespace
 
-ttls::Dispatcher* dis;
-
-int connect_hook(int sockfd, const sockaddr* addr, socklen_t addrlen)
-{
-    return dis->Connect(sockfd, addr, addrlen);
-}
-
-int send_hook(int sockfd, void* buf, size_t len, int flags)
-{
-    return dis->Send(sockfd, buf, len, flags);
-}
-
-int recv_hook(int sockfd, void* buf, size_t len, int flags)
-{
-    return dis->Recv(sockfd, buf, len, flags);
-}
-
-int shutdown_hook(int fd, int how)
-{
-    return dis->Shutdown(fd, how);
-}
-
-int close_hook(int fd)
-{
-    return dis->Close(fd);
-}
+static std::unique_ptr<ttls::Dispatcher> dis;
 
 static oe_result_t _syscall_hook(
     long number,
@@ -80,19 +55,20 @@ static oe_result_t _syscall_hook(
     switch (number)
     {
         case SYS_connect:
-            *ret = connect_hook(arg1, reinterpret_cast<sockaddr*>(arg2), arg3);
+            *ret = dis->Connect(arg1, reinterpret_cast<sockaddr*>(arg2), arg3);
             return OE_OK;
         case SYS_write:
-            *ret = send_hook(arg1, reinterpret_cast<void*>(arg2), arg3, arg4);
+            *ret = dis->Send(
+                arg1, reinterpret_cast<const void*>(arg2), arg3, arg4);
             return OE_OK;
         case SYS_read:
-            *ret = recv_hook(arg1, reinterpret_cast<void*>(arg2), arg3, arg4);
+            *ret = dis->Recv(arg1, reinterpret_cast<void*>(arg2), arg3, arg4);
             return OE_OK;
         case SYS_shutdown:
-            *ret = shutdown_hook(arg1, arg2);
+            *ret = dis->Shutdown(arg1, arg2);
             return OE_OK;
         case SYS_close:
-            *ret = close_hook(arg1);
+            *ret = dis->Close(arg1);
             return OE_OK;
     }
 

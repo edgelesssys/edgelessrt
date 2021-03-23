@@ -50,7 +50,6 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
 
 add_subdirectory(3rdparty/openenclave)
-add_subdirectory(3rdparty/ttls)
 add_subdirectory(docs/refman)
 
 ExternalProject_Add(

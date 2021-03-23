@@ -72,7 +72,7 @@ void test_ecall()
     OE_TEST(read(fd, buf.data(), buf.size()) != -1);
     OE_TEST(buf.substr(9, 6) == "200 OK");
 
-    OE_TEST(shutdown(fd, 2) == 0);
+    OE_TEST(shutdown(fd, SHUT_RDWR) == 0);
     OE_TEST(close(fd) == 0);
     t1.join();
 }
