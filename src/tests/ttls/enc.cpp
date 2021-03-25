@@ -4,7 +4,7 @@
 #include <openenclave/internal/tests.h>
 #include <pthread.h>
 #include <sys/socket.h>
-#include <ttls/ttls.h>
+#include <ttls/test_server.h>
 #include <unistd.h>
 #include <string>
 
@@ -57,7 +57,7 @@ void test_ecall()
 
     ert_init_ttls(ttls_cfg.data());
 
-    auto t1 = edgeless::ttls::start_test_server();
+    auto t1 = edgeless::ttls::StartTestServer();
 
     sockaddr_in sock_addr_in{};
     sock_addr_in.sin_family = AF_INET;

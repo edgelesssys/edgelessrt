@@ -83,10 +83,9 @@ void ert_init_ttls(const char* config)
     if (!config || !*config)
         return;
 
-    const auto sock = std::make_shared<OESocket>();
-    const auto raw_sock = std::make_shared<ttls::RawSocket>(sock);
-    const auto tls_sock = std::make_shared<ttls::MbedtlsSocket>(sock);
-    dis = new ttls::Dispatcher(config, raw_sock, tls_sock);
+    const auto raw_sock = std::make_shared<OESocket>();
+    const auto tls_sock = std::make_shared<ttls::MbedtlsSocket>(raw_sock);
+    dis = std::make_unique<ttls::Dispatcher>(config, raw_sock, tls_sock);
 
     oe_register_syscall_hook(_syscall_hook);
 }
