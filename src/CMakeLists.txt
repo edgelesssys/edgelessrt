@@ -19,6 +19,7 @@ target_include_directories(
   oe_includes INTERFACE ert/include ${OESRCDIR}/include
                         ${OEBUILDDIR}/openenclave/output/include)
 
+set(TTLS_NOTEST True)
 add_subdirectory(../3rdparty/ttls ttls)
 add_subdirectory(ertlibc)
 add_subdirectory(meshpremain)
