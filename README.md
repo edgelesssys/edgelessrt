@@ -3,7 +3,7 @@
 
 [![Unit Tests][unit-tests-badge]][unit-tests]
 [![GitHub license][license-badge]](LICENSE)
-[![Gitter Chat][gitter-badge]][gitter]
+[![Discord Chat][discord-badge]][discord]
 
 [Edgeless RT](https://edgeless.systems) is an SDK for Trusted Execution Environments (TEE) built on top of [Open Enclave](https://github.com/openenclave/openenclave). It adds support for modern programming languages (in particular Go) and facilitates the porting of existing applications.
 Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
@@ -39,11 +39,11 @@ Edgeless RT primarily targets Ubuntu 18.04. Other Linuxes may work as well. Wind
    ```
    You will get one of the following three types of output:
 
-   |                                oesgx output | SGX support level |
-   |:--------------------------------------------|:------------------:|
-   | CPU supports SGX_FLC:Flexible Launch Control<br>CPU supports Software Guard Extensions:SGX1| SGX1+FLC          |
-   | CPU supports Software Guard Extensions:SGX1 | SGX1              |
-   | CPU does not support SGX                    |   Simulation      |
+   | oesgx output                                                                                | SGX support level |
+   | :------------------------------------------------------------------------------------------ | :---------------: |
+   | CPU supports SGX_FLC:Flexible Launch Control<br>CPU supports Software Guard Extensions:SGX1 |     SGX1+FLC      |
+   | CPU supports Software Guard Extensions:SGX1                                                 |       SGX1        |
+   | CPU does not support SGX                                                                    |    Simulation     |
 
 2. Set up the environment
 
@@ -159,5 +159,5 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
 [unit-tests]: https://github.com/edgelesssys/edgelessrt/actions
 [unit-tests-badge]: https://github.com/edgelesssys/edgelessrt/workflows/Unit%20Tests/badge.svg
 [license-badge]: https://img.shields.io/github/license/edgelesssys/edgelessrt
-[gitter]: https://gitter.im/edgeless-systems/community
-[gitter-badge]: https://badges.gitter.im/edgeless-systems/Marblerun.svg
+[discord]: https://discord.gg/rH8QTH56JN
+[discord-badge]: https://img.shields.io/badge/chat-on%20Discord-blue
