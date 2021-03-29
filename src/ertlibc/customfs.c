@@ -110,6 +110,13 @@ static void* _get_context(const file_t* file)
     return ((device_t*)file->device)->context;
 }
 
+static bool _readable(const file_t* file)
+{
+    oe_assert(file);
+    const int acc = file->flags & ACCESS_MODE_MASK;
+    return acc == OE_O_RDONLY || acc == OE_O_RDWR;
+}
+
 static bool _writable(const file_t* file)
 {
     oe_assert(file);
@@ -249,7 +256,7 @@ done:
     return ret;
 }
 
-static oe_fd_t* _fs_open_file(
+static oe_fd_t* _fs_open(
     oe_device_t* device,
     const char* pathname,
     int flags,
@@ -343,6 +350,9 @@ static ssize_t _fs_read(oe_fd_t* desc, void* buf, size_t count)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    if (!_readable(file))
+        OE_RAISE_ERRNO(OE_EBADF);
+
     oe_spin_lock(&_lock);
     ret = file->device->read(_get_context(file), file->handle, buf, count);
     oe_spin_unlock(&_lock);
@@ -405,6 +415,9 @@ static ssize_t _fs_readv(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
     if (!file || (!iov && iovcnt) || iovcnt < 0 || iovcnt > OE_IOV_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    if (!_readable(file))
+        OE_RAISE_ERRNO(OE_EBADF);
+
     oe_spin_lock(&_lock);
     ret = file->device->readv(_get_context(file), file->handle, iov, iovcnt);
     oe_spin_unlock(&_lock);
@@ -434,7 +447,7 @@ done:
     return ret;
 }
 
-static oe_off_t _fs_lseek_file(oe_fd_t* desc, oe_off_t offset, int whence)
+static oe_off_t _fs_lseek(oe_fd_t* desc, oe_off_t offset, int whence)
 {
     oe_off_t ret = -1;
     file_t* file = _cast_file(desc);
@@ -462,6 +475,9 @@ static ssize_t _fs_pread(
 
     if (!file || offset < 0)
         OE_RAISE_ERRNO(OE_EINVAL);
+
+    if (!_readable(file))
+        OE_RAISE_ERRNO(OE_EBADF);
 
     oe_spin_lock(&_lock);
     ret = file->device->pread(
@@ -500,7 +516,7 @@ done:
     return ret;
 }
 
-static int _fs_close_file(oe_fd_t* desc)
+static int _fs_close(oe_fd_t* desc)
 {
     int ret = -1;
     file_t* file = _cast_file(desc);
@@ -522,7 +538,6 @@ done:
 
 static int _fs_ioctl(oe_fd_t* desc, unsigned long request, uint64_t arg)
 {
-    (void)request;
     (void)arg;
 
     int ret = -1;
@@ -548,7 +563,6 @@ done:
 
 static int _fs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
 {
-    (void)cmd;
     (void)arg;
 
     int ret = -1;
@@ -769,6 +783,9 @@ static int _fs_ftruncate(oe_fd_t* desc, oe_off_t length)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    if (!_writable(file))
+        OE_RAISE_ERRNO(OE_EBADF);
+
     oe_spin_lock(&_lock);
     ret = file->device->ftruncate(_get_context(file), file->handle, length);
     oe_spin_unlock(&_lock);
@@ -839,9 +856,9 @@ static oe_file_ops_t _file_ops = {
     .fd.dup = _fs_dup,
     .fd.ioctl = _fs_ioctl,
     .fd.fcntl = _fs_fcntl,
-    .fd.close = _fs_close_file,
+    .fd.close = _fs_close,
     .fd.get_host_fd = _fs_get_host_fd,
-    .lseek = _fs_lseek_file,
+    .lseek = _fs_lseek,
     .pread = _fs_pread,
     .pwrite = _fs_pwrite,
     .getdents64 = _fs_getdents64,
@@ -875,7 +892,7 @@ uint64_t oe_load_module_custom_file_system(
     dev->base.ops.fs.clone = _fs_clone;
     dev->base.ops.fs.mount = _fs_mount;
     dev->base.ops.fs.umount2 = _fs_umount2;
-    dev->base.ops.fs.open = _fs_open_file;
+    dev->base.ops.fs.open = _fs_open;
     dev->base.ops.fs.stat = _fs_stat;
     dev->base.ops.fs.access = _fs_access;
     dev->base.ops.fs.link = _fs_link;

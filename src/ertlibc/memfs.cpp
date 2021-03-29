@@ -3,9 +3,7 @@
 
 #include <openenclave/ert.h>
 #include <openenclave/internal/syscall/device.h>
-#include <openenclave/internal/trace.h>
 #include <cassert>
-#include <cstdlib>
 #include <stdexcept>
 
 extern "C"
