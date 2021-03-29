@@ -59,29 +59,47 @@ void ert_init_ttls(const char* config);
 typedef struct _oe_customfs
 {
     uint8_t reserved[4248];
-    uintptr_t (*open)(void* context, const char* path, bool must_exist);
-    void (*close)(void* context, uintptr_t handle);
-    uint64_t (*get_size)(void* context, uintptr_t handle);
-    void (*unlink)(void* context, const char* path);
-    void (*read)(
+    int (*open)(
         void* context,
-        uintptr_t handle,
+        const char* pathname,
+        int flags,
+        unsigned int mode,
+        void** handle);
+    int (*close)(void* context, void* handle);
+    ssize_t (*read)(void* context, void* handle, void* buf, size_t count);
+    ssize_t (
+        *write)(void* context, void* handle, const void* buf, size_t count);
+    ssize_t (*readv)(void* context, void* handle, const void* iov, int iovcnt);
+    ssize_t (*writev)(void* context, void* handle, const void* iov, int iovcnt);
+    ssize_t (*pread)(
+        void* context,
+        void* handle,
         void* buf,
-        uint64_t count,
-        uint64_t offset);
-    bool (*write)(
+        size_t count,
+        ssize_t offset);
+    ssize_t (*pwrite)(
         void* context,
-        uintptr_t handle,
+        void* handle,
         const void* buf,
-        uint64_t count,
-        uint64_t offset);
+        size_t count,
+        ssize_t offset);
+    ssize_t (*lseek)(void* context, void* handle, ssize_t offset, int whence);
+    int (*fstat)(void* context, void* handle, void* statbuf);
+    int (*ftruncate)(void* context, void* handle, ssize_t length);
+    ssize_t (
+        *getdents64)(void* context, void* handle, void* dirp, size_t count);
+    int (*mkdir)(void* context, const char* pathname, unsigned int mode);
+    int (*rmdir)(void* context, const char* pathname);
+    int (*link)(void* context, const char* oldpath, const char* newpath);
+    int (*unlink)(void* context, const char* pathname);
+    int (*rename)(void* context, const char* oldpath, const char* newpath);
 } oe_customfs_t;
 
 /**
  * Load a custom file system.
  *
  * The enclave application must implement the functions defined in
- * oe_customfs_t. Folders are not supported for now.
+ * oe_customfs_t.
  *
  * @param devname An arbitrary but unique device name. The same name must be
  * passed to mount().
@@ -121,9 +139,6 @@ class Filesystem;
  *
  * const Memfs memfs("my_fs");
  * mount("/", "/my/mount/point", "my_fs", 0, nullptr);
- *
- * Folders are not supported for now. The app may open a file by passing a full
- * path and the fs behaves as if all folders in the path exist.
  */
 class Memfs
 {
@@ -134,11 +149,9 @@ class Memfs
     Memfs& operator=(const Memfs&) = delete;
 
   private:
-    const std::unique_ptr<memfs::Filesystem> impl_;
+    void* fs_;
     oe_customfs_t ops_;
     uint64_t devid_;
-
-    static memfs::Filesystem& to_fs(void* context);
 };
 
 /**

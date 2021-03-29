@@ -14,6 +14,9 @@ func Premain() error {
 	if err := syscall.Mount("/", "/folder1", "edg_memfs", 0, ""); err != nil {
 		return err
 	}
+	if err := os.Mkdir("/folder1/folder2", 0); err != nil {
+		return err
+	}
 	if err := ioutil.WriteFile("/folder1/folder2/file", []byte("test"), 0); err != nil {
 		return err
 	}

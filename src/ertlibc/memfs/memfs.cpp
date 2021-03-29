@@ -7,110 +7,60 @@
 #include <cassert>
 #include <cstdlib>
 #include <stdexcept>
-#include "filesystem.h"
+
+extern "C"
+{
+#include <myst/ramfs.h>
+}
 
 using namespace std;
 using namespace ert;
 
-Memfs::Memfs(const std::string& devname)
-    : impl_(make_unique<memfs::Filesystem>()), ops_(), devid_()
+Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
 {
     if (devname.empty())
         throw invalid_argument("Memfs: empty devname");
 
-    ops_.open = [](void* context, const char* pathname, bool must_exist) {
-        try
-        {
-            return to_fs(context).open(pathname, must_exist);
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_ERROR("%s", e.what());
-            return uintptr_t();
-        }
-    };
+    if (myst_init_ramfs(reinterpret_cast<myst_fs_t**>(&fs_)) != 0)
+        throw runtime_error("Memfs: myst_init_ramfs failed");
+    assert(fs_);
 
-    ops_.close = [](void* context, uintptr_t handle) {
-        try
-        {
-            to_fs(context).close(handle);
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_ERROR("%s", e.what());
-        }
-    };
+    auto& fs = *static_cast<myst_fs_t*>(fs_);
 
-    ops_.get_size = [](void* context, uintptr_t handle) {
-        try
-        {
-            return to_fs(context).get_file(handle)->size();
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_ERROR("%s", e.what());
-            return uint64_t();
-        }
-    };
+#define set(op) ops_.op = reinterpret_cast<decltype(ops_.op)>(fs.fs_##op)
+    set(open);
+    set(close);
+    set(read);
+    set(write);
+    set(readv);
+    set(writev);
+    set(pread);
+    set(pwrite);
+    set(lseek);
+    set(fstat);
+    set(ftruncate);
+    set(getdents64);
+    set(mkdir);
+    set(rmdir);
+    set(link);
+    set(unlink);
+    set(rename);
+#undef set
 
-    ops_.unlink = [](void* context, const char* pathname) {
-        try
-        {
-            to_fs(context).unlink(pathname);
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_ERROR("%s", e.what());
-        }
-    };
-
-    ops_.read = [](void* context,
-                   uintptr_t handle,
-                   void* buf,
-                   uint64_t count,
-                   uint64_t offset) {
-        try
-        {
-            to_fs(context).get_file(handle)->read(buf, count, offset);
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_FATAL("%s", e.what());
-            abort();
-        }
-    };
-
-    ops_.write = [](void* context,
-                    uintptr_t handle,
-                    const void* buf,
-                    uint64_t count,
-                    uint64_t offset) {
-        try
-        {
-            to_fs(context).get_file(handle)->write(buf, count, offset);
-            return true;
-        }
-        catch (const exception& e)
-        {
-            OE_TRACE_ERROR("%s", e.what());
-            return false;
-        }
-    };
-
-    devid_ = oe_load_module_custom_file_system(devname.c_str(), &ops_, this);
+    devid_ = oe_load_module_custom_file_system(devname.c_str(), &ops_, fs_);
     if (!devid_)
+    {
+        fs.fs_release(&fs);
         throw runtime_error("Memfs: oe_load_module_custom_file_system failed");
+    }
 }
 
 Memfs::~Memfs()
 {
-    const int res = oe_device_table_remove(devid_);
+    int res = oe_device_table_remove(devid_);
     assert(res == 0);
-    (void)res;
-}
 
-memfs::Filesystem& Memfs::to_fs(void* context)
-{
-    assert(context);
-    return *static_cast<Memfs*>(context)->impl_;
+    const auto fs = static_cast<myst_fs_t*>(fs_);
+    res = fs->fs_release(fs);
+    assert(res == 0);
 }

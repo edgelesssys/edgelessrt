@@ -16,8 +16,6 @@ add_library(
   time.cpp
   util.cpp
   __vasprintf_chk.c
-  memfs/file.cpp
-  memfs/filesystem.cpp
   memfs/memfs.cpp)
 
 set_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
