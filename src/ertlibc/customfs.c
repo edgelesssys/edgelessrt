@@ -271,8 +271,7 @@ static oe_fd_t* _fs_open(
         OE_RAISE_ERRNO(OE_EINVAL);
 
     /* Fail if attempting to write to a read-only file system. */
-    const bool readonly = (flags & ACCESS_MODE_MASK) == OE_O_RDONLY;
-    if (_is_read_only(fs) && !readonly)
+    if (_is_read_only(fs) && (flags & ACCESS_MODE_MASK) != OE_O_RDONLY)
         OE_RAISE_ERRNO(OE_EPERM);
 
     /* Create new file struct. */
@@ -347,16 +346,35 @@ static ssize_t _fs_read(oe_fd_t* desc, void* buf, size_t count)
     ssize_t ret = -1;
     file_t* file = _cast_file(desc);
 
-    if (!file)
+    /*
+     * According to the POSIX specification, when the count is greater
+     * than SSIZE_MAX, the result is implementation-defined. OE raises an
+     * error in this case.
+     * Refer to
+     * https://pubs.opengroup.org/onlinepubs/9699919799/functions/read.html for
+     * for more detail.
+     */
+    if (!file || count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     if (!_readable(file))
         OE_RAISE_ERRNO(OE_EBADF);
 
+    /* Call the host to perform the read(). */
     oe_spin_lock(&_lock);
     ret = file->device->read(_get_context(file), file->handle, buf, count);
     oe_spin_unlock(&_lock);
     ret = _err_ssize(ret);
+
+    /*
+     * Guard the special case that a host sets an arbitrarily large value.
+     * The returned value should not exceed count.
+     */
+    if (ret > (ssize_t)count)
+    {
+        ret = -1;
+        OE_RAISE_ERRNO(OE_EINVAL);
+    }
 
 done:
     return ret;
@@ -389,19 +407,36 @@ static ssize_t _fs_write(oe_fd_t* desc, const void* buf, size_t count)
     ssize_t ret = -1;
     file_t* file = _cast_file(desc);
 
-    /* Check parameters. */
-    if (!file || (count && !buf))
+    /*
+     * Check parameters.
+     * According to the POSIX specification, when the count is greater
+     * than SSIZE_MAX, the result is implementation-defined. OE raises an
+     * error in this case.
+     * Refer to
+     * https://pubs.opengroup.org/onlinepubs/9699919799/functions/write.html for
+     * for more detail.
+     */
+    if (!file || (count && !buf) || count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF);
-    if (count > OE_SSIZE_MAX)
-        OE_RAISE_ERRNO(OE_EFBIG);
 
+    /* Call the host. */
     oe_spin_lock(&_lock);
     ret = file->device->write(_get_context(file), file->handle, buf, count);
     oe_spin_unlock(&_lock);
     ret = _err_ssize(ret);
+
+    /*
+     * Guard the special case that a host sets an arbitrarily large value.
+     * The returned value should not exceed count.
+     */
+    if (ret > (ssize_t)count)
+    {
+        ret = -1;
+        OE_RAISE_ERRNO(OE_EINVAL);
+    }
 
 done:
     return ret;
@@ -473,7 +508,15 @@ static ssize_t _fs_pread(
     ssize_t ret = -1;
     file_t* file = _cast_file(desc);
 
-    if (!file || offset < 0)
+    /*
+     * According to the POSIX specification, when the count is greater
+     * than SSIZE_MAX, the result is implementation-defined. OE raises an
+     * error in this case.
+     * Refer to
+     * https://pubs.opengroup.org/onlinepubs/9699919799/functions/pread.html for
+     * for more detail.
+     */
+    if (!file || count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     if (!_readable(file))
@@ -484,6 +527,16 @@ static ssize_t _fs_pread(
         _get_context(file), file->handle, buf, count, offset);
     oe_spin_unlock(&_lock);
     ret = _err_ssize(ret);
+
+    /*
+     * Guard the special case that a host sets an arbitrarily large value.
+     * The returned value should not exceed count.
+     */
+    if (ret > (ssize_t)count)
+    {
+        ret = -1;
+        OE_RAISE_ERRNO(OE_EINVAL);
+    }
 
 done:
     return ret;
@@ -498,19 +551,35 @@ static ssize_t _fs_pwrite(
     ssize_t ret = -1;
     file_t* file = _cast_file(desc);
 
-    if (!file || offset < 0)
+    /*
+     * According to the POSIX specification, when the count is greater
+     * than SSIZE_MAX, the result is implementation-defined. OE raises an
+     * error in this case.
+     * Refer to
+     * https://pubs.opengroup.org/onlinepubs/9699919799/functions/pwrite.html
+     * for more detail.
+     */
+    if (!file || count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF);
-    if (count > OE_SSIZE_MAX)
-        OE_RAISE_ERRNO(OE_EFBIG);
 
     oe_spin_lock(&_lock);
     ret = file->device->pwrite(
         _get_context(file), file->handle, buf, count, offset);
     oe_spin_unlock(&_lock);
     ret = _err_ssize(ret);
+
+    /*
+     * Guard the special case that a host sets an arbitrarily large value.
+     * The returned value should not exceed count.
+     */
+    if (ret > (ssize_t)count)
+    {
+        ret = -1;
+        OE_RAISE_ERRNO(OE_EINVAL);
+    }
 
 done:
     return ret;
