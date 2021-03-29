@@ -38,7 +38,7 @@ RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $
 FROM alpine/git:latest AS pull
 RUN git clone https://github.com/edgelesssys/edgelessrt /edgelessrt
 WORKDIR /edgelessrt
-RUN git submodule update --init 3rdparty/openenclave/openenclave 3rdparty/go 3rdparty/ttls
+RUN git submodule update --init 3rdparty/openenclave/openenclave 3rdparty/go 3rdparty/mystikos/mystikos 3rdparty/ttls
 WORKDIR /edgelessrt/3rdparty/openenclave/openenclave
 RUN git submodule update --init tools/oeedger8r-cpp 3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
 

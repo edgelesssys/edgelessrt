@@ -7,6 +7,7 @@ find_package(
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_subdirectory(../3rdparty/mystikos mystikos)
 add_compile_options(-Wall -Wextra -Werror -Wno-missing-field-initializers)
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
   add_compile_options(-fno-builtin)
