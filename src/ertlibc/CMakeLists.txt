@@ -3,6 +3,7 @@ add_library(
   customfs.c
   dynlink.cpp
   locale.cpp
+  memfs.cpp
   misc.cpp
   new_thread.cpp
   pthread.cpp
@@ -15,8 +16,7 @@ add_library(
   syscall.cpp
   time.cpp
   util.cpp
-  __vasprintf_chk.c
-  memfs/memfs.cpp)
+  __vasprintf_chk.c)
 
 set_property(TARGET ertlibc PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
