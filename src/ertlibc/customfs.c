@@ -60,12 +60,10 @@ typedef struct _file
     uint32_t magic;
 
     /* The handle obtained from the custom fs. */
-    uintptr_t handle;
+    void* handle;
 
     const oe_customfs_t* device;
-    oe_spinlock_t lock;
-    uint64_t offset;
-    bool readonly;
+    int flags;
 } file_t;
 
 static oe_spinlock_t _lock;
@@ -112,30 +110,29 @@ static void* _get_context(const file_t* file)
     return ((device_t*)file->device)->context;
 }
 
-// caller must hold the file lock
-static ssize_t _read(
-    const file_t* file,
-    void* buf,
-    uint64_t count,
-    uint64_t offset)
+static bool _writable(const file_t* file)
 {
     oe_assert(file);
-    oe_assert(buf);
+    const int acc = file->flags & ACCESS_MODE_MASK;
+    return acc == OE_O_WRONLY || acc == OE_O_RDWR;
+}
 
-    void* const context = _get_context(file);
+static int _err_int(int result)
+{
+    oe_assert(-4096 < result && result <= 0);
+    if (result >= 0)
+        return result;
+    oe_errno = -result;
+    return -1;
+}
 
-    const uint64_t size = file->device->get_size(context, file->handle);
-    if (offset >= size)
-        return 0;
-
-    const uint64_t max_count = size - offset;
-    if (count > max_count)
-        count = max_count;
-    if (count > OE_SSIZE_MAX)
-        count = OE_SSIZE_MAX;
-
-    file->device->read(context, file->handle, buf, count, offset);
-    return (ssize_t)count;
+static ssize_t _err_ssize(ssize_t result)
+{
+    oe_assert(-4096 < result);
+    if (result >= 0)
+        return result;
+    oe_errno = -result;
+    return -1;
 }
 
 /* Called by oe_mount(). */
@@ -258,8 +255,6 @@ static oe_fd_t* _fs_open_file(
     int flags,
     oe_mode_t mode)
 {
-    (void)mode;
-
     oe_fd_t* ret = NULL;
     device_t* fs = _cast_device(device);
     file_t* file = NULL;
@@ -282,19 +277,16 @@ static oe_fd_t* _fs_open_file(
         file->magic = FILE_MAGIC;
         file->base.ops.file = _get_file_ops();
         file->device = (oe_customfs_t*)device;
-        file->readonly = readonly;
+        file->flags = flags;
     }
 
-    oe_spin_lock(&_lock);
-    if (flags & OE_O_TRUNC)
-        file->device->unlink(fs->context, pathname);
-
     /* Ask the host to open the file. */
-    file->handle =
-        file->device->open(fs->context, pathname, !(flags & OE_O_CREAT));
+    oe_spin_lock(&_lock);
+    const int retval =
+        file->device->open(fs->context, pathname, flags, mode, &file->handle);
     oe_spin_unlock(&_lock);
-    if (!file->handle)
-        OE_RAISE_ERRNO(OE_EINVAL);
+    if (retval)
+        OE_RAISE_ERRNO(-retval);
 
     ret = &file->base;
     file = NULL;
@@ -351,13 +343,10 @@ static ssize_t _fs_read(oe_fd_t* desc, void* buf, size_t count)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    oe_spin_lock(&file->lock);
-
-    ret = _read(file, buf, count, file->offset);
-    oe_assert(ret >= 0);
-    file->offset += (uint64_t)ret;
-
-    oe_spin_unlock(&file->lock);
+    oe_spin_lock(&_lock);
+    ret = file->device->read(_get_context(file), file->handle, buf, count);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
     return ret;
@@ -369,15 +358,17 @@ static int _fs_getdents64(
     struct oe_dirent* dirp,
     unsigned int count)
 {
-    (void)count;
-
     int ret = -1;
     file_t* file = _cast_file(desc);
 
     if (!file || !dirp)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    oe_spin_lock(&_lock);
+    ret =
+        file->device->getdents64(_get_context(file), file->handle, dirp, count);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
     return ret;
@@ -386,30 +377,23 @@ done:
 static ssize_t _fs_write(oe_fd_t* desc, const void* buf, size_t count)
 {
     ssize_t ret = -1;
-    bool locked = false;
     file_t* file = _cast_file(desc);
 
     /* Check parameters. */
     if (!file || (count && !buf))
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (file->readonly)
+    if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF);
     if (count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EFBIG);
 
-    locked = true;
-    oe_spin_lock(&file->lock);
-
-    if (!file->device->write(
-            _get_context(file), file->handle, buf, count, file->offset))
-        OE_RAISE_ERRNO(OE_ENOSPC);
-    file->offset += count;
-    ret = (ssize_t)count;
+    oe_spin_lock(&_lock);
+    ret = file->device->write(_get_context(file), file->handle, buf, count);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
-    if (locked)
-        oe_spin_unlock(&file->lock);
     return ret;
 }
 
@@ -421,46 +405,10 @@ static ssize_t _fs_readv(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
     if (!file || (!iov && iovcnt) || iovcnt < 0 || iovcnt > OE_IOV_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    void* const context = _get_context(file);
-    uint64_t bytes_read = 0;
-
-    oe_spin_lock(&file->lock);
-
-    const uint64_t size = file->device->get_size(context, file->handle);
-    if (file->offset >= size)
-    {
-        oe_spin_unlock(&file->lock);
-        return 0;
-    }
-
-    uint64_t max_count = size - file->offset;
-    if (max_count > OE_SSIZE_MAX)
-        max_count = OE_SSIZE_MAX;
-
-    for (int i = 0; i < iovcnt; ++i)
-    {
-        size_t len = iov[i].iov_len;
-        if (bytes_read + len > max_count)
-        {
-            len = max_count - bytes_read;
-            if (!len)
-                break;
-        }
-
-        file->device->read(
-            context,
-            file->handle,
-            iov[i].iov_base,
-            len,
-            file->offset + bytes_read);
-        bytes_read += len;
-    }
-
-    file->offset += bytes_read;
-
-    oe_spin_unlock(&file->lock);
-
-    ret = (ssize_t)bytes_read;
+    oe_spin_lock(&_lock);
+    ret = file->device->readv(_get_context(file), file->handle, iov, iovcnt);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
     return ret;
@@ -469,90 +417,37 @@ done:
 static ssize_t _fs_writev(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
 {
     ssize_t ret = -1;
-    bool locked = false;
     file_t* file = _cast_file(desc);
 
     if (!file || !iov || iovcnt < 0 || iovcnt > OE_IOV_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (file->readonly)
+    if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF);
 
-    void* const context = _get_context(file);
-    uint64_t bytes_written = 0;
-
-    locked = true;
-    oe_spin_lock(&file->lock);
-
-    for (int i = 0; i < iovcnt; ++i)
-    {
-        const size_t len = iov[i].iov_len;
-        if (len > OE_SSIZE_MAX)
-        {
-            if (bytes_written)
-                break;
-            OE_RAISE_ERRNO(OE_EFBIG);
-        }
-
-        if (!file->device->write(
-                context,
-                file->handle,
-                iov[i].iov_base,
-                len,
-                file->offset + bytes_written))
-        {
-            if (bytes_written)
-                break;
-            OE_RAISE_ERRNO(OE_ENOSPC);
-        }
-
-        bytes_written += len;
-    }
-
-    file->offset += bytes_written;
-    ret = (ssize_t)bytes_written;
+    oe_spin_lock(&_lock);
+    ret = file->device->writev(_get_context(file), file->handle, iov, iovcnt);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
-    if (locked)
-        oe_spin_unlock(&file->lock);
     return ret;
 }
 
 static oe_off_t _fs_lseek_file(oe_fd_t* desc, oe_off_t offset, int whence)
 {
     oe_off_t ret = -1;
-    bool locked = false;
     file_t* file = _cast_file(desc);
 
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    locked = true;
-    oe_spin_lock(&file->lock);
-
-    switch (whence)
-    {
-        case OE_SEEK_SET:
-            break;
-        case OE_SEEK_CUR:
-            offset += (oe_off_t)file->offset;
-            break;
-        case OE_SEEK_END:
-            offset += (oe_off_t)file->device->get_size(
-                _get_context(file), file->handle);
-            break;
-        default:
-            OE_RAISE_ERRNO(OE_EINVAL);
-    }
-
-    if (offset < 0)
-        OE_RAISE_ERRNO(OE_EINVAL);
-    file->offset = (uint64_t)offset;
-    ret = offset;
+    oe_spin_lock(&_lock);
+    ret = file->device->lseek(_get_context(file), file->handle, offset, whence);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
-    if (locked)
-        oe_spin_unlock(&file->lock);
     return ret;
 }
 
@@ -568,9 +463,11 @@ static ssize_t _fs_pread(
     if (!file || offset < 0)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    oe_spin_lock(&file->lock);
-    ret = _read(file, buf, count, (uint64_t)offset);
-    oe_spin_unlock(&file->lock);
+    oe_spin_lock(&_lock);
+    ret = file->device->pread(
+        _get_context(file), file->handle, buf, count, offset);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
     return ret;
@@ -583,28 +480,23 @@ static ssize_t _fs_pwrite(
     oe_off_t offset)
 {
     ssize_t ret = -1;
-    bool locked = false;
     file_t* file = _cast_file(desc);
 
     if (!file || offset < 0)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (file->readonly)
+    if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF);
     if (count > OE_SSIZE_MAX)
         OE_RAISE_ERRNO(OE_EFBIG);
 
-    locked = true;
-    oe_spin_lock(&file->lock);
-
-    if (!file->device->write(
-            _get_context(file), file->handle, buf, count, (uint64_t)offset))
-        OE_RAISE_ERRNO(OE_ENOSPC);
-    ret = (ssize_t)count;
+    oe_spin_lock(&_lock);
+    ret = file->device->pwrite(
+        _get_context(file), file->handle, buf, count, offset);
+    oe_spin_unlock(&_lock);
+    ret = _err_ssize(ret);
 
 done:
-    if (locked)
-        oe_spin_unlock(&file->lock);
     return ret;
 }
 
@@ -616,10 +508,13 @@ static int _fs_close_file(oe_fd_t* desc)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    file->device->close(_get_context(file), file->handle);
-    oe_free(file);
+    oe_spin_lock(&_lock);
+    ret = file->device->close(_get_context(file), file->handle);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
-    ret = 0;
+    if (ret == 0)
+        oe_free(file);
 
 done:
     return ret;
@@ -678,21 +573,32 @@ done:
     return ret;
 }
 
-static void _stat(const oe_customfs_t* fs, uintptr_t handle, oe_stat_t* buf)
+static int _fstat_unlocked(
+    const oe_customfs_t* fs,
+    void* handle,
+    oe_stat_t* statbuf)
 {
     oe_assert(fs);
     oe_assert(handle);
-    oe_assert(buf);
-    const uint64_t size = fs->get_size(((device_t*)fs)->context, handle);
-    buf->st_size = size < OE_SSIZE_MAX ? (oe_off_t)size : OE_SSIZE_MAX;
-    buf->st_mode = OE_S_IFREG;
+    oe_assert(statbuf);
+
+    // struct stat contains unused fields at the end which oe_stat_t does not,
+    // so we must wrap it.
+    struct
+    {
+        oe_stat_t buf;
+        long unused[3];
+    } buf = {.buf = *statbuf};
+
+    const int ret = fs->fstat(((device_t*)fs)->context, handle, &buf);
+    *statbuf = buf.buf;
+    return _err_int(ret);
 }
 
 static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
-    int retval = -1;
 
     if (buf)
         oe_memset_s(buf, sizeof(*buf), 0, sizeof(*buf));
@@ -701,18 +607,17 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     const oe_customfs_t* const customfs = (oe_customfs_t*)device;
+    void* handle = NULL;
 
-    const uintptr_t handle = customfs->open(fs->context, pathname, true);
-    if (handle)
+    oe_spin_lock(&_lock);
+    if (customfs->open(fs->context, pathname, OE_O_RDONLY, 0, &handle) == 0)
     {
-        _stat(customfs, handle, buf);
+        ret = _fstat_unlocked(customfs, handle, buf);
         customfs->close(fs->context, handle);
-        retval = 0;
     }
     else
         oe_errno = OE_ENOENT;
-
-    ret = retval;
+    oe_spin_unlock(&_lock);
 
 done:
 
@@ -730,8 +635,9 @@ static int _fs_fstat(oe_fd_t* desc, struct oe_stat_t* buf)
     if (!file || !buf)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    _stat(file->device, file->handle, buf);
-    ret = 0;
+    oe_spin_lock(&_lock);
+    ret = _fstat_unlocked(file->device, file->handle, buf);
+    oe_spin_unlock(&_lock);
 
 done:
 
@@ -769,7 +675,10 @@ static int _fs_link(
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    oe_spin_lock(&_lock);
+    ret = ((oe_customfs_t*)device)->link(fs->context, oldpath, newpath);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
 done:
 
@@ -789,10 +698,10 @@ static int _fs_unlink(oe_device_t* device, const char* pathname)
         OE_RAISE_ERRNO(OE_EPERM);
 
     oe_spin_lock(&_lock);
-    ((oe_customfs_t*)device)->unlink(fs->context, pathname);
+    ret = ((oe_customfs_t*)device)->unlink(fs->context, pathname);
     oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
-    ret = 0;
 done:
 
     return ret;
@@ -812,7 +721,10 @@ static int _fs_rename(
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    oe_spin_lock(&_lock);
+    ret = ((oe_customfs_t*)device)->rename(fs->context, oldpath, newpath);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
 done:
 
@@ -821,9 +733,6 @@ done:
 
 static int _fs_truncate(oe_device_t* device, const char* path, oe_off_t length)
 {
-    (void)path;
-    (void)length;
-
     int ret = -1;
     device_t* fs = _cast_device(device);
 
@@ -833,7 +742,19 @@ static int _fs_truncate(oe_device_t* device, const char* path, oe_off_t length)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    const oe_customfs_t* const customfs = (oe_customfs_t*)device;
+    void* handle = NULL;
+
+    oe_spin_lock(&_lock);
+    if (customfs->open(fs->context, path, OE_O_WRONLY, 0, &handle) == 0)
+    {
+        ret = customfs->ftruncate(fs->context, handle, length);
+        customfs->close(fs->context, handle);
+        ret = _err_int(ret);
+    }
+    else
+        oe_errno = OE_ENOENT;
+    oe_spin_unlock(&_lock);
 
 done:
 
@@ -842,15 +763,16 @@ done:
 
 static int _fs_ftruncate(oe_fd_t* desc, oe_off_t length)
 {
-    (void)length;
-
     int ret = -1;
     const file_t* const file = _cast_file(desc);
 
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    oe_spin_lock(&_lock);
+    ret = file->device->ftruncate(_get_context(file), file->handle, length);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
 done:
     return ret;
@@ -858,9 +780,6 @@ done:
 
 static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
 {
-    (void)pathname;
-    (void)mode;
-
     int ret = -1;
     device_t* fs = _cast_device(device);
 
@@ -871,8 +790,10 @@ static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    // Folders are not supported yet. Always succeed.
-    ret = 0;
+    oe_spin_lock(&_lock);
+    ret = ((oe_customfs_t*)device)->mkdir(fs->context, pathname, mode);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
 done:
 
@@ -881,8 +802,6 @@ done:
 
 static int _fs_rmdir(oe_device_t* device, const char* pathname)
 {
-    (void)pathname;
-
     int ret = -1;
     device_t* fs = _cast_device(device);
 
@@ -893,7 +812,10 @@ static int _fs_rmdir(oe_device_t* device, const char* pathname)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    oe_spin_lock(&_lock);
+    ret = ((oe_customfs_t*)device)->rmdir(fs->context, pathname);
+    oe_spin_unlock(&_lock);
+    ret = _err_int(ret);
 
 done:
 

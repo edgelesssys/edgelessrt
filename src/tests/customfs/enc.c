@@ -2,61 +2,112 @@
 #include <openenclave/internal/tests.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/uio.h>
 
+// mocked functions simulate a single file
 static char _filebuf[27];
+static size_t _offset;
 
-static uintptr_t _fs_open(void* context, const char* path, bool must_exist)
-{
-    (void)must_exist;
-    OE_TEST(context);
-    OE_TEST(strcmp(path, "/foo") == 0);
-    return 1;
-}
+// dummy values
+static void* const _handle = (void*)2;
+static void* const _context_ro = (void*)3;
+static void* const _context_rw = (void*)4;
 
-static void _fs_close(void* context, uintptr_t handle)
-{
-    OE_TEST(context);
-    OE_TEST(handle == 1);
-}
-
-static uint64_t _fs_get_size(void* context, uintptr_t handle)
-{
-    OE_TEST(context);
-    OE_TEST(handle == 1);
-    return sizeof _filebuf;
-}
-
-static void _fs_unlink(void* context, const char* path)
-{
-    OE_TEST(context);
-    OE_TEST(strcmp(path, "/foo") == 0);
-}
-
-static void _fs_read(
+static int _fs_open(
     void* context,
-    uintptr_t handle,
-    void* buf,
-    uint64_t count,
-    uint64_t offset)
+    const char* pathname,
+    int flags,
+    unsigned int mode,
+    void** handle)
 {
-    OE_TEST(context);
-    OE_TEST(handle == 1);
-    OE_TEST(offset + count <= sizeof _filebuf);
-    memcpy(buf, _filebuf + offset, count);
+    (void)flags;
+    (void)mode;
+    OE_TEST(context == _context_ro || context == _context_rw);
+    OE_TEST(strcmp(pathname, "/foo") == 0);
+    OE_TEST(handle);
+    _offset = 0;
+    *handle = _handle;
+    return 0;
 }
 
-static bool _fs_write(
-    void* context,
-    uintptr_t handle,
-    const void* buf,
-    uint64_t count,
-    uint64_t offset)
+static int _fs_close(void* context, void* handle)
 {
-    OE_TEST(context);
-    OE_TEST(handle == 1);
-    OE_TEST(offset + count <= sizeof _filebuf);
-    memcpy(_filebuf + offset, buf, count);
-    return true;
+    OE_TEST(context == _context_ro || context == _context_rw);
+    OE_TEST(handle == _handle);
+    return 0;
+}
+
+static ssize_t _fs_read(void* context, void* handle, void* buf, size_t count)
+{
+    OE_TEST(context == _context_ro || context == _context_rw);
+    OE_TEST(handle == _handle);
+    OE_TEST(buf);
+    OE_TEST(count > 0);
+    const size_t max = sizeof _filebuf - _offset;
+    if (count > max)
+        count = max;
+    memcpy(buf, _filebuf + _offset, count);
+    _offset += count;
+    return count;
+}
+
+static ssize_t _v(void* handle, const void* iov, int iovcnt, bool write)
+{
+    OE_TEST(handle == _handle);
+    OE_TEST(iov);
+    OE_TEST(iovcnt > 0);
+
+    const struct iovec* const v = (struct iovec*)iov;
+    ssize_t result = 0;
+
+    for (int i = 0; i < iovcnt; ++i)
+    {
+        const size_t len = v[i].iov_len;
+        if (_offset + len > sizeof _filebuf)
+            break;
+
+        if (write)
+            memcpy(_filebuf + _offset, v[i].iov_base, len);
+        else
+            memcpy(v[i].iov_base, _filebuf + _offset, len);
+
+        _offset += len;
+        result += len;
+    }
+
+    return result;
+}
+
+static ssize_t _fs_readv(
+    void* context,
+    void* handle,
+    const void* iov,
+    int iovcnt)
+{
+    OE_TEST(context == _context_ro || context == _context_rw);
+    return _v(handle, iov, iovcnt, false);
+}
+
+static ssize_t _fs_writev(
+    void* context,
+    void* handle,
+    const void* iov,
+    int iovcnt)
+{
+    OE_TEST(context == _context_rw);
+    return _v(handle, iov, iovcnt, true);
+}
+
+static int _fs_fstat(void* context, void* handle, void* statbuf)
+{
+    OE_TEST(context == _context_ro || context == _context_rw);
+    OE_TEST(handle == _handle);
+    OE_TEST(statbuf);
+    struct stat* const buf = (struct stat*)statbuf;
+    *buf = (struct stat){0};
+    buf->st_size = sizeof _filebuf;
+    return 0;
 }
 
 void test_ecall(void)
@@ -69,22 +120,23 @@ void test_ecall(void)
     oe_customfs_t rofs = {
         .open = _fs_open,
         .close = _fs_close,
-        .get_size = _fs_get_size,
         .read = _fs_read,
+        .readv = _fs_readv,
+        .fstat = _fs_fstat,
     };
 
     oe_customfs_t rwfs = {
         .open = _fs_open,
         .close = _fs_close,
-        .get_size = _fs_get_size,
-        .unlink = _fs_unlink,
         .read = _fs_read,
-        .write = _fs_write,
+        .readv = _fs_readv,
+        .writev = _fs_writev,
+        .fstat = _fs_fstat,
     };
 
-    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs, (void*)2) > 0);
+    OE_TEST(oe_load_module_custom_file_system(rodev, &rofs, _context_ro) > 0);
     OE_TEST(mount("/", "/ro", rodev, MS_RDONLY, NULL) == 0);
-    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs, (void*)3) > 0);
+    OE_TEST(oe_load_module_custom_file_system(rwdev, &rwfs, _context_rw) > 0);
     OE_TEST(mount("/", "/rw", rwdev, 0, NULL) == 0);
     OE_TEST(run_main("/rw/foo", false) == 0);
     OE_TEST(run_main("/ro/foo", true) == 0);
