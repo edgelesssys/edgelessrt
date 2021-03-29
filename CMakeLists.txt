@@ -34,8 +34,9 @@ include(ExternalProject)
 include(GNUInstallDirs)
 
 # update required submodules
-execute_process(COMMAND git submodule update --init 3rdparty/go 3rdparty/ttls
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+execute_process(
+  COMMAND git submodule update --init 3rdparty/go 3rdparty/mystikos/mystikos
+          3rdparty/ttls WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 if (NOT OEDEV OR NOT EXISTS
                  ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave/.git)
   execute_process(
