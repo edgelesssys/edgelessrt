@@ -41,6 +41,17 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return ert_munmap((void*)x1, x2);
     }
 
+    // Try hook
+    oe_spin_lock(&_lock);
+    const oe_syscall_hook_t hook = _hook;
+    oe_spin_unlock(&_lock);
+    if (hook)
+    {
+        long ret = -ENOSYS;
+        if (hook(n, x1, x2, x3, x4, x5, x6, &ret) == OE_OK)
+            return ret;
+    }
+
     // Try libertlibc
     long ret = ert_syscall(n, x1, x2, x3, x4, x5, x6);
     if (ret != -ENOSYS)
@@ -108,17 +119,6 @@ done:
 __attribute__((__weak__)) long
 ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 {
-    oe_spin_lock(&_lock);
-    const oe_syscall_hook_t hook = _hook;
-    oe_spin_unlock(&_lock);
-
-    if (hook)
-    {
-        long ret = -1;
-        if (hook(n, x1, x2, x3, x4, x5, x6, &ret) == OE_OK)
-            return ret;
-    }
-
     if (n == OE_SYS_clock_gettime)
         return _syscall_clock_gettime(x1, x2);
 

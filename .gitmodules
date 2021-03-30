@@ -4,3 +4,6 @@
 [submodule "3rdparty/openenclave/openenclave"]
 	path = 3rdparty/openenclave/openenclave
 	url = https://github.com/openenclave/openenclave
+[submodule "3rdparty/ttls"]
+	path = 3rdparty/ttls
+	url = https://github.com/edgelesssys/ttls
