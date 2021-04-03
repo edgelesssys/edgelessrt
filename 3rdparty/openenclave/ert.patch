@@ -95,23 +95,23 @@ index bdc3e51e9..cb7d0f464 100644
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
 diff --git a/debugger/pythonExtension/gdb_sgx_plugin.py b/debugger/pythonExtension/gdb_sgx_plugin.py
-index 2f30cf2a9..4e5da0c88 100644
+index 33232424c..1c5597992 100644
 --- a/debugger/pythonExtension/gdb_sgx_plugin.py
 +++ b/debugger/pythonExtension/gdb_sgx_plugin.py
-@@ -45,6 +45,10 @@ class oe_debug_enclave_t:
-     MASK_DEBUG = 0x01
-     MASK_SIMULATE = 0x02
+@@ -94,6 +94,10 @@ class oe_debug_enclave_t:
+     OFFSETOF_MODULES = 80
+     SIZEOF_MODULES = 8
  
-+    OFFSETOF_BASE_ADDRESS_PAYLOAD = 80
-+    OFFSETOF_PATH_PAYLOAD = 88
-+    OFFSETOF_PATH_LENGTH_PAYLOAD = 96
++    OFFSETOF_BASE_ADDRESS_PAYLOAD = 88
++    OFFSETOF_PATH_PAYLOAD = 96
++    OFFSETOF_PATH_LENGTH_PAYLOAD = 104
 +
      def __init__(self, addr):
          if addr:
              self.magic = read_int_from_memory(addr + self.OFFSETOF_MAGIC, self.SIZEOF_MAGIC)
-@@ -72,6 +76,12 @@ class oe_debug_enclave_t:
-         self.debug = bool(flags & self.MASK_DEBUG)
-         self.simulate = bool(flags & self.MASK_SIMULATE)
+@@ -123,6 +127,12 @@ class oe_debug_enclave_t:
+ 
+         self.modules = read_int_from_memory(addr + self.OFFSETOF_MODULES, self.SIZEOF_MODULES)
  
 +        self.base_address_payload = read_int_from_memory(addr + self.OFFSETOF_BASE_ADDRESS_PAYLOAD, self.SIZEOF_BASE_ADDRESS)
 +        if self.base_address_payload:
@@ -119,10 +119,10 @@ index 2f30cf2a9..4e5da0c88 100644
 +            path_length = read_int_from_memory(addr + self.OFFSETOF_PATH_LENGTH_PAYLOAD, self.SIZEOF_PATH_LENGTH)
 +            self.path_payload = bytes(read_from_memory(path, path_length)).decode('utf-8')
 +
- 
      def is_valid(self):
          return self.magic == self.MAGIC_VALUE
-@@ -208,6 +218,8 @@ def enable_oeenclave_debug(oe_enclave_addr):
+ 
+@@ -258,6 +268,8 @@ def enable_oeenclave_debug(oe_enclave_addr):
      # Load symbols for the enclave
      if load_enclave_symbol(enclave.path, enclave.base_address) != 1:
          return False
@@ -612,7 +612,7 @@ index 449af159e..6c2b8d6a4 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index cf814d36a..2387aab06 100644
+index ff27c3c7b..0d9c26de7 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -772,17 +772,85 @@ done:
@@ -1063,13 +1063,13 @@ index 7acc8a107..04acea35b 100644
   * Terminate an enclave and reclaims its resources.
   *
 diff --git a/include/openenclave/internal/debugrt/host.h b/include/openenclave/internal/debugrt/host.h
-index bc19bb871..72cb445a0 100644
+index eadf12aaf..d79e359da 100644
 --- a/include/openenclave/internal/debugrt/host.h
 +++ b/include/openenclave/internal/debugrt/host.h
-@@ -63,6 +63,11 @@ typedef struct _debug_enclave_t
-     uint64_t num_tcs;
+@@ -50,6 +50,11 @@ typedef struct _debug_enclave_t
  
-     uint64_t flags;
+     // The list of secondary modules.
+     oe_debug_module_t* modules;
 +
 +    // EDG: payload properties
 +    const void* base_address_payload;
@@ -1078,13 +1078,13 @@ index bc19bb871..72cb445a0 100644
  } oe_debug_enclave_t;
  
  OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, magic) == 0);
-@@ -75,6 +80,9 @@ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, size) == 48);
- OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, tcs_array) == 56);
- OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, num_tcs) == 64);
+@@ -63,6 +68,9 @@ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, tcs_array) == 56);
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, tcs_count) == 64);
  OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, flags) == 72);
-+OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, base_address_payload) == 80);
-+OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_payload) == 88);
-+OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_length_payload) == 96);
+ OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, modules) == 80);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, base_address_payload) == 88);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_payload) == 96);
++OE_STATIC_ASSERT(OE_OFFSETOF(oe_debug_enclave_t, path_length_payload) == 104);
  
  #define OE_DEBUG_THREAD_BINDING_MAGIC 0x24cb0317d077d636
  
@@ -1230,18 +1230,18 @@ index f974de571..4b40bf9c5 100644
  set(ENCLAVE_CLIBS_LIST ${ENCLAVE_CLIBS_1} ${ENCLAVE_CLIBS_2})
  list(JOIN ENCLAVE_CLIBS_LIST " " ENCLAVE_CLIBS)
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index 116626d70..ee67fef34 100644
+index 32ddeba1a..dfc3b043e 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
 @@ -31,7 +31,7 @@ build:
  
  	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
  	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
--	$(CXX) -o tls_client_enclave $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
-+	$(CXX) -o tls_client_enclave $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
+-	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
++	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
  
  sign:
- 	oesign sign -e tls_client_enclave -c  enc.conf -k private.pem
+ 	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
 index 91438ba5d..f37a442e5 100644
 --- a/samples/attested_tls/server/enc/Makefile
@@ -1362,7 +1362,7 @@ index 1cb00423c..63664a178 100644
  **==============================================================================
  **
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
-index 66a94d7f6..5f40182c1 100644
+index b86f2ab10..e44ad80a0 100644
 --- a/syscall/devices/hostfs/hostfs.c
 +++ b/syscall/devices/hostfs/hostfs.c
 @@ -426,15 +426,14 @@ static oe_fd_t* _hostfs_open(
@@ -1400,7 +1400,7 @@ index 66a94d7f6..5f40182c1 100644
      if (oe_syscall_fsync_ocall(&ret, file->host_fd) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
  
-@@ -1438,6 +1441,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
+@@ -1443,6 +1446,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
  {
      file_t* file = _cast_file(desc);
  
@@ -2787,10 +2787,10 @@ index c885d7493..0df7a69bb 100644
    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
               -DCMAKE_C_COMPILER=${EDGER8R_C_COMPILER}
 diff --git a/tools/oesign/main.c b/tools/oesign/main.c
-index 450a88271..372ad20c7 100644
+index 29ac50e12..9d94111e5 100644
 --- a/tools/oesign/main.c
 +++ b/tools/oesign/main.c
-@@ -25,20 +25,25 @@ int oesign(
+@@ -26,20 +26,25 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -2820,7 +2820,7 @@ index 450a88271..372ad20c7 100644
      "\n"
      "For help with a specific command, enter \"%s <command> --help\"\n";
  
-@@ -142,6 +147,24 @@ static const char _usage_dump[] =
+@@ -146,6 +151,24 @@ static const char _usage_dump[] =
      "signature information for the specified enclave.\n"
      "\n";
  
@@ -2845,7 +2845,7 @@ index 450a88271..372ad20c7 100644
  int dump_parser(int argc, const char* argv[])
  {
      int ret = 0;
-@@ -289,6 +312,7 @@ int sign_parser(int argc, const char* argv[])
+@@ -294,6 +317,7 @@ int sign_parser(int argc, const char* argv[])
      const char* engine_id = NULL;
      const char* engine_load_path = NULL;
      const char* key_id = NULL;
@@ -2853,15 +2853,15 @@ index 450a88271..372ad20c7 100644
  
      const struct option long_options[] = {
          {"help", no_argument, NULL, 'h'},
-@@ -302,6 +326,7 @@ int sign_parser(int argc, const char* argv[])
+@@ -308,6 +332,7 @@ int sign_parser(int argc, const char* argv[])
          {"load-path", required_argument, NULL, 'p'},
          {"key-id", required_argument, NULL, 'i'},
  #endif
 +        {"payload", required_argument, NULL, 0x101},
          {NULL, 0, NULL, 0},
      };
-     const char short_options[] = "he:c:k:n:p:i:d:x:";
-@@ -356,6 +381,9 @@ int sign_parser(int argc, const char* argv[])
+     const char short_options[] = "he:c:k:n:p:i:d:o:x:";
+@@ -365,6 +390,9 @@ int sign_parser(int argc, const char* argv[])
                  key_id = optarg;
                  break;
  #endif
@@ -2871,7 +2871,7 @@ index 450a88271..372ad20c7 100644
              case ':':
                  // Missing option argument
                  ret = 1;
-@@ -432,7 +460,8 @@ int sign_parser(int argc, const char* argv[])
+@@ -442,7 +470,8 @@ int sign_parser(int argc, const char* argv[])
              x509,
              engine_id,
              engine_load_path,
@@ -2881,7 +2881,7 @@ index 450a88271..372ad20c7 100644
      }
  
  done:
-@@ -523,6 +552,122 @@ done:
+@@ -533,6 +562,122 @@ done:
      return ret;
  }
  
@@ -3004,7 +3004,7 @@ index 450a88271..372ad20c7 100644
  int arg_handler(int argc, const char* argv[])
  {
      int ret = 1;
-@@ -536,6 +681,10 @@ int arg_handler(int argc, const char* argv[])
+@@ -546,6 +691,10 @@ int arg_handler(int argc, const char* argv[])
          ret = sign_parser(argc, argv);
      else if ((strcmp(argv[1], "digest") == 0))
          ret = digest_parser(argc, argv);
@@ -3015,54 +3015,8 @@ index 450a88271..372ad20c7 100644
      else
      {
          fprintf(stderr, _usage_gen, argv[0], argv[0]);
-diff --git a/tools/oesign/oeinfo.c b/tools/oesign/oeinfo.c
-index 27ccfab7d..de1a0f3f7 100644
---- a/tools/oesign/oeinfo.c
-+++ b/tools/oesign/oeinfo.c
-@@ -52,7 +52,8 @@ static char* _make_signed_lib_name(const char* path)
- 
- oe_result_t oe_write_oeinfo_sgx(
-     const char* path,
--    const oe_sgx_enclave_properties_t* properties)
-+    const oe_sgx_enclave_properties_t* properties,
-+    bool overwrite)
- {
-     oe_result_t result = OE_FAILURE;
-     oe_enclave_image_t oeimage;
-@@ -72,7 +73,10 @@ oe_result_t oe_write_oeinfo_sgx(
- 
-     /* Write new signed executable */
-     {
--        char* p = _make_signed_lib_name(path);
-+        char* signed_name = _make_signed_lib_name(path);
-+        const char* p = signed_name;
-+        if (overwrite)
-+            p = path;
- 
-         if (!p)
-         {
-@@ -102,7 +106,7 @@ oe_result_t oe_write_oeinfo_sgx(
- 
-         printf("Created %s\n", p);
- 
--        free(p);
-+        free(signed_name);
-     }
- 
-     result = OE_OK;
-diff --git a/tools/oesign/oeinfo.h b/tools/oesign/oeinfo.h
-index 857ee354e..136063c01 100644
---- a/tools/oesign/oeinfo.h
-+++ b/tools/oesign/oeinfo.h
-@@ -9,4 +9,5 @@ oe_result_t oe_read_oeinfo_sgx(
- 
- oe_result_t oe_write_oeinfo_sgx(
-     const char* path,
--    const oe_sgx_enclave_properties_t* properties);
-+    const oe_sgx_enclave_properties_t* properties,
-+    bool overwrite);
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index cbfe236ba..f4b6939d4 100644
+index 9d99c4dbc..2be3ed3f1 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
 @@ -399,7 +399,7 @@ done:
@@ -3093,7 +3047,7 @@ index cbfe236ba..f4b6939d4 100644
          "oe_sgx_build_enclave(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -600,7 +601,8 @@ int oesign(
+@@ -601,7 +602,8 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -3103,7 +3057,7 @@ index cbfe236ba..f4b6939d4 100644
  {
      int ret = 1;
      oe_result_t result = OE_UNEXPECTED;
-@@ -614,7 +616,8 @@ int oesign(
+@@ -615,7 +617,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
@@ -3113,7 +3067,7 @@ index cbfe236ba..f4b6939d4 100644
  
      if (engine_id)
      {
-@@ -638,7 +641,7 @@ int oesign(
+@@ -639,7 +642,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -3122,7 +3076,7 @@ index cbfe236ba..f4b6939d4 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -688,7 +691,7 @@ int oesign(
+@@ -689,7 +692,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -3131,19 +3085,19 @@ index cbfe236ba..f4b6939d4 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
-@@ -713,7 +716,10 @@ int oesign(
+@@ -714,7 +717,10 @@ int oesign(
  
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
--        oe_write_oeinfo_sgx(enclave, &properties),
+-        oe_write_oeinfo_sgx(enclave, output_file, &properties),
 +        oe_write_oeinfo_sgx(
 +            payload_path ? payload_path : enclave,
-+            &properties,
-+            payload_path ? true : false),
++            output_file ? output_file : payload_path,
++            &properties),
          "oe_write_oeinfo_sgx(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -741,7 +747,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+@@ -742,7 +748,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
