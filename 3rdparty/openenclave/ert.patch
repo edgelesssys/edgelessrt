@@ -2068,7 +2068,7 @@ index 072e4fec5..a70034931 100644
  
      if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
 diff --git a/syscall/syscall.c b/syscall/syscall.c
-index e81bcfa61..de2479d39 100644
+index e81bcfa61..96b521224 100644
 --- a/syscall/syscall.c
 +++ b/syscall/syscall.c
 @@ -198,6 +198,15 @@ OE_WEAK OE_DEFINE_SYSCALL4_M(SYS_epoll_wait)
@@ -2087,6 +2087,15 @@ index e81bcfa61..de2479d39 100644
  OE_WEAK OE_DEFINE_SYSCALL1(SYS_exit)
  {
      oe_errno = 0;
+@@ -345,7 +354,7 @@ OE_WEAK OE_DEFINE_SYSCALL2(SYS_getcwd)
+     }
+     else
+     {
+-        ret = (long)size;
++        ret = (long)oe_strlen(buf) + 1;
+     }
+ 
+     return ret;
 @@ -1107,6 +1116,7 @@ static long _syscall(
  #if __x86_64__ || _M_X64
          OE_SYSCALL_DISPATCH(SYS_epoll_wait, arg1, arg2, arg3, arg4);
