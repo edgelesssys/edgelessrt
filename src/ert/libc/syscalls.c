@@ -49,7 +49,20 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     {
         long ret = -ENOSYS;
         if (hook(n, x1, x2, x3, x4, x5, x6, &ret) == OE_OK)
-            return ret;
+        {
+            // hook returns result and errno like libc syscall(), but musl
+            // expects them like raw syscall, so we must adjust the values.
+            if (ret >= 0)
+                return ret;
+            if (ret == -1 && errno > 0)
+                return -errno;
+            OE_TRACE_FATAL(
+                "unexpected syscall hook result: n=%lu ret=%ld errno=%d",
+                n,
+                ret,
+                errno);
+            abort();
+        }
     }
 
     // Try libertlibc
