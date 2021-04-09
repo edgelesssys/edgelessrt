@@ -17,7 +17,7 @@ target_include_directories(ertmeshentry PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(
   ertmeshentry
   PRIVATE $<BUILD_INTERFACE:oe_includes>
-  INTERFACE ertlibc openenclave::oehostepoll openenclave::oehostfs
+  INTERFACE ertttls ertlibc openenclave::oehostepoll openenclave::oehostfs
             openenclave::oehostresolver openenclave::oehostsock)
 set_property(TARGET ertmeshentry PROPERTY POSITION_INDEPENDENT_CODE ON)
 
