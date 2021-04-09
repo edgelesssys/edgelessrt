@@ -976,7 +976,6 @@ add_enclave_library(
   ${MUSLSRC}/misc/openpty.c
   ${MUSLSRC}/misc/ptsname.c
   ${MUSLSRC}/misc/pty.c
-  ${MUSLSRC}/misc/realpath.c
   ${MUSLSRC}/misc/setdomainname.c
   ${MUSLSRC}/misc/setpriority.c
   ${MUSLSRC}/misc/setrlimit.c
