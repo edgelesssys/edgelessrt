@@ -26,7 +26,7 @@ jobs:
 
     - name: Test
       run: |
-        OE_SIMULATION=1 ctest --output-on-failure -E tests/crypto/
+        OE_SIMULATION=1 ctest --output-on-failure -E "tests/crypto/|tests/ert/ttls"
       working-directory: build
 
     - name: CPack
