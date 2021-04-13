@@ -30,10 +30,9 @@ target_link_libraries(
 add_library(ertttls ttls.cpp)
 target_link_libraries(
   ertttls
-  PRIVATE $<BUILD_INTERFACE:oe_includes>
+  PRIVATE $<BUILD_INTERFACE:oe_includes> ttls
   INTERFACE openenclave::oehostsock openenclave::mbedtls openenclave::mbedx509
-            openenclave::mbedcrypto
-  PUBLIC ttls)
+            openenclave::mbedcrypto)
 set_property(TARGET ertttls PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 install(
