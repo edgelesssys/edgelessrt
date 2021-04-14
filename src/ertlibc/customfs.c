@@ -41,6 +41,7 @@ typedef struct _device
     struct
     {
         unsigned long flags;
+        char source[OE_PATH_MAX];
         char target[OE_PATH_MAX];
     } mount;
 
@@ -99,6 +100,41 @@ static file_t* _cast_file(const oe_fd_t* desc)
         OE_RAISE_ERRNO(OE_EINVAL);
 
     ret = file;
+
+done:
+    return ret;
+}
+
+/* Expand an enclave path to a host path. */
+static int _make_host_path(
+    const device_t* fs,
+    const char* enclave_path,
+    char host_path[OE_PATH_MAX])
+{
+    const size_t n = OE_PATH_MAX;
+    int ret = -1;
+
+    if (oe_strcmp(fs->mount.source, "/") == 0)
+    {
+        if (oe_strlcpy(host_path, enclave_path, OE_PATH_MAX) >= n)
+            OE_RAISE_ERRNO(OE_ENAMETOOLONG);
+    }
+    else
+    {
+        if (oe_strlcpy(host_path, fs->mount.source, OE_PATH_MAX) >= n)
+            OE_RAISE_ERRNO(OE_ENAMETOOLONG);
+
+        if (oe_strcmp(enclave_path, "/") != 0)
+        {
+            if (oe_strlcat(host_path, "/", OE_PATH_MAX) >= n)
+                OE_RAISE_ERRNO(OE_ENAMETOOLONG);
+
+            if (oe_strlcat(host_path, enclave_path, OE_PATH_MAX) >= n)
+                OE_RAISE_ERRNO(OE_ENAMETOOLONG);
+        }
+    }
+
+    ret = 0;
 
 done:
     return ret;
@@ -171,6 +207,18 @@ static int _fs_mount(
     /* Remember whether this is a read-only mount. */
     if ((flags & OE_MS_RDONLY))
         fs->mount.flags = flags;
+
+    /* ---------------------------------------------------------------------
+     * Only support absolute paths. Hostfs is treated as an external
+     * filesystem. As such, it does not make sense to resolve relative paths
+     * using the enclave's current working directory.
+     * ---------------------------------------------------------------------
+     */
+    if (source && source[0] != '/')
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    /* Save the source parameter (will be needed to form host paths). */
+    oe_strlcpy(fs->mount.source, source, sizeof(fs->mount.source));
 
     /* Save the target parameter (checked by the umount2() function). */
     oe_strlcpy(fs->mount.target, target, sizeof(fs->mount.target));
@@ -265,6 +313,7 @@ static oe_fd_t* _fs_open(
     oe_fd_t* ret = NULL;
     device_t* fs = _cast_device(device);
     file_t* file = NULL;
+    char host_path[OE_PATH_MAX];
 
     /* Fail if any required parameters are null. */
     if (!fs || !pathname)
@@ -287,12 +336,17 @@ static oe_fd_t* _fs_open(
     }
 
     /* Ask the host to open the file. */
-    oe_spin_lock(&_lock);
-    const int retval =
-        file->device->open(fs->context, pathname, flags, mode, &file->handle);
-    oe_spin_unlock(&_lock);
-    if (retval)
-        OE_RAISE_ERRNO(-retval);
+    {
+        if (_make_host_path(fs, pathname, host_path) != 0)
+            OE_RAISE_ERRNO_MSG(oe_errno, "pathname=%s", pathname);
+
+        oe_spin_lock(&_lock);
+        const int retval = file->device->open(
+            fs->context, host_path, flags, mode, &file->handle);
+        oe_spin_unlock(&_lock);
+        if (retval)
+            OE_RAISE_ERRNO(-retval);
+    }
 
     ret = &file->base;
     file = NULL;
@@ -682,6 +736,7 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_path[OE_PATH_MAX];
 
     if (buf)
         oe_memset_s(buf, sizeof(*buf), 0, sizeof(*buf));
@@ -689,11 +744,14 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
     if (!fs || !pathname || !buf)
         OE_RAISE_ERRNO(OE_EINVAL);
 
+    if (_make_host_path(fs, pathname, host_path) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     const oe_customfs_t* const customfs = (oe_customfs_t*)device;
     void* handle = NULL;
 
     oe_spin_lock(&_lock);
-    if (customfs->open(fs->context, pathname, OE_O_RDONLY, 0, &handle) == 0)
+    if (customfs->open(fs->context, host_path, OE_O_RDONLY, 0, &handle) == 0)
     {
         ret = _fstat_unlocked(customfs, handle, buf);
         customfs->close(fs->context, handle);
@@ -750,6 +808,8 @@ static int _fs_link(
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_oldpath[OE_PATH_MAX];
+    char host_newpath[OE_PATH_MAX];
 
     if (!fs || !oldpath || !newpath)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -758,8 +818,15 @@ static int _fs_link(
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
+    if (_make_host_path(fs, newpath, host_newpath) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     oe_spin_lock(&_lock);
-    ret = ((oe_customfs_t*)device)->link(fs->context, oldpath, newpath);
+    ret =
+        ((oe_customfs_t*)device)->link(fs->context, host_oldpath, host_newpath);
     oe_spin_unlock(&_lock);
     ret = _err_int(ret);
 
@@ -772,6 +839,7 @@ static int _fs_unlink(oe_device_t* device, const char* pathname)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_path[OE_PATH_MAX];
 
     if (!fs)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -780,8 +848,11 @@ static int _fs_unlink(oe_device_t* device, const char* pathname)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, pathname, host_path) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     oe_spin_lock(&_lock);
-    ret = ((oe_customfs_t*)device)->unlink(fs->context, pathname);
+    ret = ((oe_customfs_t*)device)->unlink(fs->context, host_path);
     oe_spin_unlock(&_lock);
     ret = _err_int(ret);
 
@@ -797,6 +868,8 @@ static int _fs_rename(
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_oldpath[OE_PATH_MAX];
+    char host_newpath[OE_PATH_MAX];
 
     if (!fs || !oldpath || !newpath)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -804,8 +877,15 @@ static int _fs_rename(
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
+    if (_make_host_path(fs, newpath, host_newpath) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     oe_spin_lock(&_lock);
-    ret = ((oe_customfs_t*)device)->rename(fs->context, oldpath, newpath);
+    ret = ((oe_customfs_t*)device)
+              ->rename(fs->context, host_oldpath, host_newpath);
     oe_spin_unlock(&_lock);
     ret = _err_int(ret);
 
@@ -818,6 +898,7 @@ static int _fs_truncate(oe_device_t* device, const char* path, oe_off_t length)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_path[OE_PATH_MAX];
 
     if (!fs)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -825,11 +906,14 @@ static int _fs_truncate(oe_device_t* device, const char* path, oe_off_t length)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, path, host_path) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     const oe_customfs_t* const customfs = (oe_customfs_t*)device;
     void* handle = NULL;
 
     oe_spin_lock(&_lock);
-    if (customfs->open(fs->context, path, OE_O_WRONLY, 0, &handle) == 0)
+    if (customfs->open(fs->context, host_path, OE_O_WRONLY, 0, &handle) == 0)
     {
         ret = customfs->ftruncate(fs->context, handle, length);
         customfs->close(fs->context, handle);
@@ -868,6 +952,7 @@ static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_path[OE_PATH_MAX];
 
     if (!fs)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -876,8 +961,11 @@ static int _fs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, pathname, host_path) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     oe_spin_lock(&_lock);
-    ret = ((oe_customfs_t*)device)->mkdir(fs->context, pathname, mode);
+    ret = ((oe_customfs_t*)device)->mkdir(fs->context, host_path, mode);
     oe_spin_unlock(&_lock);
     ret = _err_int(ret);
 
@@ -890,6 +978,7 @@ static int _fs_rmdir(oe_device_t* device, const char* pathname)
 {
     int ret = -1;
     device_t* fs = _cast_device(device);
+    char host_path[OE_PATH_MAX];
 
     if (!fs)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -898,8 +987,11 @@ static int _fs_rmdir(oe_device_t* device, const char* pathname)
     if (_is_read_only(fs))
         OE_RAISE_ERRNO(OE_EPERM);
 
+    if (_make_host_path(fs, pathname, host_path) != 0)
+        OE_RAISE_ERRNO(oe_errno);
+
     oe_spin_lock(&_lock);
-    ret = ((oe_customfs_t*)device)->rmdir(fs->context, pathname);
+    ret = ((oe_customfs_t*)device)->rmdir(fs->context, host_path);
     oe_spin_unlock(&_lock);
     ret = _err_int(ret);
 

@@ -58,7 +58,7 @@ void ert_init_ttls(const char* config);
 
 typedef struct _oe_customfs
 {
-    uint8_t reserved[4248];
+    uint8_t reserved[8344];
     int (*open)(
         void* context,
         const char* pathname,
