@@ -76,7 +76,7 @@ add_enclave_library(
   ${LIBCDIR}/epoll.c
   ${LIBCDIR}/exit.c
   ${LIBCDIR}/freeaddrinfo.c
-  ${LIBCDIR}/getaddrinfo.c
+  getaddrinfo.c
   ${LIBCDIR}/getnameinfo.c
   ${LIBCDIR}/kill.c
   ${LIBCDIR}/libunwind_stubs.c
