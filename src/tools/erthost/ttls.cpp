@@ -1,5 +1,6 @@
 #include <openenclave/ert.h>
 #include <openenclave/internal/syscall/hook.h>
+#include <openenclave/internal/syscall/netdb.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <ttls/ttls.h>
@@ -8,6 +9,11 @@
 using namespace edgeless;
 
 extern "C" long oe_syscall(long number, ...);
+extern "C" int (*ert_getaddrinfo_func)(
+    const char*,
+    const char*,
+    const oe_addrinfo*,
+    oe_addrinfo**);
 
 namespace
 {
@@ -75,6 +81,17 @@ static oe_result_t _syscall_hook(
     return OE_UNEXPECTED;
 }
 
+static int _getaddrinfo(
+    const char* node,
+    const char* service,
+    const oe_addrinfo* hints,
+    oe_addrinfo** res)
+{
+    const int result = oe_getaddrinfo(node, service, hints, res);
+    // TODO
+    return result;
+}
+
 /**
  * Initialize ttls dispatcher and hook syscalls
  */
@@ -88,4 +105,5 @@ void ert_init_ttls(const char* config)
     dis = std::make_unique<ttls::Dispatcher>(config, raw_sock, tls_sock);
 
     oe_register_syscall_hook(_syscall_hook);
+    ert_getaddrinfo_func = _getaddrinfo;
 }
