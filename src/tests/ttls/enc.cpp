@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <openenclave/enclave.h>
 #include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
@@ -49,7 +50,7 @@ void test_ecall()
 
     constexpr std::string_view kRequest = "GET / HTTP/1.0\r\n\r\n";
     const auto ttls_cfg =
-        "{\"tls\":{\"127.0.0.1:9000\": \" " + kCACrt + " \" }}";
+        "{\"tls\":{\"localhost:9000\": \" " + kCACrt + " \" }}";
     OE_TEST(oe_load_module_host_socket_interface() == OE_OK);
 
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -65,6 +66,8 @@ void test_ecall()
     inet_aton("127.0.0.1", &sock_addr_in.sin_addr);
     sockaddr sock_addr = reinterpret_cast<sockaddr&>(sock_addr_in);
 
+    addrinfo* result = nullptr;
+    OE_TEST(getaddrinfo("localhost", nullptr, nullptr, &result) == 0);
     OE_TEST(connect(fd, &sock_addr, sizeof(sock_addr)) == 0);
     OE_TEST(write(fd, kRequest.data(), kRequest.size()) == kRequest.size());
 
