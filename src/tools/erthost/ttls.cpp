@@ -17,7 +17,7 @@ extern "C" int (*ert_getaddrinfo_func)(
 
 namespace
 {
-class OESocket final : public ttls::Socket
+class OESocket final : public ttls::RawSocket
 {
   public:
     int Connect(int sockfd, const sockaddr* addr, socklen_t addrlen) override
@@ -40,6 +40,18 @@ class OESocket final : public ttls::Socket
     int Close(int fd) override
     {
         return oe_syscall(SYS_close, fd);
+    }
+    int Getaddrinfo(
+        const char* node,
+        const char* service,
+        const addrinfo* hints,
+        addrinfo** res) override
+    {
+        return oe_getaddrinfo(
+            node,
+            service,
+            reinterpret_cast<const oe_addrinfo*>(hints),
+            reinterpret_cast<oe_addrinfo**>(res));
     }
 };
 } // namespace
@@ -87,9 +99,11 @@ static int _getaddrinfo(
     const oe_addrinfo* hints,
     oe_addrinfo** res)
 {
-    const int result = oe_getaddrinfo(node, service, hints, res);
-    // TODO
-    return result;
+    return dis->Getaddrinfo(
+        node,
+        service,
+        reinterpret_cast<const addrinfo*>(hints),
+        reinterpret_cast<addrinfo**>(res));
 }
 
 /**
