@@ -27,16 +27,16 @@ target_link_libraries(
   PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc)
 
-add_library(ertttls ttls.cpp)
+add_library(ertttls ttls.cpp $<TARGET_OBJECTS:ttlsobj>)
 target_link_libraries(
   ertttls
-  PRIVATE $<BUILD_INTERFACE:oe_includes> ttls
+  PRIVATE $<BUILD_INTERFACE:oe_includes> $<BUILD_INTERFACE:ttls>
   INTERFACE openenclave::oehostsock openenclave::mbedtls openenclave::mbedx509
             openenclave::mbedcrypto)
 set_property(TARGET ertttls PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 install(
-  TARGETS ertdeventry ertmeshentry ertcalls ertttls ttls
+  TARGETS ertdeventry ertmeshentry ertcalls ertttls
   EXPORT openenclave-targets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
 
