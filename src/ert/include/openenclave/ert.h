@@ -64,6 +64,7 @@ typedef struct _oe_customfs
         const char* pathname,
         int flags,
         unsigned int mode,
+        void** handle_fs,
         void** handle);
     int (*close)(void* context, void* handle);
     ssize_t (*read)(void* context, void* handle, void* buf, size_t count);
