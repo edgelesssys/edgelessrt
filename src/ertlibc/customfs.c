@@ -342,7 +342,7 @@ static oe_fd_t* _fs_open(
 
         oe_spin_lock(&_lock);
         const int retval = file->device->open(
-            fs->context, host_path, flags, mode, &file->handle);
+            fs->context, host_path, flags, mode, NULL, &file->handle);
         oe_spin_unlock(&_lock);
         if (retval)
             OE_RAISE_ERRNO(-retval);
@@ -751,7 +751,8 @@ static int _fs_stat(oe_device_t* device, const char* pathname, oe_stat_t* buf)
     void* handle = NULL;
 
     oe_spin_lock(&_lock);
-    if (customfs->open(fs->context, host_path, OE_O_RDONLY, 0, &handle) == 0)
+    if (customfs->open(fs->context, host_path, OE_O_RDONLY, 0, NULL, &handle) ==
+        0)
     {
         ret = _fstat_unlocked(customfs, handle, buf);
         customfs->close(fs->context, handle);
@@ -913,7 +914,8 @@ static int _fs_truncate(oe_device_t* device, const char* path, oe_off_t length)
     void* handle = NULL;
 
     oe_spin_lock(&_lock);
-    if (customfs->open(fs->context, host_path, OE_O_WRONLY, 0, &handle) == 0)
+    if (customfs->open(fs->context, host_path, OE_O_WRONLY, 0, NULL, &handle) ==
+        0)
     {
         ret = customfs->ftruncate(fs->context, handle, length);
         customfs->close(fs->context, handle);

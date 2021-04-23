@@ -19,7 +19,7 @@ Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
     if (devname.empty())
         throw invalid_argument("Memfs: empty devname");
 
-    if (myst_init_ramfs(reinterpret_cast<myst_fs_t**>(&fs_)) != 0)
+    if (myst_init_ramfs(nullptr, reinterpret_cast<myst_fs_t**>(&fs_)) != 0)
         throw runtime_error("Memfs: myst_init_ramfs failed");
     assert(fs_);
 

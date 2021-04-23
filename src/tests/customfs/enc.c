@@ -19,10 +19,12 @@ static int _fs_open(
     const char* pathname,
     int flags,
     unsigned int mode,
+    void** handle_fs,
     void** handle)
 {
     (void)flags;
     (void)mode;
+    (void)handle_fs;
     OE_TEST(context == _context_ro || context == _context_rw);
     OE_TEST(strcmp(pathname, "/foo") == 0);
     OE_TEST(handle);
