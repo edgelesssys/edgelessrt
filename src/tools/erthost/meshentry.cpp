@@ -43,7 +43,9 @@ int emain()
     char** argv = nullptr;
     ert_meshentry_premain(&argc, &argv);
 
-    ert_init_ttls(getenv("MARBLE_TTLS_CONFIG"));
+    auto ttls_conf = getenv("MARBLE_TTLS_CONFIG");
+    if (ttls_conf != NULL)
+        ert_init_ttls(ttls_conf);
 
     cout << "[meshentry] invoking main\n";
     return main(argc, argv, environ);
