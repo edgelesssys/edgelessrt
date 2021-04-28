@@ -49,8 +49,8 @@ void test_ecall()
         "-----END CERTIFICATE-----\\r\\n";
 
     constexpr std::string_view kRequest = "GET / HTTP/1.0\r\n\r\n";
-    const auto ttls_cfg =
-        "{\"tls\":{\"localhost:9000\": \" " + kCACrt + " \" }}";
+    const auto ttls_cfg = "{\"tls\":{\"localhost:9000\": {\"cacrt\": \" " +
+                          kCACrt + " \", \"clicert\":\"\", \"clikey\":\"\" }}}";
     OE_TEST(oe_load_module_host_socket_interface() == OE_OK);
 
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,7 +58,7 @@ void test_ecall()
 
     ert_init_ttls(ttls_cfg.data());
 
-    auto t1 = edgeless::ttls::StartTestServer();
+    auto t1 = edgeless::ttls::StartTestServer(0); // MBEDTLS_SSL_VERIFY_NONE
 
     sockaddr_in sock_addr_in{};
     sock_addr_in.sin_family = AF_INET;
