@@ -22,5 +22,7 @@ enclave {
             [out] void** clock_monotonic_coarse);
 
         void ert_exit_ocall(int status);
+
+        void ert_restart_host_process_ocall();
     };
 }
