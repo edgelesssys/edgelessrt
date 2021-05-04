@@ -6,6 +6,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/debug.cpp
   ${CMAKE_CURRENT_LIST_DIR}/enclave_thread_manager.cpp
   ${CMAKE_CURRENT_LIST_DIR}/ocall_tracer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/restart.cpp
   ${CMAKE_CURRENT_LIST_DIR}/syscall.cpp
   ${CMAKE_CURRENT_LIST_DIR}/thread.cpp
   ${CMAKE_CURRENT_LIST_DIR}/vdso.cpp)

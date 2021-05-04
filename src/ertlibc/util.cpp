@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include "ertlibc_t.h"
 
 using namespace std;
 using namespace ert;
@@ -70,6 +71,12 @@ void ert_copy_strings_from_host_to_enclave(
     }
 
     *enclave_array = arr;
+}
+
+void ert_restart_host_process()
+{
+    if (ert_restart_host_process_ocall() != OE_OK)
+        abort();
 }
 
 const void* payload::get_base() noexcept

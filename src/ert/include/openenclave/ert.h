@@ -56,6 +56,11 @@ void ert_copy_strings_from_host_to_enclave(
  */
 void ert_init_ttls(const char* config);
 
+/**
+ * Restart the process hosting this enclave.
+ */
+void ert_restart_host_process(void);
+
 typedef struct _oe_customfs
 {
     uint8_t reserved[8344];
