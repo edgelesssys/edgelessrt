@@ -23,8 +23,7 @@ target_include_directories(
 set(TTLS_NOTEST True)
 add_subdirectory(../3rdparty/ttls ttls)
 target_include_directories(
-  ttlsobj PUBLIC ${OEBUILDDIR}/openenclave/3rdparty
-                 ${OESRCDIR}/3rdparty/mbedtls/mbedtls/include)
+  ttlsobj PUBLIC ${OEBUILDDIR}/openenclave-install/include/openenclave/3rdparty)
 
 add_subdirectory(ertlibc)
 add_subdirectory(meshpremain)
