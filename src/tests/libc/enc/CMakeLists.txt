@@ -46,7 +46,7 @@ add_enclave(
   # test linking against LVI-mitigated libraries.
   ADD_LVI_MITIGATION
   SOURCES
-  ${DIR}/enc/enc.c
+  enc.c
   ${test_dependencies}
   ${test_extras}
   ${LIBC_TESTS}
