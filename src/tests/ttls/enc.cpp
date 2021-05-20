@@ -147,7 +147,7 @@ static void _test_client()
                         {
                             "cacrt": ")" +
         kCACrt + R"(",
-         "clicert":"",
+         "clicrt":"",
           "clikey":""
                         }
                 },
@@ -155,7 +155,7 @@ static void _test_client()
                 {
                     "*:9999":
                     {
-                        "cacrt": "","clicert": "", "clikey": ""
+                        "cacrt": "","clicrt": "", "clikey": "", "clientAuth": false
                     }
                 }
             }
@@ -201,7 +201,7 @@ static void _test_server()
                         {
                             "cacrt": ")" +
         kCACrt + R"(",
-                            "clicert":"",
+                            "clicrt":"",
                             "clikey":""
                         }
                 },
@@ -211,10 +211,11 @@ static void _test_server()
                     {
                         "cacrt": ")" +
         kCACrt + R"(",
-        "clicert": ")" +
+        "clicrt": ")" +
         kServerCert + R"(",
          "clikey": ")" +
-        kServerKey + R"("
+        kServerKey + R"(",
+        "clientAuth": true
                     }
                 }
             }
