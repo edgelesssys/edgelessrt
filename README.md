@@ -155,6 +155,14 @@ You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT.
 }
 ```
 
+## Contribute
+
+To report a problem or suggest a new feature, file a GitHub issue.
+
+To report a security issue, write to security@edgeless.systems
+
+Pull requests are welcome! You need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/edgelessrt).
+
 <!-- refs -->
 [unit-tests]: https://github.com/edgelesssys/edgelessrt/actions
 [unit-tests-badge]: https://github.com/edgelesssys/edgelessrt/workflows/Unit%20Tests/badge.svg
