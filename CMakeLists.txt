@@ -71,7 +71,9 @@ install(
   DIRECTORY ${CMAKE_BINARY_DIR}/3rdparty/openenclave/openenclave-install/
   DESTINATION .
   USE_SOURCE_PERMISSIONS
-  PATTERN samples EXCLUDE)
+  PATTERN samples EXCLUDE
+  # exclude openenclaverc because overwrite is not reliable for this file
+  PATTERN openenclaverc EXCLUDE)
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/ertcore-install/
   DESTINATION .
