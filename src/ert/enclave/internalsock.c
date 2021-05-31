@@ -116,7 +116,6 @@ static oe_socket_ops_t _sock_ops = {
 
 static const uint32_t _ipaddr = 0xFF000001;      // 255.0.0.1
 static const uint16_t _client_port = 1024;       // >= 1024 to satisfy test
-static const uint16_t _server_port = 1025;       // only used as fallback
 static internalsock_boundsock_t* _bound_sockets; // linked list
 static oe_spinlock_t _lock = OE_SPINLOCK_INITIALIZER;
 
@@ -397,7 +396,6 @@ oe_result_t oe_internalsock_connect(
     sock->host_fd = -1;
 
     const uint16_t port = oe_ntohs(((struct oe_sockaddr_in*)addr)->sin_port);
-    sock->internal.server_port = port;
 
     oe_result_t result = OE_FAILURE;
     internalsock_boundsock_t* bound = NULL;
@@ -429,6 +427,7 @@ oe_result_t oe_internalsock_connect(
 
     sock->base.ops.socket = _sock_ops; // override hostsock ops
     sock->internal.connection = con;
+    sock->internal.server_port = port;
     con = NULL;
 
     // notify listener that a new connection is available
@@ -657,6 +656,7 @@ static oe_fd_t* _sock_accept(
 
     oe_assert(con);
     newsock->internal.connection = con;
+    newsock->internal.server_port = bound->port;
     _connection_add(newsock, false);
 
     if (addr)
@@ -666,7 +666,7 @@ static oe_fd_t* _sock_accept(
         {
             addr_in->sin_family = OE_AF_INET;
             addr_in->sin_addr.s_addr = oe_htonl(_ipaddr);
-            addr_in->sin_port = oe_htons(_server_port);
+            addr_in->sin_port = oe_htons(_client_port);
         }
         *addrlen = sizeof *addr_in;
     }
@@ -780,7 +780,17 @@ static int _sock_getsockname(
         if (sock->internal.boundsock)
             ad.sin_port = oe_htons(sock->internal.boundsock->port);
         else if (sock->internal.connection)
-            ad.sin_port = oe_htons(_client_port);
+        {
+            switch (sock->internal.side)
+            {
+                case CONNECTION_CLIENT:
+                    ad.sin_port = oe_htons(_client_port);
+                    break;
+                case CONNECTION_SERVER:
+                    ad.sin_port = oe_htons(sock->internal.server_port);
+                    break;
+            }
+        }
 
         oe_socklen_t len = *addrlen;
         if (len > sizeof ad)
@@ -801,31 +811,43 @@ static int _sock_getpeername(
     oe_socklen_t* addrlen)
 {
     oe_assert(sock_);
+
     int result = -1;
+
     if (!addrlen || (*addrlen && !addr))
         OE_RAISE_ERRNO(OE_EFAULT);
+
+    const sock_t* const sock = (sock_t*)sock_;
+    if (sock->internal.boundsock)
+        OE_RAISE_ERRNO(OE_ENOTCONN);
+
     if (addr)
     {
-        const sock_t* const sock = (sock_t*)sock_;
         struct oe_sockaddr_in ad = {.sin_family = OE_AF_INET};
         ad.sin_addr.s_addr = oe_htonl(_ipaddr);
 
-        if (sock->internal.side == CONNECTION_CLIENT &&
-            sock->internal.server_port)
-            ad.sin_port = oe_htons(sock->internal.server_port);
-        else if (sock->internal.boundsock)
-            ad.sin_port = oe_htons(sock->internal.boundsock->port);
-        else if (sock->internal.connection)
-            // use hard-coded value as fallback
-            ad.sin_port = oe_htons(_server_port);
+        if (sock->internal.connection)
+        {
+            switch (sock->internal.side)
+            {
+                case CONNECTION_CLIENT:
+                    ad.sin_port = oe_htons(sock->internal.server_port);
+                    break;
+                case CONNECTION_SERVER:
+                    ad.sin_port = oe_htons(_client_port);
+                    break;
+            }
+        }
 
         oe_socklen_t len = *addrlen;
         if (len > sizeof ad)
             len = sizeof ad;
         memcpy(addr, &ad, len);
     }
+
     *addrlen = sizeof(struct oe_sockaddr_in);
     result = 0;
+
 done:
     return result;
 }
