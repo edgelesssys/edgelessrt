@@ -884,7 +884,11 @@ static ssize_t _sock_recvfrom(
     if (!buf)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (flags || src_addr || addrlen)
+    if (flags)
+        // not supported yet, will ignore
+        OE_TRACE_WARNING("recvfrom: unsupported flags: %d", flags);
+
+    if (src_addr || addrlen)
         OE_RAISE_ERRNO(OE_ENOSYS); // not supported yet
 
     if (count > OE_SSIZE_MAX)
@@ -946,7 +950,8 @@ static ssize_t _sock_sendto(
         OE_RAISE_ERRNO(OE_EISCONN);
 
     if (flags)
-        OE_RAISE_ERRNO(OE_ENOSYS); // not supported yet
+        // not supported yet, will ignore
+        OE_TRACE_WARNING("sendto: unsupported flags: %d", flags);
 
     for (;;)
     {
