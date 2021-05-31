@@ -31,6 +31,7 @@ eventfd if any poller requests its host fd.
 
 #define STUB(x) STUB_(x, int, -1)
 #define STUBS(x) STUB_(x, ssize_t, -1)
+#define MSG_DONTWAIT 0x40 // non-blocking
 
 static int _sock_dup(oe_fd_t* sock_, oe_fd_t** new_sock_out);
 STUB(ioctl)
@@ -821,8 +822,7 @@ static ssize_t _sock_recvfrom(
     if (!buf)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if (flags)
-        // not supported yet, will ignore
+    if (flags != 0 && flags != MSG_DONTWAIT)
         OE_TRACE_WARNING("recvfrom: unsupported flags: %d", flags);
 
     if (src_addr || addrlen)
@@ -833,7 +833,8 @@ static ssize_t _sock_recvfrom(
 
     sock_t* const sock = (sock_t*)sock_;
     const con_t con = _get_con(sock);
-    const bool block = !(sock->internal.flags & OE_O_NONBLOCK);
+    const bool block =
+        !(sock->internal.flags & OE_O_NONBLOCK) && !(flags & MSG_DONTWAIT);
 
     oe_mutex_lock(&con.self->mutex);
 
