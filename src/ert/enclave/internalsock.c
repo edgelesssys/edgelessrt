@@ -59,6 +59,10 @@ static int _sock_getsockname(
     oe_fd_t* sock_,
     struct oe_sockaddr* addr,
     oe_socklen_t* addrlen);
+static int _sock_getpeername(
+    oe_fd_t* sock_,
+    struct oe_sockaddr* addr,
+    oe_socklen_t* addrlen);
 static ssize_t _sock_recv(oe_fd_t* sock_, void* buf, size_t count, int flags);
 static ssize_t _sock_send(
     oe_fd_t* sock_,
@@ -99,7 +103,7 @@ static oe_socket_ops_t _sock_ops = {
     .shutdown = _sock_shutdown,
     .getsockopt = _stub_getsockopt,
     .setsockopt = _sock_setsockopt,
-    .getpeername = _sock_getsockname,
+    .getpeername = _sock_getpeername,
     .getsockname = _sock_getsockname,
     .recv = _sock_recv,
     .send = _sock_send,
@@ -110,9 +114,10 @@ static oe_socket_ops_t _sock_ops = {
     .connect = _stub_connect,
 };
 
-static const uint32_t _ipaddr = 0xFF000001;      // 255.0.0.1
-static const uint16_t _client_port = 1024;       // >= 1024 to satisfy test
-static internalsock_boundsock_t* _bound_sockets; // linked list
+static const uint32_t _ipaddr = 0xFF000001;         // 255.0.0.1
+static const uint16_t _client_port = 1024;          // >= 1024 to satisfy test
+static const uint16_t _server_port_fallback = 1025; // only used as fallback
+static internalsock_boundsock_t* _bound_sockets;    // linked list
 static oe_spinlock_t _lock = OE_SPINLOCK_INITIALIZER;
 
 typedef struct
@@ -392,6 +397,7 @@ oe_result_t oe_internalsock_connect(
     sock->host_fd = -1;
 
     const uint16_t port = oe_ntohs(((struct oe_sockaddr_in*)addr)->sin_port);
+    sock->internal.server_port = port;
 
     oe_result_t result = OE_FAILURE;
     internalsock_boundsock_t* bound = NULL;
@@ -785,6 +791,41 @@ static int _sock_getsockname(
     *addrlen = sizeof(struct oe_sockaddr_in);
     result = 0;
 
+done:
+    return result;
+}
+
+static int _sock_getpeername(
+    oe_fd_t* sock_,
+    struct oe_sockaddr* addr,
+    oe_socklen_t* addrlen)
+{
+    oe_assert(sock_);
+    int result = -1;
+    if (!addrlen || (*addrlen && !addr))
+        OE_RAISE_ERRNO(OE_EFAULT);
+    if (addr)
+    {
+        const sock_t* const sock = (sock_t*)sock_;
+        struct oe_sockaddr_in ad = {.sin_family = OE_AF_INET};
+        ad.sin_addr.s_addr = oe_htonl(_ipaddr);
+
+        if (sock->internal.side == CONNECTION_CLIENT &&
+            sock->internal.server_port)
+            ad.sin_port = oe_htons(sock->internal.server_port);
+        else if (sock->internal.boundsock)
+            ad.sin_port = oe_htons(sock->internal.boundsock->port);
+        else if (sock->internal.connection)
+            // use hard-coded value as fallback
+            ad.sin_port = oe_htons(_server_port_fallback);
+
+        oe_socklen_t len = *addrlen;
+        if (len > sizeof ad)
+            len = sizeof ad;
+        memcpy(addr, &ad, len);
+    }
+    *addrlen = sizeof(struct oe_sockaddr_in);
+    result = 0;
 done:
     return result;
 }

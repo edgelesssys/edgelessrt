@@ -63,7 +63,8 @@ typedef struct _sock
 
         internalsock_connection_side_t side; // client or server
         int flags;                           // set by fcntl()
-        bool event_notified; // state of the eventfd referred by host_fd
+        bool event_notified;  // state of the eventfd referred by host_fd
+        uint16_t server_port; // set during connect()
     } internal;
 } sock_t;
 
