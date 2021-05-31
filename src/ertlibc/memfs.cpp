@@ -43,6 +43,7 @@ Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
     set(link);
     set(unlink);
     set(rename);
+    set(access);
 #undef set
 
     devid_ = oe_load_module_custom_file_system(devname.c_str(), &ops_, fs_);
