@@ -99,6 +99,7 @@ typedef struct _oe_customfs
     int (*link)(void* context, const char* oldpath, const char* newpath);
     int (*unlink)(void* context, const char* pathname);
     int (*rename)(void* context, const char* oldpath, const char* newpath);
+    int (*access)(void* context, const char* pathname, int mode);
 } oe_customfs_t;
 
 /**
