@@ -698,6 +698,9 @@ static int _fs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
     {
         case OE_F_GETFD:
         case OE_F_SETFD:
+        case OE_F_GETLK:
+        case OE_F_SETLK:
+        case OE_F_SETLKW:
             // can be a noop as we do not support exec()
             ret = 0;
             break;
