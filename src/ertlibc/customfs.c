@@ -378,6 +378,7 @@ static int _fs_dup(oe_fd_t* desc, oe_fd_t** new_file_out)
 {
     int ret = -1;
     file_t* file = _cast_file(desc);
+    file_t* new_file = NULL;
 
     if (!new_file_out)
         OE_RAISE_ERRNO(OE_EINVAL);
@@ -388,9 +389,34 @@ static int _fs_dup(oe_fd_t* desc, oe_fd_t** new_file_out)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    OE_RAISE_ERRNO(OE_ENOSYS);
+    /* Create and initialize the new file structure. */
+    {
+        if (!(new_file = oe_calloc(1, sizeof(file_t))))
+            OE_RAISE_ERRNO(oe_errno);
+
+        *new_file = *file;
+    }
+
+    /* Call the host to perform the dup(). */
+    {
+        oe_spin_lock(&_lock);
+        ret = file->device->dup(
+            _get_context(file), file->handle, &new_file->handle);
+        oe_spin_unlock(&_lock);
+        ret = _err_int(ret);
+
+        if (ret == -1)
+            OE_RAISE_ERRNO(oe_errno);
+    }
+
+    *new_file_out = &new_file->base;
+    new_file = NULL;
+    ret = 0;
 
 done:
+
+    if (new_file)
+        oe_free(new_file);
 
     return ret;
 }
