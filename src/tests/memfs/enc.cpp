@@ -1,4 +1,10 @@
 // reuse existing test from OE
+
+// existing test mounts hostfs, we want our memfs named myfs
+#include <openenclave/internal/syscall/device.h>
+#undef OE_DEVICE_NAME_HOST_FILE_SYSTEM
+#define OE_DEVICE_NAME_HOST_FILE_SYSTEM "myfs"
+
 // existing test links against musl which has strlc??, but we link against glibc
 #define strlcat strncat
 #define strlcpy strncpy
@@ -27,6 +33,7 @@ void test_ecall()
         test_common(sfs, "");
         test_pio(fs, "");
         OE_TEST(umount("/") == 0);
+        test_dup_case1("");
     }
 
     // test different mount sources

@@ -28,6 +28,7 @@ Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
 #define set(op) ops_.op = reinterpret_cast<decltype(ops_.op)>(fs.fs_##op)
     set(open);
     set(close);
+    set(dup);
     set(read);
     set(write);
     set(readv);
