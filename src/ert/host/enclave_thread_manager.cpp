@@ -39,7 +39,10 @@ void EnclaveThreadManager::create_thread(
     Thread* new_thread;
 
     {
+        if (exit_)
+            pthread_exit(nullptr);
         const lock_guard lock(mutex_);
+
         auto& threads = threads_[enclave];
 
         // remove all threads that have already finished
@@ -106,7 +109,10 @@ static void _wake_thread(oe_enclave_t& enclave, oe_thread_t thread) noexcept
 void EnclaveThreadManager::cancel_all_threads(oe_enclave_t* enclave)
 {
     assert(enclave);
+
+    exit_ = true;
     const lock_guard lock(mutex_);
+
     auto& threads = threads_[enclave];
 
     for (auto& t : threads)
