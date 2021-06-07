@@ -44,5 +44,6 @@ class EnclaveThreadManager final
 
     std::map<const oe_enclave_t*, std::list<Thread>> threads_;
     std::mutex mutex_;
+    std::atomic<bool> exit_ = false;
 };
 } // namespace ert::host
