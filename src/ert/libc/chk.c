@@ -1,6 +1,7 @@
 // Copyright (c) Edgeless Systems GmbH.
 // Licensed under the MIT License.
 
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -16,6 +17,7 @@
 CHK3(memcpy)
 CHK3(memmove)
 CHK3(memset)
+CHK3(poll)
 CHK2(realpath)
 CHK2(strcat)
 CHK2(strcpy)
