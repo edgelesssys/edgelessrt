@@ -7,14 +7,12 @@ assignees: ''
 
 ---
 
-### Is your proposal related to a problem? (if applicable)
-- Please provide a clear and concise description of what the problem is. For example, "I'm always frustrated when..."
 
-### Describe the solution or feature
-- Provide a clear and concise description of what you want to happen.
+### Use case
+<!-- A clear and concise description of what the problem is. -->
 
-### Describe alternatives you've considered
-- Let us know about other solutions you've tried or researched.
+### Describe your solution
+<!-- A clear and concise description of what you want to happen. -->
 
-### Additional context / screenshots
-- Any additional information or context
+### Additional context
+<!-- Add any other context or screenshots about the feature request here. -->
