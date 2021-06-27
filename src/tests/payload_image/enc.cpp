@@ -7,7 +7,7 @@
 
 using namespace ert;
 
-static void _start_main(int payload_main(...))
+OE_EXPORT extern "C" void __libc_start_main(int payload_main(...))
 {
     OE_TEST(payload_main() == 2);
     exit(3);
@@ -15,8 +15,6 @@ static void _start_main(int payload_main(...))
 
 void test_ecall()
 {
-    payload::apply_relocations(_start_main);
-
     // get payload entry point
     const auto base = static_cast<const uint8_t*>(payload::get_base());
     OE_TEST(base);

@@ -1,5 +1,5 @@
 diff --git a/src/f_emitter.h b/src/f_emitter.h
-index 784c2b6..9437dd9 100644
+index 0cc054e..b58fb8a 100644
 --- a/src/f_emitter.h
 +++ b/src/f_emitter.h
 @@ -43,7 +43,7 @@ class FEmitter

@@ -176,17 +176,6 @@ namespace payload
 const void* get_base() noexcept;
 
 /**
- * Apply relocations to the payload image. The main image must call this
- * function before calling the payload's entry point.
- *
- * @param start_main The payload's libc_start_main will be relocated to this
- * function.
- *
- * @throw logic_error relocation failed
- */
-void apply_relocations(void start_main(int payload_main(...)));
-
-/**
  * Get the payload data.
  *
  * @return payload data

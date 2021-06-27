@@ -38,12 +38,6 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             case SYS_exit_group:
                 sc::exit_group(static_cast<int>(x1));
                 return 0;
-            case SYS_getrandom:
-                return sc::getrandom(
-                    reinterpret_cast<void*>(x1),  // buf
-                    static_cast<size_t>(x2),      // buflen
-                    static_cast<unsigned int>(x3) // flags
-                );
             case SYS_sched_getaffinity:
                 return sc::sched_getaffinity(
                     static_cast<pid_t>(x1),

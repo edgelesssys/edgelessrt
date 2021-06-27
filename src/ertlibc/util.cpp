@@ -10,9 +10,7 @@
 using namespace std;
 using namespace ert;
 
-extern "C" const uint64_t _payload_reloc_rva;
-extern "C" const uint64_t _payload_reloc_size;
-extern "C" const uint64_t _payload_data_size;
+extern "C" volatile uint64_t _reloc_rva, _reloc_size;
 
 static void _check(oe_result_t result)
 {
@@ -81,14 +79,15 @@ void ert_restart_host_process()
 
 const void* payload::get_base() noexcept
 {
-    // payload image starts after relocs from main image
-    return __oe_get_reloc_end();
+    return static_cast<const uint8_t*>(__oe_get_enclave_base()) +
+           oe_get_module_info()->base_rva;
 }
 
 std::pair<const void*, size_t> payload::get_data() noexcept
 {
     // payload data resides after relocs
-    return {static_cast<const uint8_t*>(__oe_get_enclave_base()) +
-                _payload_reloc_rva + _payload_reloc_size,
-            _payload_data_size};
+    return {
+        static_cast<const uint8_t*>(__oe_get_enclave_base()) + _reloc_rva +
+            _reloc_size,
+        oe_get_module_info()->payload_data_size};
 }

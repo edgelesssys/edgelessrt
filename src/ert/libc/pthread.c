@@ -9,7 +9,7 @@
 
 #define PTHREAD_MUTEX_ADAPTIVE_NP 3
 
-pthread_t __pthread_self()
+pthread_t __get_tp()
 {
     static __thread struct
     {
