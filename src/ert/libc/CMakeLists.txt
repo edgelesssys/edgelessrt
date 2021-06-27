@@ -19,9 +19,6 @@ if (OE_SGX)
     ${MUSLSRC}/math/x86_64/log2l.s
     ${MUSLSRC}/math/x86_64/logl.s
     #${MUSLSRC}/math/x86_64/exp2l.s
-    ${MUSLSRC}/math/x86_64/sqrt.s
-    ${MUSLSRC}/math/x86_64/sqrtl.s
-    ${MUSLSRC}/math/x86_64/sqrtf.s
     ${MUSLSRC}/setjmp/x86_64/longjmp.s
     ${MUSLSRC}/setjmp/x86_64/setjmp.s
     ${MUSLSRC}/string/x86_64/memcpy.s
@@ -52,7 +49,9 @@ endif ()
 set(PLATFORM_SRC "")
 
 if (OE_SGX)
-  list(APPEND PLATFORM_SRC ${LIBCDIR}/sgx/arc4random.c)
+  list(APPEND PLATFORM_SRC ${LIBCDIR}/sgx/arc4random.c
+       ${MUSLSRC}/math/x86_64/sqrt.c ${MUSLSRC}/math/x86_64/sqrtl.c
+       ${MUSLSRC}/math/x86_64/sqrtf.c)
 else ()
   list(
     APPEND
@@ -64,6 +63,24 @@ else ()
     optee/abort.c
     optee/arc4random.c
     optee/trace.c)
+endif ()
+
+if (1)
+  list(
+    APPEND
+    PLATFORM_SRC
+    ${MUSLSRC}/stat/lstat.c
+    ${MUSLSRC}/passwd/getgr_a.c
+    ${MUSLSRC}/passwd/getgr_r.c
+    ${MUSLSRC}/passwd/getgrent_a.c
+    ${MUSLSRC}/passwd/getgrent.c
+    ${MUSLSRC}/passwd/getgrouplist.c
+    ${MUSLSRC}/passwd/getpw_a.c
+    ${MUSLSRC}/passwd/getpw_r.c
+    ${MUSLSRC}/passwd/getpwent_a.c
+    ${MUSLSRC}/passwd/getpwent.c
+    ${MUSLSRC}/passwd/nscd_query.c
+    ${MUSLSRC}/thread/pthread_cleanup_push.c)
 endif ()
 
 add_enclave_library(
@@ -107,7 +124,6 @@ add_enclave_library(
   ertfutex.c
   locale.c
   mman.c
-  payload_image.c
   pthreadhooks.c
   threaded.c
   ../common/bitset.c
@@ -249,9 +265,20 @@ add_enclave_library(
   ${MUSLSRC}/locale/textdomain.c
   ${MUSLSRC}/locale/wcscoll.c
   ${MUSLSRC}/locale/wcsxfrm.c
+  ${MUSLSRC}/linux/getrandom.c
   ${MUSLSRC}/linux/mount.c
   ${MUSLSRC}/linux/epoll.c
   ${MUSLSRC}/linux/flock.c
+  ${MUSLSRC}/math/__math_divzero.c
+  ${MUSLSRC}/math/__math_divzerof.c
+  ${MUSLSRC}/math/__math_invalid.c
+  ${MUSLSRC}/math/__math_invalidf.c
+  ${MUSLSRC}/math/__math_oflow.c
+  ${MUSLSRC}/math/__math_oflowf.c
+  ${MUSLSRC}/math/__math_uflow.c
+  ${MUSLSRC}/math/__math_uflowf.c
+  ${MUSLSRC}/math/__math_xflow.c
+  ${MUSLSRC}/math/__math_xflowf.c
   ${MUSLSRC}/math/acos.c
   ${MUSLSRC}/math/acosf.c
   ${MUSLSRC}/math/acosh.c
@@ -292,11 +319,13 @@ add_enclave_library(
   ${MUSLSRC}/math/erf.c
   ${MUSLSRC}/math/erff.c
   ${MUSLSRC}/math/erfl.c
+  ${MUSLSRC}/math/exp_data.c
   ${MUSLSRC}/math/exp10.c
   ${MUSLSRC}/math/exp10f.c
   ${MUSLSRC}/math/exp10l.c
   ${MUSLSRC}/math/exp2.c
   ${MUSLSRC}/math/exp2f.c
+  ${MUSLSRC}/math/exp2f_data.c
   ${MUSLSRC}/math/exp.c
   ${MUSLSRC}/math/expf.c
   ${MUSLSRC}/math/expl.c
@@ -368,13 +397,17 @@ add_enclave_library(
   ${MUSLSRC}/math/log1pf.c
   #${MUSLSRC}/math/log1pl.c
   ${MUSLSRC}/math/log2.c
+  ${MUSLSRC}/math/log2_data.c
   ${MUSLSRC}/math/log2f.c
+  ${MUSLSRC}/math/log2f_data.c
   #${MUSLSRC}/math/log2l.c
   ${MUSLSRC}/math/logb.c
   ${MUSLSRC}/math/logbf.c
   ${MUSLSRC}/math/logbl.c
   ${MUSLSRC}/math/log.c
+  ${MUSLSRC}/math/log_data.c
   ${MUSLSRC}/math/logf.c
+  ${MUSLSRC}/math/logf_data.c
   #${MUSLSRC}/math/logl.c
   ${MUSLSRC}/math/lrint.c
   ${MUSLSRC}/math/lrintf.c
@@ -399,7 +432,9 @@ add_enclave_library(
   ${MUSLSRC}/math/nexttowardl.c
   ${MUSLSRC}/math/__polevll.c
   ${MUSLSRC}/math/pow.c
+  ${MUSLSRC}/math/pow_data.c
   ${MUSLSRC}/math/powf.c
+  ${MUSLSRC}/math/powf_data.c
   ${MUSLSRC}/math/powl.c
   ${MUSLSRC}/math/remainder.c
   ${MUSLSRC}/math/remainderf.c
@@ -560,6 +595,7 @@ add_enclave_library(
   ${MUSLSRC}/search/tsearch.c
   ${MUSLSRC}/search/twalk.c
   ${MUSLSRC}/stat/fstat.c
+  ${MUSLSRC}/stat/fstatat.c
   ${MUSLSRC}/stat/stat.c
   ${MUSLSRC}/stdio/asprintf.c
   ${MUSLSRC}/stdio/asprintf.c
@@ -651,7 +687,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/__stdio_write.c
   ${MUSLSRC}/stdio/stdout.c
   ${MUSLSRC}/stdio/__stdout_write.c
-  ${MUSLSRC}/stdio/__string_read.c
   ${MUSLSRC}/stdio/swprintf.c
   ${MUSLSRC}/stdio/swscanf.c
   ${MUSLSRC}/stdio/__toread.c
@@ -773,6 +808,7 @@ add_enclave_library(
   ${MUSLSRC}/thread/__lock.c
   ${MUSLSRC}/thread/__wait.c
   ${MUSLSRC}/time/clock_gettime.c
+  ${MUSLSRC}/time/clock_nanosleep.c
   ${MUSLSRC}/time/difftime.c
   ${MUSLSRC}/time/gettimeofday.c
   ${MUSLSRC}/time/gmtime.c
@@ -845,15 +881,15 @@ add_enclave_library(
   ${MUSLSRC}/dirent/telldir.c
   ${MUSLSRC}/dirent/versionsort.c
   ${MUSLSRC}/env/__init_tls.c
-  ${MUSLSRC}/env/__libc_start_main.c
   ${MUSLSRC}/env/__reset_tls.c
+  ${MUSLSRC}/exit/abort_lock.c
   ${MUSLSRC}/exit/at_quick_exit.c
   ${MUSLSRC}/exit/quick_exit.c
   ${MUSLSRC}/fcntl/creat.c
   ${MUSLSRC}/fcntl/openat.c
   ${MUSLSRC}/fcntl/posix_fadvise.c
   ${MUSLSRC}/fcntl/posix_fallocate.c
-  ${MUSLSRC}/internal/syscall.c
+  ${MUSLSRC}/internal/defsysinfo.c
   ${MUSLSRC}/internal/vdso.c
   ${MUSLSRC}/ipc/ftok.c
   ${MUSLSRC}/ipc/msgctl.c
@@ -901,15 +937,17 @@ add_enclave_library(
   ${MUSLSRC}/linux/chroot.c
   ${MUSLSRC}/linux/clock_adjtime.c
   ${MUSLSRC}/linux/clone.c
+  ${MUSLSRC}/linux/copy_file_range.c
   ${MUSLSRC}/linux/eventfd.c
   ${MUSLSRC}/linux/fallocate.c
   ${MUSLSRC}/linux/fanotify.c
   ${MUSLSRC}/linux/getdents.c
-  ${MUSLSRC}/linux/getrandom.c
+  ${MUSLSRC}/linux/gettid.c
   ${MUSLSRC}/linux/inotify.c
   ${MUSLSRC}/linux/ioperm.c
   ${MUSLSRC}/linux/iopl.c
   ${MUSLSRC}/linux/klogctl.c
+  ${MUSLSRC}/linux/membarrier.c
   ${MUSLSRC}/linux/memfd_create.c
   ${MUSLSRC}/linux/mlock2.c
   ${MUSLSRC}/linux/module.c
@@ -1037,23 +1075,14 @@ add_enclave_library(
   ${MUSLSRC}/passwd/fgetgrent.c
   ${MUSLSRC}/passwd/fgetpwent.c
   ${MUSLSRC}/passwd/fgetspent.c
-  ${MUSLSRC}/passwd/getgr_a.c
-  ${MUSLSRC}/passwd/getgr_r.c
-  ${MUSLSRC}/passwd/getgrent.c
-  ${MUSLSRC}/passwd/getgrent_a.c
-  ${MUSLSRC}/passwd/getgrouplist.c
-  ${MUSLSRC}/passwd/getpw_a.c
-  ${MUSLSRC}/passwd/getpw_r.c
-  ${MUSLSRC}/passwd/getpwent.c
-  ${MUSLSRC}/passwd/getpwent_a.c
   ${MUSLSRC}/passwd/getspent.c
   ${MUSLSRC}/passwd/getspnam.c
   ${MUSLSRC}/passwd/getspnam_r.c
   ${MUSLSRC}/passwd/lckpwdf.c
-  ${MUSLSRC}/passwd/nscd_query.c
   ${MUSLSRC}/passwd/putgrent.c
   ${MUSLSRC}/passwd/putpwent.c
   ${MUSLSRC}/passwd/putspent.c
+  ${MUSLSRC}/process/_Fork.c
   ${MUSLSRC}/process/execl.c
   ${MUSLSRC}/process/execle.c
   ${MUSLSRC}/process/execlp.c
@@ -1063,8 +1092,10 @@ add_enclave_library(
   ${MUSLSRC}/process/fexecve.c
   ${MUSLSRC}/process/fork.c
   ${MUSLSRC}/process/posix_spawn.c
+  ${MUSLSRC}/process/posix_spawn_file_actions_addchdir.c
   ${MUSLSRC}/process/posix_spawn_file_actions_addclose.c
   ${MUSLSRC}/process/posix_spawn_file_actions_adddup2.c
+  ${MUSLSRC}/process/posix_spawn_file_actions_addfchdir.c
   ${MUSLSRC}/process/posix_spawn_file_actions_addopen.c
   ${MUSLSRC}/process/posix_spawn_file_actions_destroy.c
   ${MUSLSRC}/process/posix_spawn_file_actions_init.c
@@ -1138,11 +1169,9 @@ add_enclave_library(
   ${MUSLSRC}/stat/chmod.c
   ${MUSLSRC}/stat/fchmod.c
   ${MUSLSRC}/stat/fchmodat.c
-  ${MUSLSRC}/stat/fstatat.c
   ${MUSLSRC}/stat/futimens.c
   ${MUSLSRC}/stat/futimesat.c
   ${MUSLSRC}/stat/lchmod.c
-  ${MUSLSRC}/stat/lstat.c
   ${MUSLSRC}/stat/mkdirat.c
   ${MUSLSRC}/stat/mkfifo.c
   ${MUSLSRC}/stat/mkfifoat.c
@@ -1167,8 +1196,10 @@ add_enclave_library(
   ${MUSLSRC}/termios/tcflush.c
   ${MUSLSRC}/termios/tcgetattr.c
   ${MUSLSRC}/termios/tcgetsid.c
+  ${MUSLSRC}/termios/tcgetwinsize.c
   ${MUSLSRC}/termios/tcsendbreak.c
   ${MUSLSRC}/termios/tcsetattr.c
+  ${MUSLSRC}/termios/tcsetwinsize.c
   ${MUSLSRC}/thread/__set_thread_area.c
   ${MUSLSRC}/thread/__timedwait.c
   ${MUSLSRC}/thread/__tls_get_addr.c
@@ -1292,7 +1323,6 @@ add_enclave_library(
   ${MUSLSRC}/time/clock.c
   ${MUSLSRC}/time/clock_getcpuclockid.c
   ${MUSLSRC}/time/clock_getres.c
-  ${MUSLSRC}/time/clock_nanosleep.c
   ${MUSLSRC}/time/clock_settime.c
   ${MUSLSRC}/time/ctime.c
   ${MUSLSRC}/time/ctime_r.c
@@ -1423,6 +1453,25 @@ if (WIN32
         AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.0))
   set_source_files_properties(${MUSLSRC}/search/twalk.c PROPERTIES COMPILE_FLAGS
                                                                    -O0)
+endif ()
+
+# Expose necessary symbols for the SymCrypt FIPS module
+if (OE_SGX)
+  list(
+    APPEND
+    DEFAULT_VISIBILITY
+    malloc.c # for posix_memalign and free
+    pthread.c # for pthread_mutex_*
+    ${MUSLSRC}/string/memcmp.c
+    ${MUSLSRC}/string/x86_64/memcpy.s
+    ${MUSLSRC}/string/x86_64/memmove.s
+    ${MUSLSRC}/string/x86_64/memset.s
+    ${MUSLSRC}/stdlib/qsort.c)
+
+  set_property(
+    SOURCE ${DEFAULT_VISIBILITY}
+    APPEND_STRING
+    PROPERTY COMPILE_FLAGS " -fvisibility=default")
 endif ()
 
 enclave_compile_definitions(oelibc PRIVATE _XOPEN_SOURCE=700)

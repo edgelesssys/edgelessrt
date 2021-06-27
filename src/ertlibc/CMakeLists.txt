@@ -4,7 +4,6 @@ add_library(
   dynlink.cpp
   locale.cpp
   memfs.cpp
-  misc.cpp
   new_thread.cpp
   pthread.cpp
   sched.cpp

@@ -1,5 +1,7 @@
 // reuse existing test from OE
 
+#include <sys/syscall.h>
+
 // existing test mounts hostfs, we want our memfs named myfs
 #include <openenclave/internal/syscall/device.h>
 #undef OE_DEVICE_NAME_HOST_FILE_SYSTEM

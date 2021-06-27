@@ -159,7 +159,7 @@ static auto _to_sorted_vector(const TMap& m)
 
 void OcallTracer::dump_ocalls(ostream& out) const
 {
-    for (const auto [func, count] : _to_sorted_vector(ocalls_))
+    for (const auto& [func, count] : _to_sorted_vector(ocalls_))
     {
         out << count << '\t';
 
