@@ -94,7 +94,8 @@ static int run(const char* path, bool simulate)
     if (oe_create_emain_enclave(
             path,
             OE_ENCLAVE_TYPE_AUTO,
-            OE_ENCLAVE_FLAG_DEBUG | (simulate ? OE_ENCLAVE_FLAG_SIMULATE : 0),
+            OE_ENCLAVE_FLAG_DEBUG_AUTO |
+                (simulate ? OE_ENCLAVE_FLAG_SIMULATE : 0),
             nullptr,
             0,
             &enclave) != OE_OK ||
