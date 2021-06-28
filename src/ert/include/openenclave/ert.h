@@ -157,6 +157,7 @@ class Memfs
     Memfs& operator=(const Memfs&) = delete;
 
   private:
+    std::string devname_;
     void* fs_;
     oe_customfs_t ops_;
     uint64_t devid_;
