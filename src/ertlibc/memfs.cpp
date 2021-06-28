@@ -14,7 +14,8 @@ extern "C"
 using namespace std;
 using namespace ert;
 
-Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
+Memfs::Memfs(const std::string& devname)
+    : devname_(devname), fs_(), ops_(), devid_()
 {
     if (devname.empty())
         throw invalid_argument("Memfs: empty devname");
@@ -47,7 +48,7 @@ Memfs::Memfs(const std::string& devname) : fs_(), ops_(), devid_()
     set(access);
 #undef set
 
-    devid_ = oe_load_module_custom_file_system(devname.c_str(), &ops_, fs_);
+    devid_ = oe_load_module_custom_file_system(devname_.c_str(), &ops_, fs_);
     if (!devid_)
     {
         fs.fs_release(&fs);
