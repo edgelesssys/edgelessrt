@@ -32,7 +32,7 @@ RUN apt update && \
     apt install -y protobuf-compiler golang-goprotobuf-dev cmake git python ninja-build build-essential gdb ca-certificates zlib1g-dev doxygen nano vim curl clang-10 clang-tidy-10 && \
     apt clean && apt autoclean
 # use same Go version as ertgo
-ARG gofile=go1.14.6.linux-amd64.tar.gz
+ARG gofile=go1.16.5.linux-amd64.tar.gz
 RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile
 
 FROM alpine/git:latest AS pull
