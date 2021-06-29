@@ -1,8 +1,10 @@
 package main
 
+import "C"
+
 import (
-	"C"
 	"fmt"
+	"net"
 	"runtime"
 )
 
@@ -20,9 +22,15 @@ func gotest(simulate bool) int32 {
 	if testPanicRecover() != 2 {
 		return -2
 	}
-
 	if !simulate && testNilRecover() != 2 {
 		return -3
+	}
+
+	if _, err := net.ResolveIPAddr("ip", "localhost"); err != nil {
+		return -4
+	}
+	if _, err := net.ResolveIPAddr("ip", "127.0.0.1"); err != nil {
+		return -5
 	}
 
 	return 42 // success magic
