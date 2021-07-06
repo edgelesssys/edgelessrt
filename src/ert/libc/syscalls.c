@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <fcntl.h>
 #include <openenclave/corelibc/assert.h>
 #include <openenclave/internal/syscall/hook.h>
 #include <openenclave/internal/syscall/sys/syscall.h>
@@ -71,6 +72,16 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
         return ret;
 
     // Try liboesyscall
+    switch (n)
+    {
+        case OE_SYS_lstat:
+            n = OE_SYS_stat;
+            break;
+        case OE_SYS_newfstatat:
+            if (x4 == AT_SYMLINK_NOFOLLOW)
+                x4 = 0;
+            break;
+    }
     errno = 0;
     ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
     // oe_syscall returns result and errno like libc syscall(), but musl expects

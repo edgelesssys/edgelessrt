@@ -5,6 +5,7 @@ import "C"
 import (
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 )
 
@@ -31,6 +32,13 @@ func gotest(simulate bool) int32 {
 	}
 	if _, err := net.ResolveIPAddr("ip", "127.0.0.1"); err != nil {
 		return -5
+	}
+
+	if _, err := os.Stat("/"); err != nil {
+		return -6
+	}
+	if _, err := os.Lstat("/"); err != nil {
+		return -7
 	}
 
 	return 42 // success magic
