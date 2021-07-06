@@ -114,9 +114,14 @@ int sc::clock_gettime(int clk_id, struct timespec* tp)
         if (timestamp.sec < last_monotonic.sec ||
             (timestamp.sec == last_monotonic.sec &&
              timestamp.nsec < last_monotonic.nsec))
-            oe_abort();
+        {
+            timestamp = last_monotonic;
+        }
+        else
+        {
+            last_monotonic = timestamp;
+        }
 
-        last_monotonic = timestamp;
         oe_spin_unlock(&lock);
     }
 
