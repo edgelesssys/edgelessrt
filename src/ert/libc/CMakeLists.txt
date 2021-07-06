@@ -123,6 +123,7 @@ add_enclave_library(
   chk.c
   ertfutex.c
   locale.c
+  misc.c
   mman.c
   pthreadhooks.c
   threaded.c
