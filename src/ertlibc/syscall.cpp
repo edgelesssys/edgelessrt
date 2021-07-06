@@ -38,6 +38,8 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             case SYS_exit_group:
                 sc::exit_group(static_cast<int>(x1));
                 return 0;
+            case SYS_fchmodat:
+                return 0; // noop for now
             case SYS_sched_getaffinity:
                 return sc::sched_getaffinity(
                     static_cast<pid_t>(x1),
