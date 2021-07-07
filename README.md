@@ -20,18 +20,18 @@ Key features of Edgeless RT are:
 * Soon: support for Python
 
 ## Quick Start
-If you are on Ubuntu 18.04 and do not want to build the SDK yourself, you can install the binary release:
+If you're on Ubuntu 18.04 or above and don't want to build the SDK yourself, you can install the binary release:
 ```bash
 wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
-sudo add-apt-repository 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main'
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.2.3/edgelessrt_0.2.3_amd64.deb
-sudo apt install ./edgelessrt_0.2.3_amd64.deb build-essential libssl-dev
+sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.2.4/edgelessrt_0.2.4_amd64.deb
+sudo apt install ./edgelessrt_0.2.4_amd64.deb build-essential libssl-dev
 sudo snap install cmake --classic
 ```
 Then proceed with [Use](#use).
 
 ## Build
-Edgeless RT primarily targets Ubuntu 18.04. Other Linuxes may work as well. Windows is not yet supported.
+Edgeless RT primarily targets Ubuntu 18.04 and above. Other Linuxes may work as well. Windows is not yet supported.
 
 1. Determine the SGX support of your system
    ```bash
