@@ -897,10 +897,49 @@ index 4ec690dd7..2f5e827b8 100644
  done:
      return result;
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index 28ffdeb47..62c8842f6 100644
+index 28ffdeb47..b99b87689 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -1010,6 +1010,11 @@ static oe_result_t _patch_elf_image(
+@@ -741,6 +741,7 @@ static oe_result_t _link_elf_image(
+     uint64_t nrelocs = 0;
+     const elf64_sym_t* symtab = NULL;
+     size_t symtab_size = 0;
++    int missing_symbols_count = 0;
+ 
+     if (elf64_get_dynamic_symbol_table(&image->elf, &symtab, &symtab_size) != 0)
+         goto done;
+@@ -803,12 +804,12 @@ static oe_result_t _link_elf_image(
+             else
+             {
+                 if ((symbol->st_info >> 4) != STB_WEAK)
+-                    OE_RAISE_MSG(
+-                        OE_UNSUPPORTED_ENCLAVE_IMAGE,
+-                        "symbol %s not found\n",
+-                        name);
++                {
++                    ++missing_symbols_count;
++                    OE_TRACE_ERROR("symbol not found: %s", name);
++                }
+                 else
+-                    OE_TRACE_WARNING("Weak symbol %s is not resolved\n");
++                    OE_TRACE_WARNING("weak symbol is not resolved: %s", name);
+             }
+         }
+         /* Patch non-symbolic relocation records */
+@@ -819,6 +820,12 @@ static oe_result_t _link_elf_image(
+         }
+     }
+ 
++    if (missing_symbols_count)
++        OE_RAISE_MSG(
++            OE_UNSUPPORTED_ENCLAVE_IMAGE,
++            "%d symbols not found",
++            missing_symbols_count);
++
+     result = OE_OK;
+ 
+ done:
+@@ -1010,6 +1017,11 @@ static oe_result_t _patch_elf_image(
                  &module_info->fini_array_rva));
              module_info->fini_array_size = fini_section.sh_size;
          }
@@ -912,7 +951,7 @@ index 28ffdeb47..62c8842f6 100644
      }
  
      /* Clear the hash when taking the measure */
-@@ -1375,8 +1380,12 @@ done:
+@@ -1375,8 +1387,12 @@ done:
  
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
@@ -926,7 +965,7 @@ index 28ffdeb47..62c8842f6 100644
      oe_result_t result = OE_UNEXPECTED;
      char* module_path = NULL;
      oe_enclave_elf_image_t* module_image = NULL;
-@@ -1395,13 +1404,16 @@ static oe_result_t _load_dependent_image(
+@@ -1395,13 +1411,16 @@ static oe_result_t _load_dependent_image(
                  "Failed to locate the module. Please place the module under "
                  "the same directory as the enclave binary.",
                  NULL);
@@ -945,7 +984,7 @@ index 28ffdeb47..62c8842f6 100644
          /* Update the RVA for the module */
          module_image->image_rva = image->elf.image_size;
          image->submodule = module_image;
-@@ -1436,7 +1448,8 @@ done:
+@@ -1436,7 +1455,8 @@ done:
  
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
@@ -955,7 +994,7 @@ index 28ffdeb47..62c8842f6 100644
  {
      oe_result_t result = OE_UNEXPECTED;
  
-@@ -1446,7 +1459,7 @@ oe_result_t oe_load_elf_enclave_image(
+@@ -1446,7 +1466,7 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
  
      /* Load the dependent image into memory */
