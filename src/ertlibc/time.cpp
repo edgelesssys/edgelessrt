@@ -110,13 +110,18 @@ int sc::clock_gettime(int clk_id, struct timespec* tp)
     {
         static oe_vdso_timestamp_t last_monotonic;
 
-        // Abort if CLOCK_MONOTONIC is not monotonic.
+        // Ensure CLOCK_MONOTONIC can't go backwards.
         if (timestamp.sec < last_monotonic.sec ||
             (timestamp.sec == last_monotonic.sec &&
              timestamp.nsec < last_monotonic.nsec))
-            oe_abort();
+        {
+            timestamp = last_monotonic;
+        }
+        else
+        {
+            last_monotonic = timestamp;
+        }
 
-        last_monotonic = timestamp;
         oe_spin_unlock(&lock);
     }
 
