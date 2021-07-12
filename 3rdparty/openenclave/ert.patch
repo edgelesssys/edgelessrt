@@ -3109,7 +3109,7 @@ index 29ac50e12..9d94111e5 100644
      {
          fprintf(stderr, _usage_gen, argv[0], argv[0]);
 diff --git a/tools/oesign/oeinfo.c b/tools/oesign/oeinfo.c
-index 6e047eef5..0b615920f 100644
+index 6e047eef5..c6957ad63 100644
 --- a/tools/oesign/oeinfo.c
 +++ b/tools/oesign/oeinfo.c
 @@ -24,7 +24,7 @@ oe_result_t oe_read_oeinfo_sgx(
@@ -3117,7 +3117,7 @@ index 6e047eef5..0b615920f 100644
  
      /* Load the ELF image */
 -    OE_CHECK(oe_load_enclave_image(path, &oeimage));
-+    OE_CHECK(oe_load_enclave_image(path, &oeimage, NULL));
++    OE_CHECK(oe_load_enclave_image(path, &oeimage, (void*)1));
  
      /* Load the SGX enclave properties */
      OE_CHECK(oe_sgx_load_enclave_properties(&oeimage, properties));
