@@ -98,7 +98,6 @@ add_enclave_library(
   ${LIBCDIR}/kill.c
   ${LIBCDIR}/libunwind_stubs.c
   ${LIBCDIR}/link.c
-  ${LIBCDIR}/locale.c
   ${LIBCDIR}/malloc.c
   pthread.c
   ${LIBCDIR}/sched_yield.c
@@ -122,7 +121,6 @@ add_enclave_library(
   ${MUSLSRC}/internal/syscall_ret.c
   chk.c
   ertfutex.c
-  locale.c
   misc.c
   mman.c
   pthreadhooks.c
@@ -253,17 +251,22 @@ add_enclave_library(
   ${MUSLSRC}/locale/c_locale.c
   ${MUSLSRC}/locale/dcngettext.c
   ${MUSLSRC}/locale/duplocale.c
+  ${MUSLSRC}/locale/freelocale.c
   ${MUSLSRC}/locale/iconv.c
   ${MUSLSRC}/locale/iconv_close.c
   ${MUSLSRC}/locale/langinfo.c
   ${MUSLSRC}/locale/__lctrans.c
+  ${MUSLSRC}/locale/localeconv.c
   ${MUSLSRC}/locale/locale_map.c
   ${MUSLSRC}/locale/__mo_lookup.c
+  newlocale.c
   ${MUSLSRC}/locale/pleval.c
+  ${MUSLSRC}/locale/setlocale.c
   ${MUSLSRC}/locale/strcoll.c
   ${MUSLSRC}/locale/strfmon.c
   ${MUSLSRC}/locale/strxfrm.c
   ${MUSLSRC}/locale/textdomain.c
+  ${MUSLSRC}/locale/uselocale.c
   ${MUSLSRC}/locale/wcscoll.c
   ${MUSLSRC}/locale/wcsxfrm.c
   ${MUSLSRC}/linux/getrandom.c
@@ -1446,12 +1449,9 @@ elseif (CMAKE_C_COMPILER_ID MATCHES Clang OR USE_CLANGW)
     -Wno-unneeded-internal-declaration)
 endif ()
 
-# Disable optimizations for twalk.c to avoid Clang 8 compiler bug, see #2556
+# Disable optimizations for twalk.c to avoid Clang speculative load hardening flag compiler bug, see #2556
 # Always dose this on Windows as we cannot know the version of clang.
-if (WIN32
-    OR (CMAKE_C_COMPILER_ID MATCHES Clang
-        AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 8
-        AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.0))
+if (WIN32 OR CMAKE_C_COMPILER_ID MATCHES Clang)
   set_source_files_properties(${MUSLSRC}/search/twalk.c PROPERTIES COMPILE_FLAGS
                                                                    -O0)
 endif ()
@@ -1469,10 +1469,8 @@ if (OE_SGX)
     ${MUSLSRC}/string/x86_64/memset.s
     ${MUSLSRC}/stdlib/qsort.c)
 
-  set_property(
-    SOURCE ${DEFAULT_VISIBILITY}
-    APPEND_STRING
-    PROPERTY COMPILE_FLAGS " -fvisibility=default")
+  set_property(SOURCE ${DEFAULT_VISIBILITY} APPEND_STRING
+               PROPERTY COMPILE_FLAGS " -fvisibility=default")
 endif ()
 
 enclave_compile_definitions(oelibc PRIVATE _XOPEN_SOURCE=700)

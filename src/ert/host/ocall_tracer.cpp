@@ -140,7 +140,7 @@ void OcallTracer::trace(oe_enclave_t* enclave, const void* func)
     const pair enclaveAndBacktrace(enclave, move(backtrace));
 
     const lock_guard lock(mutex_);
-    enclaves_.try_emplace(enclave, enclave->addr, enclave->path);
+    enclaves_.try_emplace(enclave, enclave->start_address, enclave->path);
     ++ocalls_[func];
     if (!enclaveAndBacktrace.second.empty())
         ++backtraces_[enclaveAndBacktrace];

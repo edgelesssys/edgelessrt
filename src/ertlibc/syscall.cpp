@@ -137,7 +137,7 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 }
 
 // This function is defined in this source file to guarantee that it overrides
-// the weak symbol in ert/libc/locale.c.
+// the weak symbol in ert/libc/newlocale.c.
 extern "C" locale_t __newlocale(int mask, const char* locale, locale_t loc)
 {
     if (!(mask > 0 && !loc && locale && strcmp(locale, "C") == 0))
