@@ -79,7 +79,7 @@ void ert_restart_host_process()
 
 const void* payload::get_base() noexcept
 {
-    return static_cast<const uint8_t*>(__oe_get_enclave_base()) +
+    return static_cast<const uint8_t*>(__oe_get_enclave_start_address()) +
            oe_get_module_info()->base_rva;
 }
 
@@ -87,7 +87,7 @@ std::pair<const void*, size_t> payload::get_data() noexcept
 {
     // payload data resides after relocs
     return {
-        static_cast<const uint8_t*>(__oe_get_enclave_base()) + _reloc_rva +
-            _reloc_size,
+        static_cast<const uint8_t*>(__oe_get_enclave_start_address()) +
+            _reloc_rva + _reloc_size,
         oe_get_module_info()->payload_data_size};
 }

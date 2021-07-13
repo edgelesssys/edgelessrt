@@ -78,7 +78,8 @@ extern "C" const void* __dlsym(void* handle, const char* symbol)
     if (!symbol)
         abort();
 
-    const auto base = static_cast<const uint8_t*>(__oe_get_enclave_base());
+    const auto base =
+        static_cast<const uint8_t*>(__oe_get_enclave_start_address());
     assert(base);
     const auto ehdr =
         static_cast<const Elf64_Ehdr*>(__oe_get_enclave_elf_header());
