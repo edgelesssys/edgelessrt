@@ -16,8 +16,10 @@ ENV LC_ALL en_US.UTF-8
 
 FROM common AS sgx
 RUN apt update && \
-    apt install -y --no-install-recommends libsgx-dcap-ql libsgx-dcap-ql-dev libsgx-dcap-quote-verify libsgx-enclave-common libsgx-urts az-dcap-client && \
+    apt install -y --no-install-recommends libsgx-dcap-default-qpl libsgx-dcap-ql libsgx-dcap-ql-dev libsgx-dcap-quote-verify libsgx-enclave-common libsgx-urts az-dcap-client && \
     apt clean && apt autoclean
+# renamed the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
+RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
 FROM sgx AS sgx-dev
 RUN apt update && \
