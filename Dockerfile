@@ -4,9 +4,9 @@ FROM ubuntu:18.04 AS common
 RUN apt update && \
     apt install -y libssl-dev wget gnupg software-properties-common locales
 RUN wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add - && \
-    apt-add-repository 'https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main'
+    apt-add-repository 'https://download.01.org/intel-sgx/sgx_repo/ubuntu main'
 RUN wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-    apt-add-repository 'https://packages.microsoft.com/ubuntu/18.04/prod bionic main' && \
+    apt-add-repository 'https://packages.microsoft.com/ubuntu/18.04/prod main' && \
     apt clean && apt autoclean
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen
@@ -15,16 +15,25 @@ ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 
 FROM common AS sgx
+ARG PSW_VERSION=2.13.103.1
+ARG DCAP_VERSION=1.10.103.1
 RUN apt update && \
-    apt install -y --no-install-recommends libsgx-dcap-ql libsgx-dcap-ql-dev libsgx-dcap-quote-verify libsgx-enclave-common libsgx-urts az-dcap-client && \
+    apt install -y \
+    az-dcap-client \
+    libsgx-dcap-ql=$DCAP_VERSION-bionic1 \
+    libsgx-dcap-ql-dev=$DCAP_VERSION-bionic1 \
+    libsgx-pce-logic=$DCAP_VERSION-bionic1 \
+    libsgx-qe3-logic=$DCAP_VERSION-bionic1 \
+    libsgx-dcap-quote-verify=$DCAP_VERSION-bionic1 \
+    libsgx-enclave-common=$PSW_VERSION-bionic1 \
+    libsgx-urts=$PSW_VERSION-bionic1 \
+    libsgx-enclave-common-dev=$PSW_VERSION-bionic1 \
+    libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
     apt clean && apt autoclean
+# renamed the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
+RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
-FROM sgx AS sgx-dev
-RUN apt update && \
-    apt install -y libsgx-enclave-common-dev libsgx-ae-qve libsgx-ae-pce libsgx-ae-qe3 libsgx-qe3-logic libsgx-pce-logic && \
-    apt clean && apt autoclean
-
-FROM sgx-dev AS base-dev
+FROM sgx AS base-dev
 RUN wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
     apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN add-apt-repository ppa:git-core/ppa
