@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "syscall.h"
+#include <fcntl.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/malloc.h>
 #include <openenclave/internal/trace.h>
@@ -34,6 +35,19 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                     static_cast<int>(x1), reinterpret_cast<timespec*>(x2));
             case SYS_gettid:
                 return ert_thread_self()->tid;
+
+            case SYS_readlink:
+                return sc::readlink(
+                    reinterpret_cast<char*>(x1), // pathname
+                    reinterpret_cast<char*>(x2), // buf
+                    x3);                         // bufsiz
+            case SYS_readlinkat:
+                return static_cast<int>(x1) == AT_FDCWD
+                           ? sc::readlink(
+                                 reinterpret_cast<char*>(x2), // pathname
+                                 reinterpret_cast<char*>(x3), // buf
+                                 x4)                          // bufsiz
+                           : -EBADF;
 
             case SYS_exit_group:
                 sc::exit_group(static_cast<int>(x1));
