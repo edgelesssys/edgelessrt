@@ -14,6 +14,7 @@ add_library(
   stubs.cpp
   syscall.cpp
   time.cpp
+  unistd.cpp
   util.cpp
   __vasprintf_chk.c)
 

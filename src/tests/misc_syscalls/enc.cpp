@@ -1,11 +1,18 @@
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
+#include <sys/mount.h>
 #include <unistd.h>
+#include <array>
+#include <cerrno>
 #include <chrono>
+#include <climits>
 #include <ctime>
 #include "test_t.h"
 
 using namespace std;
+using namespace ert;
 
 extern "C" __attribute__((visibility("default"))) unsigned int edgeless()
 {
@@ -40,6 +47,32 @@ static void _test_dynlink()
     OE_TEST(!dlerror());
 }
 
+static void _test_readlink()
+{
+    array<char, PATH_MAX> buf{};
+    const auto myfs = "myfs";
+    const Memfs memfs(myfs);
+    OE_TEST(mount("/", "/", myfs, 0, nullptr) == 0);
+
+    OE_TEST(readlink("foo", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == ENOENT);
+    OE_TEST(readlink("/", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == EINVAL);
+
+    OE_TEST(readlinkat(AT_FDCWD, "foo", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == ENOENT);
+    OE_TEST(readlinkat(AT_FDCWD, "/", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == EINVAL);
+
+    OE_TEST(readlinkat(0, "foo", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == EBADF);
+    OE_TEST(readlinkat(0, "/", buf.data(), buf.size()) == -1);
+    OE_TEST(errno == EBADF);
+
+    OE_TEST(umount("/") == 0);
+    OE_TEST(!buf.front());
+}
+
 static void _test_syconf()
 {
     OE_TEST(sysconf(_SC_PAGESIZE) == OE_PAGE_SIZE);
@@ -67,6 +100,7 @@ static void _test_time()
 void test_ecall()
 {
     _test_dynlink();
+    _test_readlink();
     _test_syconf();
     _test_time();
 }
