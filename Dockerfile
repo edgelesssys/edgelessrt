@@ -27,13 +27,12 @@ RUN apt update && \
     libsgx-dcap-quote-verify=$DCAP_VERSION-bionic1 \
     libsgx-enclave-common=$PSW_VERSION-bionic1 \
     libsgx-urts=$PSW_VERSION-bionic1 \
-    libsgx-enclave-common-dev=$PSW_VERSION-bionic1 \
-    libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
     apt clean && apt autoclean
 # rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
 RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
 FROM sgx AS sgx-dev
+ARG PSW_VERSION=2.13.103.1
 RUN apt update && \
     apt install -y libsgx-enclave-common-dev=$PSW_VERSION-bionic1 && \
     apt clean && apt autoclean
