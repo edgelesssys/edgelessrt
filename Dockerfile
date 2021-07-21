@@ -18,7 +18,7 @@ FROM common AS sgx
 ARG PSW_VERSION=2.13.103.1
 ARG DCAP_VERSION=1.10.103.1
 RUN apt update && \
-    apt install -y \
+    apt install -y --no-install-recommends \
     az-dcap-client \
     libsgx-dcap-ql=$DCAP_VERSION-bionic1 \
     libsgx-dcap-ql-dev=$DCAP_VERSION-bionic1 \
@@ -30,10 +30,15 @@ RUN apt update && \
     libsgx-enclave-common-dev=$PSW_VERSION-bionic1 \
     libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
     apt clean && apt autoclean
-# renamed the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
+# rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
 RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
-FROM sgx AS base-dev
+FROM sgx AS sgx-dev
+RUN apt update && \
+    apt install -y libsgx-enclave-common-dev=$PSW_VERSION-bionic1 && \
+    apt clean && apt autoclean
+
+FROM sgx-dev AS base-dev
 RUN wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
     apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN add-apt-repository ppa:git-core/ppa
