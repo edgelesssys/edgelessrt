@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:experimental
+ARG PSW_VERSION=2.13.103.1
+ARG DCAP_VERSION=1.10.103.1
 
 FROM ubuntu:18.04 AS common
 RUN apt update && \
@@ -15,8 +17,8 @@ ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 
 FROM common AS sgx
-ARG PSW_VERSION=2.13.103.1
-ARG DCAP_VERSION=1.10.103.1
+ARG PSW_VERSION
+ARG DCAP_VERSION
 RUN apt update && \
     apt install -y --no-install-recommends \
     az-dcap-client \
@@ -27,12 +29,13 @@ RUN apt update && \
     libsgx-dcap-quote-verify=$DCAP_VERSION-bionic1 \
     libsgx-enclave-common=$PSW_VERSION-bionic1 \
     libsgx-urts=$PSW_VERSION-bionic1 \
+    libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
     apt clean && apt autoclean
 # rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
 RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
 FROM sgx AS sgx-dev
-ARG PSW_VERSION=2.13.103.1
+ARG PSW_VERSION
 RUN apt update && \
     apt install -y libsgx-enclave-common-dev=$PSW_VERSION-bionic1 && \
     apt clean && apt autoclean
