@@ -4,8 +4,10 @@
 #include <openenclave/ert_args.h>
 #include <openenclave/host.h>
 #include <openenclave/internal/trace.h>
+#include <openenclave/trace.h>
 #include <semaphore.h>
 #include <unistd.h>
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cerrno>
@@ -14,7 +16,10 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <regex>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <system_error>
 #include "../../ert/common/final_action.h"
 #include "../../ert/host/enclave_thread_manager.h"
@@ -141,6 +146,85 @@ static int run(const char* path, bool simulate)
     return return_value;
 }
 
+static void _trim_space(string& str)
+{
+    int (&isspace)(int) = ::isspace; // isspace is overloaded, select the wanted
+    str.erase(find_if_not(str.rbegin(), str.rend(), isspace).base(), str.end());
+    str.erase(str.begin(), find_if_not(str.begin(), str.end(), isspace));
+}
+
+static void _trim_prefix(string& str, string_view prefix)
+{
+    if (str.compare(0, prefix.size(), prefix) == 0)
+        str.erase(0, prefix.size());
+}
+
+static void _log(
+    void* /*context*/,
+    bool is_enclave,
+    const tm* /*t*/,
+    long /*usecs*/,
+    oe_log_level_t level,
+    uint64_t /*host_thread_id*/,
+    const char* message)
+{
+    assert(message && *message);
+    if (level > oe_get_current_logging_level())
+        return;
+    const auto level_string = oe_log_level_strings[level];
+
+    // split message of the form "log message ... [/path/to/source:func:line]"
+    static const regex re_message(R"(([^]+) \[(.+):(\w+:\d+)]\n)");
+    cmatch ma_message;
+    if (!regex_match(message, ma_message, re_message))
+    {
+        // not this form, so just print it
+        cout << level_string << ": " << message << '\n';
+        return;
+    }
+    string msg = ma_message[1];
+    string path = ma_message[2];
+    const auto& func_and_line = ma_message[3];
+
+    // strip enclave name
+    if (is_enclave)
+        msg.erase(0, msg.find(':') + 1);
+
+    // Check if the message contains the same OE error value as the last one.
+    // This is a heuristic, but should be good enough.
+    static const regex re_error("OE_[A-Z_]+");
+    thread_local string last_error;
+    if (smatch ma_error; regex_search(msg, ma_error, re_error))
+    {
+        string error = ma_error.str();
+        if (error == last_error)
+        {
+            // If it's a propagated error without additional info, don't print
+            // it.
+            if (msg == ':' + last_error)
+                return;
+        }
+        else
+            last_error = move(error);
+    }
+    else
+        last_error.clear();
+
+    // shorten the path
+    const string_view oe_path = "/3rdparty/openenclave/";
+    if (const size_t pos = path.find(oe_path); pos != string::npos)
+        path.erase(0, pos + oe_path.size());
+    else
+        _trim_prefix(
+            path,
+            {__FILE__,
+             sizeof __FILE__ - sizeof "src/tools/erthost/erthost.cpp"});
+
+    _trim_space(msg);
+    cout << level_string << ": " << msg << " [" << path << ':' << func_and_line
+         << "]\n";
+}
+
 int main(int argc, char* argv[], char* envp[])
 {
     if (argc < 2)
@@ -153,6 +237,10 @@ int main(int argc, char* argv[], char* envp[])
 
     const char* const env_simulation = getenv("OE_SIMULATION");
     const bool simulation = env_simulation && *env_simulation == '1';
+
+    const char* const env_log_detailed = getenv("OE_LOG_DETAILED");
+    if (!env_log_detailed || *env_log_detailed != '1')
+        oe_log_set_callback(nullptr, _log);
 
     try
     {
