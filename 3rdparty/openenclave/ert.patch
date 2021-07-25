@@ -230,7 +230,7 @@ index b9d64b1b4..4c5f03803 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index 6a6279f03..21a106650 100644
+index 6a6279f03..8de1f929a 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
 @@ -46,6 +46,22 @@
@@ -336,6 +336,17 @@ index 6a6279f03..21a106650 100644
      result = OE_OK;
  
  done:
+@@ -1127,6 +1176,10 @@ void __oe_handle_main(
+ 
+ void oe_abort(void)
+ {
++    // EDG: print stack trace
++    if (is_enclave_debug_allowed())
++        oe_print_backtrace();
++
+     // Once it starts to crash, the state can only transit forward, not
+     // backward.
+     if (__oe_enclave_status < OE_ENCLAVE_ABORTING)
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
 index bd61ea6fa..3af914c4b 100644
 --- a/enclave/core/sgx/exception.c
@@ -1207,6 +1218,19 @@ index 526ae583f..8198d8da0 100644
  OE_WEAK_ALIAS(free, __libc_free);
 +
 +OE_WEAK_ALIAS(calloc, __libc_calloc);
+diff --git a/libc/sgx/abort.S b/libc/sgx/abort.S
+index 069cb7874..d0a27e531 100644
+--- a/libc/sgx/abort.S
++++ b/libc/sgx/abort.S
+@@ -6,7 +6,7 @@
+ abort:
+ .cfi_startproc
+ 
+-    call oe_abort
++    jmp oe_abort  // EDG: was call, but that breaks x64 stack alignment
+     ud2
+ 
+ .cfi_endproc
 diff --git a/pkgconfig/CMakeLists.txt b/pkgconfig/CMakeLists.txt
 index acbb6fa54..56d9fa344 100644
 --- a/pkgconfig/CMakeLists.txt
