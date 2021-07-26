@@ -348,7 +348,7 @@ index 6a6279f03..8de1f929a 100644
      // backward.
      if (__oe_enclave_status < OE_ENCLAVE_ABORTING)
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
-index bd61ea6fa..3af914c4b 100644
+index bd61ea6fa..e39d9f15a 100644
 --- a/enclave/core/sgx/exception.c
 +++ b/enclave/core/sgx/exception.c
 @@ -23,6 +23,12 @@ uint32_t g_current_exception_handler_count = 0;
@@ -375,7 +375,17 @@ index bd61ea6fa..3af914c4b 100644
      oe_sgx_td_t* td = oe_sgx_get_td();
  
      // Change the rip of oe_context to the real exception address.
-@@ -329,8 +339,15 @@ void oe_virtual_exception_dispatcher(
+@@ -290,6 +300,9 @@ void oe_real_exception_dispatcher(oe_context_t* oe_context)
+ 
+     // Exception can't be handled by trusted handlers, abort the enclave.
+     // Let the oe_abort to run on the stack where the exception happens.
++    // EDG: but fix the stack alignment!
++    oe_exception_record.context->rsp &= ~0xFull;
++    oe_exception_record.context->rsp -= 8;
+     oe_exception_record.context->rip = (uint64_t)oe_abort;
+     oe_continue_execution(oe_exception_record.context);
+ 
+@@ -329,8 +342,15 @@ void oe_virtual_exception_dispatcher(
      if (!ssa_gpr->exit_info.as_fields.valid)
      {
          // Not a valid/expected enclave exception;
@@ -393,7 +403,7 @@ index bd61ea6fa..3af914c4b 100644
      }
  
      // Get the exception address, code, and flags.
-@@ -385,6 +402,13 @@ void oe_virtual_exception_dispatcher(
+@@ -385,6 +405,13 @@ void oe_virtual_exception_dispatcher(
          // Modify the ssa_gpr so that e_resume will go to second pass exception
          // handler.
          ssa_gpr->rip = (uint64_t)oe_exception_dispatcher;
