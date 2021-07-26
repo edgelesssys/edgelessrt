@@ -118,6 +118,11 @@ Now you are ready to build applications with Edgeless RT! To start, check out th
 Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
 
 ## Debug
+
+### Logging
+Set the environment variable `OE_LOG_LEVEL` to `NONE`, `FATAL`, `ERROR` (default), `WARNING`, `INFO`, or `VERBOSE` to increase or decrease the log level. Set `OE_LOG_DETAILED=1` to enrich the log output with timestamps, thread ids, and stacktrace-like error propagations.
+
+### gdb
 ![debugging with vscode](docs/go_debugging_vscode.gif)
 
 You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT. `oegdb` is automatically installed with Edgeless RT. It also supports Go enclaves.

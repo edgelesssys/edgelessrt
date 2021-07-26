@@ -227,6 +227,8 @@ static void _log(
 
 int main(int argc, char* argv[], char* envp[])
 {
+    OE_TRACE_INFO("erthost v" OE_VERSION);
+
     if (argc < 2)
     {
         cout << "Usage: " << argv[0]
@@ -238,8 +240,18 @@ int main(int argc, char* argv[], char* envp[])
     const char* const env_simulation = getenv("OE_SIMULATION");
     const bool simulation = env_simulation && *env_simulation == '1';
 
+    // Configure detailed logging. Prefer OE_LOG_DETAILED value. If not set,
+    // enable detailed logging for verbose level.
+    bool log_detailed = false;
     const char* const env_log_detailed = getenv("OE_LOG_DETAILED");
-    if (!env_log_detailed || *env_log_detailed != '1')
+    if (env_log_detailed && *env_log_detailed)
+    {
+        if (*env_log_detailed == '1')
+            log_detailed = true;
+    }
+    else if (oe_get_current_logging_level() >= OE_LOG_LEVEL_VERBOSE)
+        log_detailed = true;
+    if (!log_detailed)
         oe_log_set_callback(nullptr, _log);
 
     try
