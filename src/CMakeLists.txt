@@ -12,6 +12,7 @@ add_compile_options(-Wall -Wextra -Werror -Wno-missing-field-initializers)
 if (CMAKE_C_COMPILER_ID MATCHES GNU)
   add_compile_options(-fno-builtin)
 endif ()
+add_compile_definitions(OE_VERSION="${OE_VERSION}")
 
 include(GNUInstallDirs)
 

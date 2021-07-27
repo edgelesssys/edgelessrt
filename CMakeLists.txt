@@ -63,6 +63,7 @@ ExternalProject_Add(
              -DBUILD_TESTS=${BUILD_TESTS}
              -DOESRCDIR=${OESRCDIR}
              -DOEBUILDDIR=${OEBUILDDIR}
+             -DOE_VERSION=${OE_VERSION}
   BUILD_ALWAYS ON
   USES_TERMINAL_BUILD ON)
 
