@@ -26,7 +26,6 @@ RUN apt update && \
     libsgx-dcap-ql-dev=$DCAP_VERSION-bionic1 \
     libsgx-pce-logic=$DCAP_VERSION-bionic1 \
     libsgx-qe3-logic=$DCAP_VERSION-bionic1 \
-    libsgx-dcap-quote-verify=$DCAP_VERSION-bionic1 \
     libsgx-enclave-common=$PSW_VERSION-bionic1 \
     libsgx-urts=$PSW_VERSION-bionic1 \
     libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
@@ -34,13 +33,7 @@ RUN apt update && \
 # rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
 RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
-FROM sgx AS sgx-dev
-ARG PSW_VERSION
-RUN apt update && \
-    apt install -y libsgx-enclave-common-dev=$PSW_VERSION-bionic1 && \
-    apt clean && apt autoclean
-
-FROM sgx-dev AS base-dev
+FROM sgx AS base-dev
 RUN wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
     apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN add-apt-repository ppa:git-core/ppa
@@ -49,7 +42,7 @@ RUN apt update && \
     apt clean && apt autoclean
 # use same Go version as ertgo
 ARG gofile=go1.16.5.linux-amd64.tar.gz
-RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile
+RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile && rm -f /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1
 
 FROM alpine/git:latest AS pull
 RUN git clone https://github.com/edgelesssys/edgelessrt /edgelessrt
