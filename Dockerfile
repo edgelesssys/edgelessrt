@@ -22,14 +22,19 @@ ARG DCAP_VERSION
 RUN apt update && \
     apt install -y --no-install-recommends \
     az-dcap-client \
+    libsgx-ae-pce=$PSW_VERSION-bionic1 \
+    libsgx-ae-qe3=$DCAP_VERSION-bionic1 \
+    libsgx-ae-qve=$DCAP_VERSION-bionic1 \
+    libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 \
     libsgx-dcap-ql=$DCAP_VERSION-bionic1 \
     libsgx-dcap-ql-dev=$DCAP_VERSION-bionic1 \
+    libsgx-enclave-common=$PSW_VERSION-bionic1 \
+    libsgx-headers=$PSW_VERSION-bionic1 \
+    libsgx-launch=$PSW_VERSION-bionic1 \
     libsgx-pce-logic=$DCAP_VERSION-bionic1 \
     libsgx-qe3-logic=$DCAP_VERSION-bionic1 \
-    libsgx-enclave-common=$PSW_VERSION-bionic1 \
     libsgx-urts=$PSW_VERSION-bionic1 \
-    libsgx-dcap-default-qpl=$DCAP_VERSION-bionic1 && \
-    apt clean && apt autoclean
+    && apt clean && apt autoclean
 # rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
 RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
 
@@ -45,16 +50,16 @@ ARG gofile=go1.16.5.linux-amd64.tar.gz
 RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile && rm -f /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1
 
 FROM alpine/git:latest AS pull
-RUN git clone https://github.com/edgelesssys/edgelessrt /edgelessrt
+RUN git clone --depth=1 https://github.com/edgelesssys/edgelessrt /edgelessrt
 WORKDIR /edgelessrt
-RUN git submodule update --init 3rdparty/openenclave/openenclave 3rdparty/go 3rdparty/mystikos/mystikos 3rdparty/ttls
+RUN git submodule update --init --depth=1 3rdparty/openenclave/openenclave 3rdparty/go 3rdparty/mystikos/mystikos 3rdparty/ttls
 WORKDIR /edgelessrt/3rdparty/openenclave/openenclave
 RUN git submodule update --init tools/oeedger8r-cpp 3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
 
 FROM base-dev AS build
 COPY --from=pull /edgelessrt /edgelessrt
 WORKDIR /edgelessrt/build
-RUN cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja install
+RUN cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTS=OFF .. && ninja install
 
 FROM base-dev as release_develop
 LABEL description="EdgelessRT is an SDK to build Trusted Execution Environment applications"
