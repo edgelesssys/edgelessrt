@@ -68,7 +68,12 @@ static string _build_json(const oe_sgx_enclave_properties_t& props)
         1, json, "\"ProductID\": " + to_string(props.config.product_id) + ",");
     _extend_json(
         1, json, "\"UniqueID\": \"" + _get_unique_id(sigstruct) + "\",");
-    _extend_json(1, json, "\"SignerID\": \"" + _get_signer(sigstruct) + "\"");
+    _extend_json(1, json, "\"SignerID\": \"" + _get_signer(sigstruct) + "\",");
+    _extend_json(
+        1,
+        json,
+        "\"Debug\": "s +
+            (props.config.attributes & OE_SGX_FLAGS_DEBUG ? "true" : "false"));
     _extend_json(0, json, "}");
     return json;
 }
