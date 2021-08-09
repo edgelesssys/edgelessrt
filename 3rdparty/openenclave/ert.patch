@@ -985,6 +985,19 @@ index 7567534f3..a6c2efd46 100644
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
+diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
+index 42b6b572e..c553fb254 100644
+--- a/include/openenclave/bits/sgx/sgxproperties.h
++++ b/include/openenclave/bits/sgx/sgxproperties.h
+@@ -26,7 +26,7 @@ typedef struct _oe_sgx_enclave_image_info_t
+ } oe_sgx_enclave_image_info_t;
+ 
+ /* Max number of threads in an enclave supported */
+-#define OE_SGX_MAX_TCS 32
++#define OE_SGX_MAX_TCS 64
+ 
+ // oe_sgx_enclave_properties_t SGX enclave properties derived type
+ #define OE_SGX_FLAGS_DEBUG 0x0000000000000002ULL
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
 index 7b86fc8b8..89d2643bc 100644
 --- a/include/openenclave/edl/sgx/debug.edl
