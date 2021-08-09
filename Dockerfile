@@ -35,8 +35,13 @@ RUN apt update && \
     libsgx-qe3-logic=$DCAP_VERSION-bionic1 \
     libsgx-urts=$PSW_VERSION-bionic1 \
     && apt clean && apt autoclean
-# rename the softlink created by libsgx-dcap-default-qpl to avoid issues with az-dcap-client
-RUN mv /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1.intel
+# move the shared libraries installed by libsgx-dcap-default-qpl and remove the package
+# recreating the link /usr/lib/x86_64-linux-gnu/dcap/libdcap_quoteprov.so.1 to /usr/lib/x86_64-linux-gnu/dcap/libdcap_quoteprov.so.intel restores functionality of the original library
+RUN mkdir /usr/lib/x86_64-linux-gnu/dcap && \
+    cp /usr/lib/x86_64-linux-gnu/libsgx_default_qcnl_wrapper.so.$DCAP_VERSION /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.$DCAP_VERSION /usr/lib/x86_64-linux-gnu/dcap && \
+    apt remove -y libsgx-dcap-default-qpl && \
+    ln -s /usr/lib/x86_64-linux-gnu/dcap/libsgx_default_qcnl_wrapper.so.$DCAP_VERSION /usr/lib/x86_64-linux-gnu/libsgx_default_qcnl_wrapper.so.1 && \
+    ln -s /usr/lib/x86_64-linux-gnu/dcap/libdcap_quoteprov.so.$DCAP_VERSION /usr/lib/x86_64-linux-gnu/dcap/libdcap_quoteprov.so.intel
 
 FROM sgx AS base-dev
 RUN wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
@@ -47,7 +52,7 @@ RUN apt update && \
     apt clean && apt autoclean
 # use same Go version as ertgo
 ARG gofile=go1.16.7.linux-amd64.tar.gz
-RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile && rm -f /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1
+RUN wget https://golang.org/dl/$gofile && tar -C /usr/local -xzf $gofile && rm $gofile
 
 FROM alpine/git:latest AS pull
 RUN git clone --depth=1 https://github.com/edgelesssys/edgelessrt /edgelessrt
