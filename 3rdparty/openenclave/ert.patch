@@ -525,6 +525,28 @@ index dcec5016b..c51789504 100644
  /**
   * Cleanup the thread-local section for a given thread.
   * This must be called *before* the td itself is cleaned up.
+diff --git a/enclave/sgx/report.c b/enclave/sgx/report.c
+index 752ce5154..424937618 100644
+--- a/enclave/sgx/report.c
++++ b/enclave/sgx/report.c
+@@ -14,6 +14,7 @@
+ #include <openenclave/internal/report.h>
+ #include <openenclave/internal/safecrt.h>
+ #include <openenclave/internal/sgx/plugin.h>
++#include <openenclave/internal/sgx/td.h>
+ #include <openenclave/internal/sgxkeys.h>
+ #include <openenclave/internal/utils.h>
+ #include <stdlib.h>
+@@ -177,6 +178,9 @@ oe_result_t oe_get_report_v2(
+     else
+         format_id = &_local_uuid;
+ 
++    if (oe_sgx_get_td()->simulate)
++        OE_RAISE_MSG(OE_UNSUPPORTED, "can't get report in simulation mode");
++
+     OE_CHECK(oe_attester_initialize());
+ 
+     OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
 index f82e71363..85b78cb23 100644
 --- a/host/CMakeLists.txt
