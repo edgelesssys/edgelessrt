@@ -5,6 +5,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/core.c
   ${CMAKE_CURRENT_LIST_DIR}/debug.cpp
   ${CMAKE_CURRENT_LIST_DIR}/enclave_thread_manager.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/mmapfs.cpp
   ${CMAKE_CURRENT_LIST_DIR}/ocall_tracer.cpp
   ${CMAKE_CURRENT_LIST_DIR}/restart.cpp
   ${CMAKE_CURRENT_LIST_DIR}/syscall.cpp
