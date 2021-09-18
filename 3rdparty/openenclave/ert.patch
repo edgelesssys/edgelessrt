@@ -1007,6 +1007,18 @@ index 7567534f3..a6c2efd46 100644
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
+diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
+index f7220c44f..d3623bfa1 100644
+--- a/include/openenclave/bits/fs.h
++++ b/include/openenclave/bits/fs.h
+@@ -24,6 +24,7 @@ OE_EXTERNC_BEGIN
+  * **filesystemtype** parameter).
+  */
+ #define OE_HOST_FILE_SYSTEM "oe_host_file_system"
++#define OE_HOST_FILE_SYSTEM_MMAP "oe_host_file_system_mmap"
+ 
+ OE_EXTERNC_END
+ 
 diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
 index 42b6b572e..c553fb254 100644
 --- a/include/openenclave/bits/sgx/sgxproperties.h
@@ -1020,6 +1032,38 @@ index 42b6b572e..c553fb254 100644
  
  // oe_sgx_enclave_properties_t SGX enclave properties derived type
  #define OE_SGX_FLAGS_DEBUG 0x0000000000000002ULL
+diff --git a/include/openenclave/edl/fcntl.edl b/include/openenclave/edl/fcntl.edl
+index 5a28f71af..b7c97bda9 100644
+--- a/include/openenclave/edl/fcntl.edl
++++ b/include/openenclave/edl/fcntl.edl
+@@ -198,5 +198,27 @@ enclave
+             uint64_t argsize,
+             [in,out,size=argsize] void* argout)
+             propagate_errno;
++
++        oe_host_fd_t ert_mmapfs_open_ocall(
++            [in, string] const char* pathname,
++            int flags,
++            oe_mode_t mode,
++            [out] void** region,
++            [out] size_t* file_size)
++            propagate_errno;
++
++        bool ert_mmapfs_close_ocall(
++            oe_host_fd_t fd,
++            int flags,
++            [user_check] void* region,
++            size_t file_size)
++            propagate_errno;
++
++        void* ert_mmapfs_extend_ocall(
++            oe_host_fd_t fd,
++            [user_check] void* region,
++            size_t file_size,
++            size_t new_region)
++            propagate_errno;
+     };
+ };
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
 index 7b86fc8b8..89d2643bc 100644
 --- a/include/openenclave/edl/sgx/debug.edl
@@ -1187,20 +1231,23 @@ index 2a5b4c50c..f56a408af 100644
  /**
   * Validate certain fields of an SGX enclave properties structure.
 diff --git a/include/openenclave/internal/syscall/device.h b/include/openenclave/internal/syscall/device.h
-index 5bed20bf8..c186050f7 100644
+index 5bed20bf8..1ec1cb5ca 100644
 --- a/include/openenclave/internal/syscall/device.h
 +++ b/include/openenclave/internal/syscall/device.h
-@@ -31,6 +31,9 @@ enum
+@@ -31,6 +31,12 @@ enum
  
      /* The host epoll device. */
      OE_DEVID_HOST_EPOLL,
++
++    /* The non-secure host mmap file system. */
++    OE_DEVID_HOST_FILE_SYSTEM_MMAP,
 +
 +    /* Base id for custom devices. Must be last. */
 +    OE_DEVID_CUSTOM,
  };
  
  /* Device names. */
-@@ -152,6 +155,9 @@ oe_device_t* oe_device_table_find(const char* name, oe_device_type_t type);
+@@ -152,6 +158,9 @@ oe_device_t* oe_device_table_find(const char* name, oe_device_type_t type);
  /* Remove the given device from the table and call its release() method. */
  int oe_device_table_remove(uint64_t devid);
  
@@ -1422,10 +1469,125 @@ index 1cb00423c..63664a178 100644
  **==============================================================================
  **
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
-index b86f2ab10..e44ad80a0 100644
+index b86f2ab10..cee7cc877 100644
 --- a/syscall/devices/hostfs/hostfs.c
 +++ b/syscall/devices/hostfs/hostfs.c
-@@ -426,15 +426,14 @@ static oe_fd_t* _hostfs_open(
+@@ -21,6 +21,7 @@
+ #include <openenclave/enclave.h>
+ // clang-format on
+ 
++#include <openenclave/internal/ert/hostfs.h>
+ #include <openenclave/internal/syscall/device.h>
+ #include <openenclave/internal/thread.h>
+ #include <openenclave/internal/syscall/dirent.h>
+@@ -38,33 +39,9 @@
+ 
+ #include "syscall_t.h"
+ 
+-#define FS_MAGIC 0x5f35f964
+ #define FILE_MAGIC 0xfe48c6ff
+ #define DIR_MAGIC 0x8add1b0b
+ 
+-/* Mask to extract the access mode: O_RDONLY, O_WRONLY, O_RDWR. */
+-#define ACCESS_MODE_MASK 000000003
+-
+-/* The host file system device. */
+-typedef struct _device
+-{
+-    oe_device_t base;
+-
+-    /* Must be FS_MAGIC. */
+-    uint32_t magic;
+-
+-    /* True if this file system has been mounted. */
+-    bool is_mounted;
+-
+-    /* The parameters that were passed to the mount() function. */
+-    struct
+-    {
+-        unsigned long flags;
+-        char source[OE_PATH_MAX];
+-        char target[OE_PATH_MAX];
+-    } mount;
+-} device_t;
+-
+ /* Create by open(). */
+ typedef struct _file
+ {
+@@ -156,7 +133,7 @@ done:
+ }
+ 
+ /* Expand an enclave path to a host path. */
+-static int _make_host_path(
++int _hostfs_make_host_path(
+     const device_t* fs,
+     const char* enclave_path,
+     char host_path[OE_PATH_MAX])
+@@ -191,7 +168,7 @@ done:
+ }
+ 
+ /* Called by oe_mount(). */
+-static int _hostfs_mount(
++int _hostfs_mount(
+     oe_device_t* device,
+     const char* source,
+     const char* target,
+@@ -211,7 +188,8 @@ static int _hostfs_mount(
+         OE_RAISE_ERRNO(OE_EBUSY);
+ 
+     /* Cross check the file system type. */
+-    if (oe_strcmp(filesystemtype, OE_DEVICE_NAME_HOST_FILE_SYSTEM) != 0)
++    if (oe_strcmp(filesystemtype, OE_DEVICE_NAME_HOST_FILE_SYSTEM) != 0 &&
++        oe_strcmp(filesystemtype, OE_HOST_FILE_SYSTEM_MMAP) != 0)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+     /* The data parameter is not supported for host file systems. */
+@@ -247,7 +225,7 @@ done:
+ }
+ 
+ /* Called by oe_umount2(). */
+-static int _hostfs_umount2(oe_device_t* device, const char* target, int flags)
++int _hostfs_umount2(oe_device_t* device, const char* target, int flags)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -279,7 +257,7 @@ done:
+ }
+ 
+ /* Called by oe_mount() to make a copy of this device. */
+-static int _hostfs_clone(oe_device_t* device, oe_device_t** new_device)
++int _hostfs_clone(oe_device_t* device, oe_device_t** new_device)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -301,7 +279,7 @@ done:
+ }
+ 
+ /* Called by oe_umount() to release this device. */
+-static int _hostfs_release(oe_device_t* device)
++int _hostfs_release(oe_device_t* device)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -348,7 +326,7 @@ static oe_fd_t* _hostfs_open_file(
+ 
+     /* Ask the host to open the file. */
+     {
+-        if (_make_host_path(fs, pathname, host_path) != 0)
++        if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+             OE_RAISE_ERRNO_MSG(oe_errno, "pathname=%s", pathname);
+ 
+         if (oe_syscall_open_ocall(&retval, host_path, flags, mode) != OE_OK)
+@@ -371,7 +349,7 @@ done:
+     return ret;
+ }
+ 
+-static oe_fd_t* _hostfs_open_directory(
++oe_fd_t* _hostfs_open_directory(
+     oe_device_t* device,
+     const char* pathname,
+     int flags)
+@@ -426,15 +404,14 @@ static oe_fd_t* _hostfs_open(
      int flags,
      oe_mode_t mode)
  {
@@ -1449,7 +1611,7 @@ index b86f2ab10..e44ad80a0 100644
  }
  
  static int _hostfs_flock(oe_fd_t* desc, int operation)
-@@ -461,6 +460,10 @@ static int _hostfs_fsync(oe_fd_t* desc)
+@@ -461,6 +438,10 @@ static int _hostfs_fsync(oe_fd_t* desc)
      if (!file)
          OE_RAISE_ERRNO(OE_EINVAL);
  
@@ -1460,7 +1622,177 @@ index b86f2ab10..e44ad80a0 100644
      if (oe_syscall_fsync_ocall(&ret, file->host_fd) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
  
-@@ -1443,6 +1446,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
+@@ -1076,7 +1057,7 @@ static oe_fd_t* _hostfs_opendir(oe_device_t* device, const char* name)
+     if (!fs || !name)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+-    if (_make_host_path(fs, name, host_name) != 0)
++    if (_hostfs_make_host_path(fs, name, host_name) != 0)
+         OE_RAISE_ERRNO_MSG(oe_errno, "name=%s", name);
+ 
+     if (!(dir = oe_calloc(1, sizeof(dir_t))))
+@@ -1166,7 +1147,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_stat(
++int _hostfs_stat(
+     oe_device_t* device,
+     const char* pathname,
+     struct oe_stat_t* buf)
+@@ -1182,7 +1163,7 @@ static int _hostfs_stat(
+     if (!fs || !pathname || !buf)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+-    if (_make_host_path(fs, pathname, host_path) != 0)
++    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_stat_ocall(&retval, host_path, buf) != OE_OK)
+@@ -1217,7 +1198,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
++int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1228,7 +1209,7 @@ static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
+     if (!fs || !pathname || ((uint32_t)mode & ~MASK))
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+-    if (_make_host_path(fs, pathname, host_path) != 0)
++    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_access_ocall(&retval, host_path, mode) != OE_OK)
+@@ -1241,10 +1222,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_link(
+-    oe_device_t* device,
+-    const char* oldpath,
+-    const char* newpath)
++int _hostfs_link(oe_device_t* device, const char* oldpath, const char* newpath)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1259,10 +1237,10 @@ static int _hostfs_link(
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
++    if (_hostfs_make_host_path(fs, oldpath, host_oldpath) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+-    if (_make_host_path(fs, newpath, host_newpath) != 0)
++    if (_hostfs_make_host_path(fs, newpath, host_newpath) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_link_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
+@@ -1275,7 +1253,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_unlink(oe_device_t* device, const char* pathname)
++int _hostfs_unlink(oe_device_t* device, const char* pathname)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1289,7 +1267,7 @@ static int _hostfs_unlink(oe_device_t* device, const char* pathname)
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, pathname, host_path) != 0)
++    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_unlink_ocall(&retval, host_path) != OE_OK)
+@@ -1302,7 +1280,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_rename(
++int _hostfs_rename(
+     oe_device_t* device,
+     const char* oldpath,
+     const char* newpath)
+@@ -1319,10 +1297,10 @@ static int _hostfs_rename(
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
++    if (_hostfs_make_host_path(fs, oldpath, host_oldpath) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+-    if (_make_host_path(fs, newpath, host_newpath) != 0)
++    if (_hostfs_make_host_path(fs, newpath, host_newpath) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_rename_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
+@@ -1335,10 +1313,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_truncate(
+-    oe_device_t* device,
+-    const char* path,
+-    oe_off_t length)
++int _hostfs_truncate(oe_device_t* device, const char* path, oe_off_t length)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1351,7 +1326,7 @@ static int _hostfs_truncate(
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, path, host_path) != 0)
++    if (_hostfs_make_host_path(fs, path, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_truncate_ocall(&retval, host_path, length) != OE_OK)
+@@ -1382,10 +1357,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_mkdir(
+-    oe_device_t* device,
+-    const char* pathname,
+-    oe_mode_t mode)
++int _hostfs_mkdir(oe_device_t* device, const char* pathname, oe_mode_t mode)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1399,7 +1371,7 @@ static int _hostfs_mkdir(
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, pathname, host_path) != 0)
++    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_mkdir_ocall(&retval, host_path, mode) != OE_OK)
+@@ -1412,7 +1384,7 @@ done:
+     return ret;
+ }
+ 
+-static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
++int _hostfs_rmdir(oe_device_t* device, const char* pathname)
+ {
+     int ret = -1;
+     device_t* fs = _cast_device(device);
+@@ -1426,7 +1398,7 @@ static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
+     if (_is_read_only(fs))
+         OE_RAISE_ERRNO(OE_EPERM);
+ 
+-    if (_make_host_path(fs, pathname, host_path) != 0)
++    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
+         OE_RAISE_ERRNO(oe_errno);
+ 
+     if (oe_syscall_rmdir_ocall(&retval, host_path) != OE_OK)
+@@ -1443,6 +1415,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
  {
      file_t* file = _cast_file(desc);
  
@@ -1470,6 +1802,22 @@ index b86f2ab10..e44ad80a0 100644
 +
      return file ? file->host_fd : -1;
  }
+ 
+@@ -1526,6 +1502,15 @@ oe_result_t oe_load_module_host_file_system(void)
+             OE_RAISE(OE_FAILURE);
+         }
+ 
++        if (oe_device_table_set(
++                OE_DEVID_HOST_FILE_SYSTEM_MMAP, &oe_hostfs_mmap.base) != 0)
++        {
++            oe_device_table_remove(OE_DEVID_HOST_FILE_SYSTEM);
++            /* Do not propagate errno to caller. */
++            oe_errno = 0;
++            OE_RAISE(OE_FAILURE);
++        }
++
+         _loaded = true;
+     }
  
 diff --git a/syscall/devices/hostsock/hostsock.c b/syscall/devices/hostsock/hostsock.c
 index 9f2a6f51e..ef6be069e 100644
