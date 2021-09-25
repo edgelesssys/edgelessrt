@@ -54,8 +54,11 @@ static int _fs_fsync(oe_fd_t* desc)
     if (!file)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    // noop for now
-    ret = 0;
+    if (!_writable(file))
+        return 0;
+
+    if (oe_syscall_fdatasync_ocall(&ret, file->host_fd) != OE_OK)
+        OE_RAISE_ERRNO(OE_EINVAL);
 
 done:
     return ret;

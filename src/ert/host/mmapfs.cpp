@@ -155,7 +155,7 @@ void* ert_mmapfs_extend_ocall(
         return NULL;
 
     const auto result =
-        mremap(region, cur_region_size, new_region_size, MAP_SHARED);
+        mremap(region, cur_region_size, new_region_size, MREMAP_MAYMOVE);
     if (result == MAP_FAILED)
         return result;
 
