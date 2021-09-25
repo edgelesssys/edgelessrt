@@ -10,7 +10,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cerrno>
+#include "fd.h"
 #include "syscall_u.h"
+
+using namespace ert;
+
+static bool _writable(int flags)
+{
+    return (flags & O_ACCMODE) == O_RDWR;
+}
 
 oe_host_fd_t ert_mmapfs_open_ocall(
     const char* pathname,
@@ -21,18 +29,13 @@ oe_host_fd_t ert_mmapfs_open_ocall(
 {
     errno = 0;
 
-    int fd = open(pathname, flags, mode);
-    if (fd < 0)
+    FileDescriptor fd = open(pathname, flags, mode);
+    if (!fd)
         return fd;
 
     struct stat file_stat;
     if (fstat(fd, &file_stat) == -1)
-    {
-        if (close(fd) == -1)
-            OE_TRACE_ERROR("close failed");
-
         return -1;
-    }
 
     size_t len = (size_t)file_stat.st_size;
     *file_size = len;
@@ -44,28 +47,18 @@ oe_host_fd_t ert_mmapfs_open_ocall(
     int mmap_prot = PROT_READ;
     // extend file in case we want to write/append
     // fd needs ~O_TRUNC & O_RDWR
-    if ((flags & O_ACCMODE) == O_RDWR)
+    if (_writable(flags))
     {
         if (ftruncate(fd, (ssize_t)len) == -1)
-        {
-            if (close(fd) == -1)
-                OE_TRACE_ERROR("close failed");
             return -1;
-        }
-
         mmap_prot |= PROT_WRITE;
     }
 
     *addr = mmap(NULL, len, mmap_prot, MAP_SHARED, fd, 0);
     if (*addr == MAP_FAILED)
-    {
-        if (close(fd) == -1)
-            OE_TRACE_ERROR("close failed");
-
         return -1;
-    }
 
-    return fd;
+    return fd.release();
 }
 
 bool ert_mmapfs_close_ocall(
@@ -83,7 +76,7 @@ bool ert_mmapfs_close_ocall(
     if (munmap(region, region_size) == -1)
         return false;
 
-    if ((flags & O_ACCMODE) == O_RDWR)
+    if (_writable(flags))
     {
         if (ftruncate((int)fd, (off_t)file_size) == -1)
         {
