@@ -32,6 +32,11 @@ typedef struct _file
     oe_spinlock_t lock;
 } file_t;
 
+static bool _writable(const file_t* file)
+{
+    return (file->open_flags & ACCESS_MODE_MASK) == OE_O_RDWR;
+}
+
 static int _fs_fsync(oe_fd_t* desc)
 {
     int ret = -1;
@@ -172,7 +177,7 @@ static ssize_t _mmap_file_write(
 {
     ssize_t ret = -1;
 
-    if ((mmap_file->open_flags & ACCESS_MODE_MASK) != OE_O_RDWR)
+    if (!_writable(mmap_file))
         OE_RAISE_ERRNO(OE_EBADF); // fd was not opened for writing
 
     if (!_extend(mmap_file, count, offset))
@@ -272,7 +277,7 @@ static ssize_t _fs_writev(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
     if (!file || !iov || iovcnt < 0 || iovcnt > OE_IOV_MAX)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if ((file->open_flags & ACCESS_MODE_MASK) != OE_O_RDWR)
+    if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF); // fd was not opened for writing
 
     // calculate the sum of bytes to be written
@@ -521,7 +526,7 @@ static int _fs_ftruncate(oe_fd_t* desc, oe_off_t length)
     if (length < 0)
         OE_RAISE_ERRNO(OE_EINVAL);
 
-    if ((file->open_flags & ACCESS_MODE_MASK) != OE_O_RDWR)
+    if (!_writable(file))
         OE_RAISE_ERRNO(OE_EBADF); // fd was not opened for writing
 
     oe_spin_lock(&file->lock);
