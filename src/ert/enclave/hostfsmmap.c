@@ -26,7 +26,7 @@ typedef struct _file
     char* region_base;
     // position in file starting from region_base
     size_t file_position;
-    // size of actual file
+    // size of actual file; use _set_file_size to modify
     size_t file_size;
 
     oe_spinlock_t lock;
@@ -35,6 +35,15 @@ typedef struct _file
 static bool _writable(const file_t* file)
 {
     return (file->open_flags & ACCESS_MODE_MASK) == OE_O_RDWR;
+}
+
+static void _set_file_size(file_t* file, size_t size)
+{
+    oe_assert(file);
+    oe_assert(_writable(file));
+    file->file_size = size;
+    ((ert_mmapfs_file_size_t*)(file->region_base + oe_round_up_to_multiple(file->file_size, OE_MMAP_FILE_CHUNK_SIZE)))
+        ->size = size;
 }
 
 static int _fs_fsync(oe_fd_t* desc)
@@ -156,7 +165,8 @@ static bool _extend(file_t* mmap_file, size_t count, size_t offset)
         if (new_region == (void*)-1 || new_region == NULL)
             OE_RAISE_ERRNO(oe_errno);
 
-        if (!oe_is_outside_enclave(new_region, new_region_size))
+        if (!oe_is_outside_enclave(
+                new_region, new_region_size + sizeof(ert_mmapfs_file_size_t)))
             oe_abort();
 
         mmap_file->region_base = new_region;
@@ -186,7 +196,7 @@ static ssize_t _mmap_file_write(
     memcpy(mmap_file->region_base + offset, buf, count);
 
     if (offset + count > mmap_file->file_size)
-        mmap_file->file_size = offset + count; // EOF
+        _set_file_size(mmap_file, offset + count); // EOF
 
     ret = (ssize_t)count;
 
@@ -311,7 +321,7 @@ static ssize_t _fs_writev(oe_fd_t* desc, const struct oe_iovec* iov, int iovcnt)
 
     file->file_position += bytes_written;
     if (file->file_position > file->file_size)
-        file->file_size = file->file_position; // EOF
+        _set_file_size(file, file->file_position); // EOF
 
     ret = (ssize_t)bytes_written;
 
@@ -530,7 +540,7 @@ static int _fs_ftruncate(oe_fd_t* desc, oe_off_t length)
         OE_RAISE_ERRNO(OE_EBADF); // fd was not opened for writing
 
     oe_spin_lock(&file->lock);
-    file->file_size = (size_t)length;
+    _set_file_size(file, (size_t)length);
     oe_spin_unlock(&file->lock);
 
     ret = 0;
@@ -594,6 +604,13 @@ static bool _mmap_file_open(
     if (mmap_file->host_fd < 0)
         OE_RAISE_ERRNO(oe_errno);
 
+    size_t region_size =
+        oe_round_up_to_multiple(mmap_file->file_size, OE_MMAP_FILE_CHUNK_SIZE);
+    if (_writable(mmap_file))
+        region_size += sizeof(ert_mmapfs_file_size_t);
+    if (!oe_is_outside_enclave(mmap_file->region_base, region_size))
+        oe_abort();
+
     if (flags & OE_O_APPEND)
         mmap_file->file_position = mmap_file->file_size;
 
@@ -648,10 +665,6 @@ static oe_fd_t* _fs_open(
 
         if (!_mmap_file_open(file, host_path, flags, mode))
             goto done;
-
-        oe_assert(file->region_base != NULL);
-        if (!oe_is_outside_enclave(file->region_base, file->file_size))
-            oe_abort();
     }
 
     ret = &file->base;
