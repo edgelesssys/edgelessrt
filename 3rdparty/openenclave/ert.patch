@@ -139,10 +139,10 @@ index df4adc056..2c04586cf 100644
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
 diff --git a/common/sgx/collateral.c b/common/sgx/collateral.c
-index f4d9fcc76..81f4f22aa 100644
+index f4d9fcc76..1118bb1f5 100644
 --- a/common/sgx/collateral.c
 +++ b/common/sgx/collateral.c
-@@ -326,18 +326,44 @@ oe_result_t oe_validate_revocation_list(
+@@ -326,18 +326,46 @@ oe_result_t oe_validate_revocation_list(
                  "Failed to read CRL. %s",
                  oe_result_str(result));
          }
@@ -162,12 +162,14 @@ index f4d9fcc76..81f4f22aa 100644
              if (sgx_endorsements->items[i].data[der_data_size - 1] == 0)
                  der_data_size -= 1;
 
-+            // If the CRL is only composed of hex digits we need to manually convert to DER
++            // If the CRL is only composed of hex digits we need to manually
++            // convert to DER
 +            bool ishex = true;
 +            for (size_t l = 0; l < der_data_size; ++l)
 +            {
-+                uint8_t c = sgx_endorsements->items[i].data[l];
-+                if (!((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || (c >= '0' && c <= '9')))
++                const uint8_t c = sgx_endorsements->items[i].data[l];
++                if (!((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') ||
++                      (c >= '0' && c <= '9')))
 +                {
 +                    ishex = false;
 +                    break;
@@ -175,15 +177,15 @@ index f4d9fcc76..81f4f22aa 100644
 +            }
 +            if (ishex)
 +            {
-+                char *tmp = (char*)oe_malloc(der_data_size);
-+                memcpy(tmp, sgx_endorsements->items[i].data, der_data_size);
 +                OE_CHECK_MSG(
 +                    oe_hex_to_buf(
-+                        tmp, der_data_size, sgx_endorsements->items[i].data, der_data_size),
-+                    "Failed converting to DER. %s",
++                        (const char*)sgx_endorsements->items[i].data,
++                        der_data_size,
++                        sgx_endorsements->items[i].data,
++                        der_data_size),
++                    "Failed to convert to DER. %s",
 +                    oe_result_str(result));
-+                der_data_size = der_data_size / 2;
-+                oe_free(tmp);
++                der_data_size /= 2;
 +            }
 +
              OE_CHECK_MSG(
@@ -1352,14 +1354,14 @@ index 095a16d1e..e152df4c7 100644
  
  int oe_getdomainname(char* name, size_t len);
 diff --git a/include/openenclave/internal/utils.h b/include/openenclave/internal/utils.h
-index 82337b74e..8248aef86 100644
+index 82337b74e..56a6b433d 100644
 --- a/include/openenclave/internal/utils.h
 +++ b/include/openenclave/internal/utils.h
-@@ -228,6 +228,32 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
+@@ -228,6 +228,33 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
      }
  }
 
-+OE_INLINE unsigned char oe_to_num(char c)
++OE_INLINE unsigned char oe_hex_digit_to_num(char c)
 +{
 +    if (c >= '0' && c <= '9')
 +        return (unsigned char)(c - '0');
@@ -1370,7 +1372,8 @@ index 82337b74e..8248aef86 100644
 +    return (unsigned char)(10 + (c - 'a'));
 +}
 +
-+OE_INLINE oe_result_t oe_hex_to_buf(const char* str, size_t strsize, uint8_t* buf, size_t bufsize)
++OE_INLINE oe_result_t
++oe_hex_to_buf(const char* str, size_t strsize, uint8_t* buf, size_t bufsize)
 +{
 +    if (bufsize * 2 < strsize)
 +    {
@@ -1379,7 +1382,7 @@ index 82337b74e..8248aef86 100644
 +    for (size_t i = 0; i < strsize; i += 2)
 +    {
 +        unsigned char v =
-+            (unsigned char)(16 * oe_to_num(str[i]) + oe_to_num(str[i + 1]));
++            (unsigned char)(16 * oe_hex_digit_to_num(str[i]) + oe_hex_digit_to_num(str[i + 1]));
 +        buf[i / 2] = v;
 +    }
 +    return OE_OK;
