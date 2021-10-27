@@ -31,59 +31,23 @@ sudo snap install cmake --classic
 Then proceed with [Use](#use).
 
 ## Build
-Edgeless RT primarily targets Ubuntu 18.04 and above. Other Linuxes may work as well. Windows is not yet supported.
+On Ubuntu 20.04 build with:
+```bash
+sudo apt install build-essential clang-10 cmake doxygen gdb libssl-dev ninja-build python3
+mkdir build
+cd build
+cmake -GNinja ..
+ninja
+```
+To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
 
-1. Determine the SGX support of your system
-   ```bash
-   cc -ooesgx src/tools/oesgx/oesgx.c && ./oesgx
-   ```
-   You will get one of the following three types of output:
-
-   | oesgx output                                                                                | SGX support level |
-   | :------------------------------------------------------------------------------------------ | :---------------: |
-   | CPU supports SGX_FLC:Flexible Launch Control<br>CPU supports Software Guard Extensions:SGX1 |     SGX1+FLC      |
-   | CPU supports Software Guard Extensions:SGX1                                                 |       SGX1        |
-   | CPU does not support SGX                                                                    |    Simulation     |
-
-2. Set up the environment
-
-   Ansible is required to install the project requirements. Install it by running:
-   ```bash
-   sudo scripts/ansible/install-ansible.sh
-   ```
-
-   Run one of the following commands depending on the SGX support level:
-
-   * SGX1+FLC in an Azure Confidential Compute (ACC) VM:
-     ```bash
-     ansible-playbook scripts/ansible/oe-contributors-acc-setup.yml
-     ```
-
-   * SGX1+FLC:
-     ```bash
-     ansible-playbook scripts/ansible/oe-contributors-setup.yml
-     ```
-
-   * SGX1:
-     ```bash
-     ansible-playbook scripts/ansible/oe-contributors-setup-sgx1.yml
-     ```
-
-   * Simulation:
-     ```bash
-     ansible-playbook scripts/ansible/oe-contributors-setup-sim.yml
-     ```
-
-   NOTE: The Ansible playbook commands require `sudo` rights. You may need to specify `--ask-become-pass` and enter your sudo password.
-
-3. Build the SDK
-   ```bash
-   mkdir build
-   cd build
-   cmake -GNinja ..
-   ninja
-   ```
-   To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
+## SGX packages
+To run your applications in SGX mode, install these packages:
+```bash
+wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
+sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
+sudo apt install libsgx-dcap-ql-dev libsgx-enclave-common libsgx-launch
+```
 
 ## Test
 After building, run the following command in the build directory to confirm everything works as expected:
