@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:experimental
 ARG PSW_VERSION=2.15.100.3
 ARG DCAP_VERSION=1.12.100.3
 ARG QUOTE_PROV_TAG=1.11.101.1

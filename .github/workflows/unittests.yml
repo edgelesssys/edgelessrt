@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/edgelesssys/edgelessrt-dev:nightly
     steps:
