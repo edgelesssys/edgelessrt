@@ -155,13 +155,13 @@ index f4d9fcc76..1118bb1f5 100644
              size_t der_data_size = sgx_endorsements->items[i].size;
              if (der_data_size == 0)
                  OE_RAISE(OE_INVALID_PARAMETER);
-
+ 
 -            // If DER CRL buffer has null terminator, need to remove it before
 +            // If CRL buffer has null terminator, need to remove it before
              // send the DER data to crypto API for reading.
              if (sgx_endorsements->items[i].data[der_data_size - 1] == 0)
                  der_data_size -= 1;
-
+ 
 +            // If the CRL is only composed of hex digits we need to manually
 +            // convert to DER
 +            bool ishex = true;
@@ -713,10 +713,72 @@ index e7ec7fd0e..6a2ec907d 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index 71087bfe7..5250cf51f 100644
+index 71087bfe7..4b855a90e 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
-@@ -796,11 +796,76 @@ done:
+@@ -121,7 +121,8 @@ static oe_result_t _add_filled_pages(
+     uint64_t* vaddr,
+     size_t npages,
+     uint32_t filler,
+-    bool extend)
++    bool extend,
++    bool executable)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     oe_page_t* page = NULL;
+@@ -154,6 +155,10 @@ static oe_result_t _add_filled_pages(
+         uint64_t src = (uint64_t)page;
+         uint64_t flags = SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W;
+ 
++        // EDG: add executable flag
++        if (executable)
++            flags |= SGX_SECINFO_X;
++
+         OE_CHECK(oe_sgx_load_enclave_data(
+             context, enclave->base_address, addr, src, flags, extend));
+         (*vaddr) += OE_PAGE_SIZE;
+@@ -176,7 +181,7 @@ static oe_result_t _add_stack_pages(
+ {
+     const bool extend = true;
+     return _add_filled_pages(
+-        context, enclave, vaddr, npages, 0xcccccccc, extend);
++        context, enclave, vaddr, npages, 0xcccccccc, extend, false);
+ }
+ 
+ static oe_result_t _add_heap_pages(
+@@ -187,7 +192,8 @@ static oe_result_t _add_heap_pages(
+ {
+     /* Do not measure heap pages */
+     const bool extend = false;
+-    return _add_filled_pages(context, enclave, vaddr, npages, 0, extend);
++    return _add_filled_pages(
++        context, enclave, vaddr, npages, 0, extend, context->executable_heap);
+ }
+ 
+ static oe_result_t _add_control_pages(
+@@ -301,7 +307,7 @@ static oe_result_t _add_control_pages(
+     }
+ 
+     /* Add two blank pages */
+-    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 2, 0, true));
++    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 2, 0, true, false));
+ 
+     /* Skip over guard page */
+     (*vaddr) += OE_PAGE_SIZE;
+@@ -309,10 +315,10 @@ static oe_result_t _add_control_pages(
+     /* Add blank pages (for either FS segment or GS segment) */
+     if (tls_page_count)
+         OE_CHECK(_add_filled_pages(
+-            context, enclave, vaddr, tls_page_count, 0, true));
++            context, enclave, vaddr, tls_page_count, 0, true, false));
+ 
+     /* Add one page for thread-specific data (TSD) slots */
+-    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 1, 0, true));
++    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 1, 0, true, false));
+ 
+     result = OE_OK;
+ 
+@@ -796,11 +802,76 @@ done:
  }
  #endif
  
@@ -794,7 +856,7 @@ index 71087bfe7..5250cf51f 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      size_t loaded_enclave_pages_size = 0;
-@@ -812,6 +877,7 @@ oe_result_t oe_sgx_build_enclave(
+@@ -812,6 +883,7 @@ oe_result_t oe_sgx_build_enclave(
      size_t tls_page_count;
      uint64_t vaddr = 0;
      oe_sgx_enclave_properties_t props;
@@ -802,7 +864,7 @@ index 71087bfe7..5250cf51f 100644
  
      /* Reject invalid parameters */
      if (!context || !path || !enclave)
-@@ -833,7 +899,7 @@ oe_result_t oe_sgx_build_enclave(
+@@ -833,7 +905,7 @@ oe_result_t oe_sgx_build_enclave(
          OE_RAISE(OE_FAILURE);
  
      /* Load the elf object */
@@ -811,7 +873,7 @@ index 71087bfe7..5250cf51f 100644
          OE_RAISE(OE_FAILURE);
  
      // If the **properties** parameter is non-null, use those properties.
-@@ -857,6 +923,47 @@ oe_result_t oe_sgx_build_enclave(
+@@ -857,6 +929,47 @@ oe_result_t oe_sgx_build_enclave(
              sizeof(props));
      }
  
@@ -859,7 +921,7 @@ index 71087bfe7..5250cf51f 100644
      /* Validate the enclave prop_override structure */
      OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
  
-@@ -902,7 +1009,9 @@ oe_result_t oe_sgx_build_enclave(
+@@ -902,7 +1015,9 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Calculate the size of this enclave in memory */
      OE_CHECK(_calculate_enclave_size(
@@ -870,10 +932,13 @@ index 71087bfe7..5250cf51f 100644
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -990,6 +1099,19 @@ oe_result_t oe_sgx_build_enclave(
+@@ -990,6 +1105,22 @@ oe_result_t oe_sgx_build_enclave(
          &vaddr));
  #endif
  
++    // EDG: Check if the enclave is configured with ExecutableHeap=1
++    context->executable_heap = props.config.flags.executable_heap;
++
 +    // EDG: add payload data to enclave
 +    if (payload_data_offset)
 +    {
@@ -890,7 +955,7 @@ index 71087bfe7..5250cf51f 100644
      /* Add data pages */
      OE_CHECK(_add_data_pages(
          context,
-@@ -1203,8 +1325,21 @@ oe_result_t oe_create_enclave(
+@@ -1203,8 +1334,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
  
@@ -914,7 +979,7 @@ index 71087bfe7..5250cf51f 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1283,6 +1418,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1283,6 +1427,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      /* Shut down the switchless manager */
      OE_CHECK(oe_stop_switchless_manager(enclave));
  
@@ -1073,7 +1138,7 @@ index f7220c44f..d3623bfa1 100644
  OE_EXTERNC_END
  
 diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
-index 42b6b572e..c553fb254 100644
+index 42b6b572e..bf24bfebd 100644
 --- a/include/openenclave/bits/sgx/sgxproperties.h
 +++ b/include/openenclave/bits/sgx/sgxproperties.h
 @@ -26,7 +26,7 @@ typedef struct _oe_sgx_enclave_image_info_t
@@ -1085,6 +1150,17 @@ index 42b6b572e..c553fb254 100644
  
  // oe_sgx_enclave_properties_t SGX enclave properties derived type
  #define OE_SGX_FLAGS_DEBUG 0x0000000000000002ULL
+@@ -38,7 +38,9 @@ typedef struct _oe_sgx_enclave_flags_t
+ {
+     uint32_t capture_pf_gp_exceptions : 1;
+     uint32_t create_zero_base_enclave : 1;
+-    uint32_t reserved : 30;
++    // EDG: additional flags
++    uint32_t executable_heap : 1;
++    uint32_t reserved : 29;
+ } oe_sgx_enclave_flags_t;
+ 
+ typedef struct oe_sgx_enclave_config_t
 diff --git a/include/openenclave/edl/fcntl.edl b/include/openenclave/edl/fcntl.edl
 index 5a28f71af..b7c97bda9 100644
 --- a/include/openenclave/edl/fcntl.edl
@@ -1270,10 +1346,20 @@ index 2d720612b..6fb2bf087 100644
  
  OE_EXTERNC_END
 diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
-index 2a5b4c50c..f56a408af 100644
+index 2a5b4c50c..041e1814e 100644
 --- a/include/openenclave/internal/sgxcreate.h
 +++ b/include/openenclave/internal/sgxcreate.h
-@@ -88,7 +88,8 @@ oe_result_t oe_sgx_build_enclave(
+@@ -75,6 +75,9 @@ struct _oe_sgx_load_context
+ 
+     bool create_zero_base_enclave;
+     uint64_t start_address; /* Valid only if create_zero_base_enclave is True */
++
++    // EDG: additional fields
++    bool executable_heap;
+ };
+ 
+ oe_result_t oe_sgx_initialize_load_context(
+@@ -88,7 +91,8 @@ oe_result_t oe_sgx_build_enclave(
      oe_sgx_load_context_t* context,
      const char* path,
      const oe_sgx_enclave_properties_t* properties,
@@ -1360,7 +1446,7 @@ index 82337b74e..56a6b433d 100644
 @@ -228,6 +228,33 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
      }
  }
-
+ 
 +OE_INLINE unsigned char oe_hex_digit_to_num(char c)
 +{
 +    if (c >= '0' && c <= '9')
@@ -1389,7 +1475,7 @@ index 82337b74e..56a6b433d 100644
 +}
 +
  OE_EXTERNC_END
-
+ 
  #endif /* _OE_UTILS_H */
 diff --git a/libc/malloc.c b/libc/malloc.c
 index 526ae583f..8198d8da0 100644
@@ -3658,10 +3744,53 @@ index 6e047eef5..c6957ad63 100644
          path);
  
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index da57caf07..b798f43ac 100644
+index da57caf07..fac2fd4a1 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
-@@ -481,7 +481,7 @@ done:
+@@ -52,6 +52,8 @@ typedef struct _config_file_options
+     optional_bool_t capture_pf_gp_exceptions;
+     optional_bool_t create_zero_base_enclave;
+     optional_uint64_t start_address;
++    // EDG: additional options
++    optional_bool_t executable_heap;
+ } config_file_options_t;
+ 
+ int uuid_from_string(str_t* str, uint8_t* uuid, size_t expected_size);
+@@ -393,6 +395,33 @@ static int _load_config_file(const char* path, config_file_options_t* options)
+             options->start_address.value = n;
+             options->start_address.has_value = true;
+         }
++        // EDG: executable heap
++        else if (strcmp(str_ptr(&lhs), "ExecutableHeap") == 0)
++        {
++            uint64_t value;
++
++            if (options->executable_heap.has_value)
++            {
++                oe_err(
++                    "%s(%zu): Duplicate 'ExecutableHeap' value provided",
++                    path,
++                    line);
++                goto done;
++            }
++
++            // ExecutableHeap must be 0 or 1
++            if (str_u64(&rhs, &value) != 0 || (value > 1))
++            {
++                oe_err(
++                    "%s(%zu): 'ExecutableHeap' value must be 0 or 1",
++                    path,
++                    line);
++                goto done;
++            }
++
++            options->executable_heap.value = (bool)value;
++            options->executable_heap.has_value = true;
++        }
+         else
+         {
+             oe_err("%s(%zu): unknown setting: %s", path, line, str_ptr(&rhs));
+@@ -481,7 +510,7 @@ done:
      return rc;
  }
  
@@ -3670,7 +3799,19 @@ index da57caf07..b798f43ac 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -629,7 +629,8 @@ done:
+@@ -578,6 +607,11 @@ void _merge_config_file_options(
+     if (options->create_zero_base_enclave.value == 1 &&
+         options->start_address.has_value)
+         properties->config.start_address = options->start_address.value;
++
++    // EDG: executable heap
++    if (options->executable_heap.has_value)
++        properties->config.flags.executable_heap =
++            options->executable_heap.value ? 1 : 0;
+ }
+ 
+ oe_result_t _initialize_enclave_properties(
+@@ -629,7 +663,8 @@ done:
  oe_result_t _get_sgx_enclave_hash(
      const char* enclave,
      const oe_sgx_enclave_properties_t* properties,
@@ -3680,7 +3821,7 @@ index da57caf07..b798f43ac 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t enc;
-@@ -645,7 +646,7 @@ oe_result_t _get_sgx_enclave_hash(
+@@ -645,7 +680,7 @@ oe_result_t _get_sgx_enclave_hash(
  
      /* Build an enclave to obtain the MRENCLAVE measurement */
      OE_CHECK_ERR(
@@ -3689,7 +3830,7 @@ index da57caf07..b798f43ac 100644
          "oe_sgx_build_enclave(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -702,7 +703,8 @@ int oesign(
+@@ -702,7 +737,8 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -3699,7 +3840,7 @@ index da57caf07..b798f43ac 100644
  {
      int ret = 1;
      oe_result_t result = OE_UNEXPECTED;
-@@ -716,7 +718,8 @@ int oesign(
+@@ -716,7 +752,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
@@ -3709,7 +3850,7 @@ index da57caf07..b798f43ac 100644
  
      if (engine_id)
      {
-@@ -741,7 +744,7 @@ int oesign(
+@@ -741,7 +778,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -3718,7 +3859,7 @@ index da57caf07..b798f43ac 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -792,7 +795,7 @@ int oesign(
+@@ -792,7 +829,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -3727,7 +3868,7 @@ index da57caf07..b798f43ac 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
-@@ -818,7 +821,10 @@ int oesign(
+@@ -818,7 +855,10 @@ int oesign(
  
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
@@ -3739,7 +3880,7 @@ index da57caf07..b798f43ac 100644
          "oe_write_oeinfo_sgx(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -846,7 +852,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+@@ -846,7 +886,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
