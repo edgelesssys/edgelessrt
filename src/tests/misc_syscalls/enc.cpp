@@ -3,7 +3,9 @@
 #include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <sys/mount.h>
+#include <sys/random.h>
 #include <unistd.h>
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <chrono>
@@ -45,6 +47,34 @@ static void _test_dynlink()
     OE_TEST(!dlsym(handle, "edgy"));
     OE_TEST(dlerror());
     OE_TEST(!dlerror());
+}
+
+static void _test_getrandom()
+{
+    for (const int flags :
+         {0, GRND_NONBLOCK, GRND_RANDOM, GRND_NONBLOCK | GRND_RANDOM})
+    {
+        array<uint8_t, 32> buf;
+        for (size_t len = 1; len < buf.size(); ++len)
+        {
+            buf.fill(0);
+
+            do
+            {
+                OE_TEST(
+                    getrandom(
+                        buf.data(), len, static_cast<unsigned int>(flags)) ==
+                    static_cast<ssize_t>(len));
+
+                // Test that not more than len bytes were written.
+                OE_TEST(all_of(buf.cbegin() + len, buf.cend(), [](uint8_t x) {
+                    return !x;
+                }));
+
+                // Test that last byte will eventually become nonzero.
+            } while (len && !buf[len - 1]);
+        }
+    }
 }
 
 static void _test_readlink()
@@ -100,6 +130,7 @@ static void _test_time()
 void test_ecall()
 {
     _test_dynlink();
+    _test_getrandom();
     _test_readlink();
     _test_syconf();
     _test_time();

@@ -2982,6 +2982,23 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
+diff --git a/tests/syscall/getrandom/enc/enc.c b/tests/syscall/getrandom/enc/enc.c
+index 98e48740e..d89e5b545 100644
+--- a/tests/syscall/getrandom/enc/enc.c
++++ b/tests/syscall/getrandom/enc/enc.c
+@@ -22,12 +22,6 @@ void test_getrandom()
+     /* Test with the zero flags (required by OE) */
+     size = getrandom((void*)buf, sizeof(buflen), 0);
+     OE_TEST((size_t)size == sizeof(buflen));
+-
+-    /* Test with unsupported flags */
+-    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_RANDOM) == -1);
+-    OE_TEST(errno == EINVAL);
+-    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_NONBLOCK) == -1);
+-    OE_TEST(errno == EINVAL);
+ }
+ 
+ OE_SET_ENCLAVE_SGX(
 diff --git a/tests/syscall/poller/client.cpp b/tests/syscall/poller/client.cpp
 index c09560c7f..927be2ded 100644
 --- a/tests/syscall/poller/client.cpp
