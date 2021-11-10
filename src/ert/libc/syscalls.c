@@ -10,6 +10,7 @@
 #include <openenclave/internal/time.h>
 #include <openenclave/internal/trace.h>
 #include <stdlib.h>
+#include <sys/random.h>
 #include <time.h>
 #include "../../ertlibc/syscall.h"
 #include "ertfutex.h"
@@ -80,6 +81,11 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
         case OE_SYS_newfstatat:
             if (x4 == AT_SYMLINK_NOFOLLOW)
                 x4 = 0;
+            break;
+        case OE_SYS_getrandom:
+            // clear flags because oe_getrandom fails if any are set and it
+            // should be fine to ignore them
+            x3 = 0;
             break;
     }
     errno = 0;

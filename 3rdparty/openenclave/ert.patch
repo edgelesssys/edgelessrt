@@ -155,13 +155,13 @@ index f4d9fcc76..1118bb1f5 100644
              size_t der_data_size = sgx_endorsements->items[i].size;
              if (der_data_size == 0)
                  OE_RAISE(OE_INVALID_PARAMETER);
-
+ 
 -            // If DER CRL buffer has null terminator, need to remove it before
 +            // If CRL buffer has null terminator, need to remove it before
              // send the DER data to crypto API for reading.
              if (sgx_endorsements->items[i].data[der_data_size - 1] == 0)
                  der_data_size -= 1;
-
+ 
 +            // If the CRL is only composed of hex digits we need to manually
 +            // convert to DER
 +            bool ishex = true;
@@ -1360,7 +1360,7 @@ index 82337b74e..56a6b433d 100644
 @@ -228,6 +228,33 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
      }
  }
-
+ 
 +OE_INLINE unsigned char oe_hex_digit_to_num(char c)
 +{
 +    if (c >= '0' && c <= '9')
@@ -1389,7 +1389,7 @@ index 82337b74e..56a6b433d 100644
 +}
 +
  OE_EXTERNC_END
-
+ 
  #endif /* _OE_UTILS_H */
 diff --git a/libc/malloc.c b/libc/malloc.c
 index 526ae583f..8198d8da0 100644
@@ -2834,6 +2834,23 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
+diff --git a/tests/syscall/getrandom/enc/enc.c b/tests/syscall/getrandom/enc/enc.c
+index 98e48740e..d89e5b545 100644
+--- a/tests/syscall/getrandom/enc/enc.c
++++ b/tests/syscall/getrandom/enc/enc.c
+@@ -22,12 +22,6 @@ void test_getrandom()
+     /* Test with the zero flags (required by OE) */
+     size = getrandom((void*)buf, sizeof(buflen), 0);
+     OE_TEST((size_t)size == sizeof(buflen));
+-
+-    /* Test with unsupported flags */
+-    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_RANDOM) == -1);
+-    OE_TEST(errno == EINVAL);
+-    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_NONBLOCK) == -1);
+-    OE_TEST(errno == EINVAL);
+ }
+ 
+ OE_SET_ENCLAVE_SGX(
 diff --git a/tests/syscall/poller/client.cpp b/tests/syscall/poller/client.cpp
 index c09560c7f..927be2ded 100644
 --- a/tests/syscall/poller/client.cpp
