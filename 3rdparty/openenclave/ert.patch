@@ -155,13 +155,13 @@ index f4d9fcc76..1118bb1f5 100644
              size_t der_data_size = sgx_endorsements->items[i].size;
              if (der_data_size == 0)
                  OE_RAISE(OE_INVALID_PARAMETER);
-
+ 
 -            // If DER CRL buffer has null terminator, need to remove it before
 +            // If CRL buffer has null terminator, need to remove it before
              // send the DER data to crypto API for reading.
              if (sgx_endorsements->items[i].data[der_data_size - 1] == 0)
                  der_data_size -= 1;
-
+ 
 +            // If the CRL is only composed of hex digits we need to manually
 +            // convert to DER
 +            bool ishex = true;
@@ -400,6 +400,23 @@ index 6a6279f03..8de1f929a 100644
      // Once it starts to crash, the state can only transit forward, not
      // backward.
      if (__oe_enclave_status < OE_ENCLAVE_ABORTING)
+diff --git a/enclave/core/sgx/cpuid.c b/enclave/core/sgx/cpuid.c
+index 1e99252e5..558f9b9d8 100644
+--- a/enclave/core/sgx/cpuid.c
++++ b/enclave/core/sgx/cpuid.c
+@@ -36,6 +36,12 @@ oe_result_t oe_initialize_cpuid(void)
+     if (!(_cpuid_table[1][OE_CPUID_RCX] & OE_CPUID_AESNI_FEATURE))
+         oe_abort();
+ 
++    // set max input value for basic and extended
++    _cpuid_table[oe_get_emulated_cpuid_leaf_index(0)][OE_CPUID_RAX] =
++        OE_CPUID_MAX_BASIC;
++    _cpuid_table[oe_get_emulated_cpuid_leaf_index(0x80000000)][OE_CPUID_RAX] =
++        OE_CPUID_MAX_EXTENDED;
++
+     result = OE_OK;
+ 
+ done:
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
 index bd61ea6fa..e39d9f15a 100644
 --- a/enclave/core/sgx/exception.c
@@ -1200,6 +1217,19 @@ index 20f52a793..e84369bce 100644
  /**
   * Terminate an enclave and reclaims its resources.
   *
+diff --git a/include/openenclave/internal/cpuid.h b/include/openenclave/internal/cpuid.h
+index 496671cd1..66e7b4892 100644
+--- a/include/openenclave/internal/cpuid.h
++++ b/include/openenclave/internal/cpuid.h
+@@ -9,6 +9,8 @@
+ 
+ #define OE_CPUID_OPCODE 0xA20F
+ #define OE_CPUID_LEAF_COUNT 6 /* 0,1,4,7,0x80000000,0x80000001 */
++#define OE_CPUID_MAX_BASIC 7
++#define OE_CPUID_MAX_EXTENDED 0x80000001
+ 
+ #define OE_CPUID_RAX 0
+ #define OE_CPUID_RBX 1
 diff --git a/include/openenclave/internal/globals.h b/include/openenclave/internal/globals.h
 index 0e94f7237..6e10cbe48 100644
 --- a/include/openenclave/internal/globals.h
@@ -1360,7 +1390,7 @@ index 82337b74e..56a6b433d 100644
 @@ -228,6 +228,33 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
      }
  }
-
+ 
 +OE_INLINE unsigned char oe_hex_digit_to_num(char c)
 +{
 +    if (c >= '0' && c <= '9')
@@ -1389,7 +1419,7 @@ index 82337b74e..56a6b433d 100644
 +}
 +
  OE_EXTERNC_END
-
+ 
  #endif /* _OE_UTILS_H */
 diff --git a/libc/malloc.c b/libc/malloc.c
 index 526ae583f..8198d8da0 100644
@@ -2644,6 +2674,38 @@ index 8753f0639..6b99e27dc 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
+diff --git a/tests/VectorException/host/host.c b/tests/VectorException/host/host.c
+index e6c526831..1e851d6c2 100644
+--- a/tests/VectorException/host/host.c
++++ b/tests/VectorException/host/host.c
+@@ -111,9 +111,13 @@ void test_sigill_handling(oe_enclave_t* enclave)
+ 
+         for (uint32_t j = 0; j < OE_CPUID_REG_COUNT; j++)
+         {
+-            if (i == 1 && j == 1)
++            if (leaf == 0 && j == OE_CPUID_RAX)
++            {
++                // The enclave sets this to the highest emulated leaf.
++                OE_TEST(OE_CPUID_MAX_BASIC == cpuid_table[i][j]);
++            }
++            else if (leaf == 1 && j == OE_CPUID_RBX)
+             {
+-                // Leaf 1. EBX register.
+                 // The highest 8 bits indicates the current executing processor
+                 // id.
+                 // There is no guarantee that the value is the same across
+@@ -125,6 +129,11 @@ void test_sigill_handling(oe_enclave_t* enclave)
+                     (cpuid_info[j] & 0x00FFFFFF) ==
+                     (cpuid_table[i][j] & 0x00FFFFFF));
+             }
++            else if (leaf == 0x80000000 && j == OE_CPUID_RAX)
++            {
++                // The enclave sets this to the highest emulated leaf.
++                OE_TEST(OE_CPUID_MAX_EXTENDED == cpuid_table[i][j]);
++            }
+             else
+             {
+                 OE_TEST(cpuid_info[j] == cpuid_table[i][j]);
 diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
 index cfbd81120..862f0d4ea 100644
 --- a/tests/crypto/enclave/enc/enc.c
