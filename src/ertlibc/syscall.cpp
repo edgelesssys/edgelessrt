@@ -3,6 +3,7 @@
 
 #include "syscall.h"
 #include <fcntl.h>
+#include <openenclave/attestation/verifier.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/malloc.h>
 #include <openenclave/internal/trace.h>
@@ -130,6 +131,26 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             case 1006:
                 return reinterpret_cast<long>(
                     oe_result_str(static_cast<oe_result_t>(x1)));
+
+            case 1007:
+            {
+                const auto res = oe_verifier_initialize();
+                if (res != OE_OK)
+                    return res;
+                return oe_verify_evidence(
+                    nullptr,
+                    reinterpret_cast<uint8_t*>(x1),
+                    x2,
+                    nullptr,
+                    0,
+                    nullptr,
+                    0,
+                    reinterpret_cast<oe_claim_t**>(x3),
+                    reinterpret_cast<size_t*>(x4));
+            }
+
+            case 1008:
+                return oe_free_claims(reinterpret_cast<oe_claim_t*>(x1), x2);
         }
     }
     catch (const system_error& e)
