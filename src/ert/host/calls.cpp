@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/internal/trace.h>
+#include <sched.h>
 #include <cassert>
 #include <exception>
 #include "enclave_thread_manager.h"
@@ -45,4 +46,12 @@ int ert_clock_gettime_ocall(
 void ert_exit_ocall(int status)
 {
     exit(status);
+}
+
+size_t ert_getaffinity_cpucount()
+{
+    cpu_set_t cpuset{};
+    if (sched_getaffinity(0, sizeof cpuset, &cpuset) != 0)
+        return 0;
+    return static_cast<size_t>(CPU_COUNT(&cpuset));
 }

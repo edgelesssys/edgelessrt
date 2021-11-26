@@ -23,6 +23,8 @@ enclave {
 
         void ert_exit_ocall(int status);
 
+        size_t ert_getaffinity_cpucount();
+
         void ert_restart_host_process_ocall();
     };
 }
