@@ -34,10 +34,6 @@ void test_ecall()
     OE_TEST(munmap(nullptr, 1) == -1);
     OE_TEST(mmap(p, 1, PROT_READ, flags, -1, 0) == MAP_FAILED);
     OE_TEST(mmap(nullptr, 0, PROT_READ, flags, -1, 0) == MAP_FAILED);
-    OE_TEST(mmap(nullptr, 1, PROT_READ, MAP_ANON, -1, 0) == MAP_FAILED);
-    OE_TEST(mmap(nullptr, 1, PROT_READ, MAP_PRIVATE, -1, 0) == MAP_FAILED);
-    OE_TEST(
-        mmap(nullptr, 1, PROT_READ, flags | MAP_FIXED, -1, 0) == MAP_FAILED);
     OE_TEST(mmap(p + 1, 1, PROT_READ, flags | MAP_FIXED, -1, 0) == MAP_FAILED);
     OE_TEST(mmap(nullptr, 1, PROT_READ, flags, 0, 0) == MAP_FAILED);
     OE_TEST(mmap(nullptr, 1, PROT_READ, flags, -1, 1) == MAP_FAILED);

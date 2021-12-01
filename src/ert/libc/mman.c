@@ -112,7 +112,7 @@ void* ert_mmap(
         return (void*)-ENOMEM;
     }
 
-    if (!addr && flags == (MAP_ANON | MAP_PRIVATE))
+    if (!addr)
         result = _map(length);
     else if (addr && flags == (MAP_ANON | MAP_FIXED | MAP_PRIVATE))
         result = _map_fixed(addr, length);
