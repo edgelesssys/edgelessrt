@@ -568,10 +568,29 @@ index 28e78c546..23acc8d09 100644
      if (result != OE_OK)
      {
 diff --git a/enclave/core/sgx/threadlocal.c b/enclave/core/sgx/threadlocal.c
-index dcec5016b..c51789504 100644
+index dcec5016b..77b78ad97 100644
 --- a/enclave/core/sgx/threadlocal.c
 +++ b/enclave/core/sgx/threadlocal.c
-@@ -375,8 +375,10 @@ done:
+@@ -313,6 +313,18 @@ oe_result_t oe_thread_local_init(oe_sgx_td_t* td)
+         // Copy the template
+         oe_memcpy_s(tls_start, _tdata_size, tdata, _tdata_size);
+ 
++        // EDG: copy payload template
++        const oe_enclave_module_info_t* const modinfo = oe_get_module_info();
++        if (modinfo->tdata_size)
++        {
++            oe_memcpy_s(
++                fs - modinfo->tls_size,
++                modinfo->tdata_size,
++                (uint8_t*)__oe_get_enclave_start_address() + modinfo->base_rva +
++                    modinfo->tdata_rva,
++                modinfo->tdata_size);
++        }
++
+         // Perform thread-local relocations, only run once.
+         if (!_thread_locals_relocated)
+         {
+@@ -375,8 +387,10 @@ done:
  /**
   * Register a destructor to be called on the given object when the
   * thread exits. This call is emitted by the compiler.
@@ -583,7 +602,7 @@ index dcec5016b..c51789504 100644
  {
      oe_sgx_td_t* td = oe_sgx_get_td();
  
-@@ -392,6 +394,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
+@@ -392,6 +406,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
      td->tls_atexit_functions[td->num_tls_atexit_functions - 1] = item;
  }
  
@@ -1075,10 +1094,22 @@ index 4ec690dd7..2f5e827b8 100644
  done:
      return result;
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index 7567534f3..a6c2efd46 100644
+index 7567534f3..19a68334b 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -1016,6 +1016,11 @@ static oe_result_t _patch_elf_image(
+@@ -905,6 +905,11 @@ done:
+     return result;
+ }
+ 
++static uint64_t _get_aligned_size(uint64_t size, uint64_t align)
++{
++    return align ? oe_round_up_to_multiple(size, align) : size;
++}
++
+ static oe_result_t _patch_elf_image(
+     oe_enclave_elf_image_t* image,
+     oe_enclave_elf_image_t* module_image,
+@@ -1016,6 +1021,34 @@ static oe_result_t _patch_elf_image(
                  &module_info->fini_array_rva));
              module_info->fini_array_size = fini_section.sh_size;
          }
@@ -1087,10 +1118,33 @@ index 7567534f3..a6c2efd46 100644
 +        module_info->payload_data_size = module_image->payload_data_size;
 +        oeprops->image_info.heap_rva +=
 +            oe_round_up_to_page_size(module_image->payload_data_size);
++
++        // EDG: payload tls
++        const uint64_t module_tls_size =
++            _get_aligned_size(
++                module_image->tbss_size, module_image->tbss_align) +
++            _get_aligned_size(
++                module_image->tdata_size, module_image->tdata_align);
++        elf64_sym_t sym_reserved_tls = {0};
++        elf64_find_dynamic_symbol_by_name(
++            &image->elf, "ert_reserved_tls", &sym_reserved_tls);
++        if (sym_reserved_tls.st_size < module_tls_size)
++            OE_RAISE_MSG(
++                OE_INVALID_IMAGE,
++                "payload image needs %lu bytes TLS, but main image only "
++                "reserved %lu bytes",
++                module_tls_size,
++                sym_reserved_tls.st_size);
++        if (module_image->tdata_size)
++        {
++            module_info->tdata_rva = module_image->tdata_rva;
++            module_info->tdata_size = module_image->tdata_size;
++            module_info->tls_size = module_tls_size;
++        }
      }
  
      /* Clear the hash when taking the measure */
-@@ -1381,8 +1386,12 @@ done:
+@@ -1381,8 +1414,12 @@ done:
  
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
@@ -1104,7 +1158,7 @@ index 7567534f3..a6c2efd46 100644
      oe_result_t result = OE_UNEXPECTED;
      char* module_path = NULL;
      oe_enclave_elf_image_t* module_image = NULL;
-@@ -1401,13 +1410,16 @@ static oe_result_t _load_dependent_image(
+@@ -1401,13 +1438,16 @@ static oe_result_t _load_dependent_image(
                  "Failed to locate the module. Please place the module under "
                  "the same directory as the enclave binary.",
                  NULL);
@@ -1123,7 +1177,7 @@ index 7567534f3..a6c2efd46 100644
          /* Update the RVA for the module */
          module_image->image_rva = image->elf.image_size;
          image->submodule = module_image;
-@@ -1442,7 +1454,8 @@ done:
+@@ -1442,7 +1482,8 @@ done:
  
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
@@ -1133,7 +1187,7 @@ index 7567534f3..a6c2efd46 100644
  {
      oe_result_t result = OE_UNEXPECTED;
  
-@@ -1452,7 +1465,7 @@ oe_result_t oe_load_elf_enclave_image(
+@@ -1452,7 +1493,7 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
  
      /* Load the dependent image into memory */
@@ -1362,16 +1416,19 @@ index 0d1875aa7..e27dd8304 100644
  oe_result_t oe_unload_enclave_image(oe_enclave_image_t* oeimage);
  
 diff --git a/include/openenclave/internal/module.h b/include/openenclave/internal/module.h
-index 2d720612b..6fb2bf087 100644
+index 2d720612b..e4043f759 100644
 --- a/include/openenclave/internal/module.h
 +++ b/include/openenclave/internal/module.h
-@@ -21,6 +21,9 @@ typedef struct _oe_enclave_module_info
+@@ -21,6 +21,12 @@ typedef struct _oe_enclave_module_info
       * indicates that the module does not implement such functions. */
      uint64_t fini_array_rva;
      uint64_t fini_array_size;
 +
 +    // EDG: payload properties
 +    uint64_t payload_data_size;
++    uint64_t tdata_rva;
++    uint64_t tdata_size;
++    uint64_t tls_size;
  } oe_enclave_module_info_t;
  
  OE_EXTERNC_END
