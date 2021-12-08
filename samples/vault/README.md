@@ -1,6 +1,8 @@
 # Hashicorp Vault sample
 This sample shows how to port an existing Go application to `Edgeless RT`.
 
+**Also check out [EGo](https://github.com/edgelesssys/ego), which further simplifies porting Go apps.**
+
 To build Vault for the enclave, first compile the (unmodified) Vault project to a static library using the Edgeless Go compiler:
 ```sh
 git clone https://github.com/hashicorp/vault

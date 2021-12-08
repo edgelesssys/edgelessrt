@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/edgelesssys/ertgolib/ertenclave"
+	"github.com/edgelesssys/ego/enclave"
 )
 
 func main() {}
@@ -25,12 +25,12 @@ func gotest() int32 {
 	reportData := make([]byte, 64)
 	rand.Read(reportData)
 
-	reportBytes, err := ertenclave.GetRemoteReport(reportData)
+	reportBytes, err := enclave.GetRemoteReport(reportData)
 	if err != nil {
 		return -1
 	}
 
-	report, err := ertenclave.VerifyRemoteReport(reportBytes)
+	report, err := enclave.VerifyRemoteReport(reportBytes)
 	if err != nil {
 		return -2
 	}

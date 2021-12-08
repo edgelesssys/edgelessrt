@@ -1,6 +1,8 @@
 # Go sample
 This sample shows how to build an enclave application written in Go.
 
+**Also check out [EGo](https://github.com/edgelesssys/ego), which further simplifies building confidential Go apps.**
+
 The directory `app` contains the Go application code:
 * `hello.go` contains the application's main function. This is ordinary Go code.
 * `invokemain.go` exports a function that can be called from C, which serves as the application's entry point. This function just invokes the real main function.

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/edgelesssys/ertgolib/ertenclave"
+	"github.com/edgelesssys/ego/enclave"
 )
 
 func main() {}
@@ -14,7 +14,7 @@ func main() {}
 func gotest() int32 {
 	fmt.Println("gotest")
 
-	for _, f := range []func() ([]byte, []byte, error){ertenclave.GetUniqueSealKey, ertenclave.GetProductSealKey} {
+	for _, f := range []func() ([]byte, []byte, error){enclave.GetUniqueSealKey, enclave.GetProductSealKey} {
 		key, info, err := f()
 		if err != nil {
 			return -1
@@ -22,7 +22,7 @@ func gotest() int32 {
 		if len(key) <= 0 || len(info) <= 0 {
 			return -2
 		}
-		keyByInfo, err := ertenclave.GetSealKey(info)
+		keyByInfo, err := enclave.GetSealKey(info)
 		if err != nil {
 			return -3
 		}

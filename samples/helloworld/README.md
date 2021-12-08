@@ -19,7 +19,7 @@ OE_SIMULATION=1 erthost enclave.signed
 ```
 to run the sample.
 ## custom host
-As stated [here](../README.md#erthost) `ertdeventry` must not be used in production. For modern distributed applications, it is recommended to use [Marblerun](../README.md#marblerun). Alternatively, for a standalone application, you can write a custom entry point and, optionally, also a custom host application. An example is given in the directory `custom_host`. It can be built and run as follows:
+As stated [here](../README.md#erthost) `ertdeventry` must not be used in production. For modern distributed applications, it is recommended to use [MarbleRun](../README.md#marblerun). Alternatively, for a standalone application, you can write a custom entry point and, optionally, also a custom host application. An example is given in the directory `custom_host`. It can be built and run as follows:
 ```sh
 mkdir build
 cd build

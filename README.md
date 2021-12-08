@@ -10,14 +10,15 @@ Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.in
 
 Key features of Edgeless RT are:
 * Comprehensive support for Go, most existing code runs without changes
+  * Preferably use [EGo](https://github.com/edgelesssys/ego) to build confidential Go apps.
+  * Use Edgeless RT if you need more control, e.g., you may want to link some Go code to your C++ app.
 * Extended C/C++ support
   * More libc and POSIX functions
   * More C++17 STL
   * pthread and std::thread
   * libstdc++ for better compatibility with existing code
-* Seamless integration with [Marblerun](https://github.com/edgelesssys/marblerun) to create distributed confidential applications
+* Seamless integration with [MarbleRun](https://github.com/edgelesssys/marblerun) to create distributed confidential applications
 * Experimental support for Rust
-* Soon: support for Python
 
 ## Quick Start
 If you're on Ubuntu 18.04 or above and don't want to build the SDK yourself, you can install the binary release:
@@ -79,7 +80,7 @@ To use the SDK you need to source the `openenclaverc` file to setup environment 
 
 Now you are ready to build applications with Edgeless RT! To start, check out the [samples](samples).
 
-Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ertgolib).
+Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and/or the [Go API documentation](https://pkg.go.dev/github.com/edgelesssys/ego).
 
 ## Debug
 
