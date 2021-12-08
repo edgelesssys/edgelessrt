@@ -1,5 +1,5 @@
 module gotest
 
-go 1.14
+go 1.16
 
-require github.com/edgelesssys/ertgolib v0.1.5-0.20210202111806-4e637e2f28b6
+require github.com/edgelesssys/ego v0.4.0

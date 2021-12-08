@@ -10,7 +10,7 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMAND
     sh -c
-    "CGO_CFLAGS='-I${OEBUILDDIR}/openenclave-install/include -I${CMAKE_CURRENT_SOURCE_DIR}/include' GOROOT='${CMAKE_SOURCE_DIR}/../3rdparty/go' '${CMAKE_SOURCE_DIR}/../3rdparty/go/bin/go' build -buildmode=c-archive -o '${CMAKE_CURRENT_BINARY_DIR}/gotest.a' gotest.go"
+    "CGO_CFLAGS='-I${OEBUILDDIR}/openenclave-install/include' GOROOT='${CMAKE_SOURCE_DIR}/../3rdparty/go' '${CMAKE_SOURCE_DIR}/../3rdparty/go/bin/go' build -buildmode=c-archive -o '${CMAKE_CURRENT_BINARY_DIR}/gotest.a' gotest.go"
 )
 add_custom_target(goratestlib DEPENDS gotest.a)
 
