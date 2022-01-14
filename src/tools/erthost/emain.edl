@@ -11,5 +11,13 @@ enclave {
 
     untrusted {
         ert_args_t ert_get_args_ocall();
+
+        void ert_cpuid_ocall(
+            unsigned int leaf,
+            unsigned int subleaf,
+            [out] unsigned int* eax,
+            [out] unsigned int* ebx,
+            [out] unsigned int* ecx,
+            [out] unsigned int* edx);
     };
 };

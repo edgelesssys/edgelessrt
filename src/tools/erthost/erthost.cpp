@@ -23,6 +23,7 @@
 #include <system_error>
 #include "../../ert/common/final_action.h"
 #include "../../ert/host/enclave_thread_manager.h"
+#include "../host/sgx/cpuid.h"
 #include "emain_u.h"
 
 using namespace std;
@@ -265,4 +266,15 @@ int main(int argc, char* argv[], char* envp[])
     }
 
     return EXIT_FAILURE;
+}
+
+void ert_cpuid_ocall(
+    unsigned int leaf,
+    unsigned int subleaf,
+    unsigned int* eax,
+    unsigned int* ebx,
+    unsigned int* ecx,
+    unsigned int* edx)
+{
+    oe_get_cpuid(leaf, subleaf, eax, ebx, ecx, edx);
 }
