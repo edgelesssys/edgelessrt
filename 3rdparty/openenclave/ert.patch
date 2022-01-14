@@ -1196,6 +1196,25 @@ index 7567534f3..19a68334b 100644
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
+diff --git a/host/sgx/sgxload.c b/host/sgx/sgxload.c
+index fc21ebcd7..a764b691a 100644
+--- a/host/sgx/sgxload.c
++++ b/host/sgx/sgxload.c
+@@ -114,9 +114,13 @@ static int _make_memory_protect_param(uint64_t inflags, bool simulate)
+ static uint64_t _detect_xfrm()
+ {
+     uint64_t xfrm = SGX_ATTRIBUTES_DEFAULT_XFRM;
++    const uint64_t os_xfrm = oe_get_xfrm();
++
+     // Enable AVX in the enclave if supported by the OS
+-    if ((oe_get_xfrm() & SGX_XFRM_AVX) == SGX_XFRM_AVX)
++    if ((os_xfrm & SGX_XFRM_AVX) == SGX_XFRM_AVX)
+         xfrm |= SGX_XFRM_AVX;
++    if ((os_xfrm & SGX_XFRM_AVX512) == SGX_XFRM_AVX512)
++        xfrm |= SGX_XFRM_AVX512;
+ 
+     OE_TRACE_INFO("Value of XFRM to be set in enclave is %d\n", xfrm);
+     return xfrm;
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
 index f7220c44f..d3623bfa1 100644
 --- a/include/openenclave/bits/fs.h
