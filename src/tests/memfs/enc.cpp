@@ -7,6 +7,8 @@
 #undef OE_DEVICE_NAME_HOST_FILE_SYSTEM
 #define OE_DEVICE_NAME_HOST_FILE_SYSTEM "myfs"
 
+#define ERT_TEST_MEMFS
+
 // existing test links against musl which has strlc??, but we link against glibc
 #define strlcat strncat
 #define strlcpy strncpy
