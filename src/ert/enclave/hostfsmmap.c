@@ -46,6 +46,22 @@ static void _set_file_size(file_t* file, size_t size)
         ->size = size;
 }
 
+static int _fs_flock(oe_fd_t* desc, int operation)
+{
+    int ret = -1;
+    file_t* file = (file_t*)desc;
+
+    if (!file)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+    /* Call the host to perform the flock(). */
+    if (oe_syscall_flock_ocall(&ret, file->host_fd, operation) != OE_OK)
+        OE_RAISE_ERRNO(OE_EINVAL);
+
+done:
+    return ret;
+}
+
 static int _fs_fsync(oe_fd_t* desc)
 {
     int ret = -1;
@@ -564,6 +580,7 @@ static oe_file_ops_t _file_ops = {
     .fd.write = _fs_write,
     .fd.readv = _fs_readv,
     .fd.writev = _fs_writev,
+    .fd.flock = _fs_flock,
     .fd.dup = _fs_dup,
     .fd.ioctl = _fs_ioctl,
     .fd.fcntl = _fs_fcntl,
