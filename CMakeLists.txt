@@ -45,7 +45,19 @@ if (NOT OEDEV OR NOT EXISTS
 endif ()
 execute_process(
   COMMAND git submodule update --init tools/oeedger8r-cpp
-          3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
+          3rdparty/mbedtls/mbedtls 3rdparty/musl/musl
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
+execute_process(
+  COMMAND git submodule init 3rdparty/musl/libc-test
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
+execute_process(
+  COMMAND
+    git config -f.git/modules/3rdparty/openenclave/openenclave/config
+    submodule.3rdparty/musl/libc-test.url
+    https://github.com/openenclave/openenclave-musl-libc-tests
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+execute_process(
+  COMMAND git submodule update 3rdparty/musl/libc-test
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
 
 add_subdirectory(3rdparty/openenclave)
