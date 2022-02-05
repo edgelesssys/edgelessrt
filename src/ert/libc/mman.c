@@ -89,13 +89,11 @@ void* ert_mmap(
     off_t offset)
 {
     // check for invalid args
-    if ((uintptr_t)addr % OE_PAGE_SIZE || !length)
+    if (!length || ((flags & MAP_FIXED) && (uintptr_t)addr % OE_PAGE_SIZE))
         return (void*)-EINVAL;
 
     // check for unsupported args
-    // Accept PROT_EXEC even though the memory is not executable. Python ctypes
-    // will allocate such memory, but not necessarily make use of it.
-    if ((prot & ~(PROT_READ | PROT_WRITE | PROT_EXEC)) || fd != -1 || offset)
+    if (offset || (fd != -1 && !(flags & MAP_ANON)))
         return (void*)-ENOSYS;
 
     length = oe_round_up_to_page_size(length);
@@ -112,12 +110,10 @@ void* ert_mmap(
         return (void*)-ENOMEM;
     }
 
-    if (!addr)
-        result = _map(length);
-    else if (addr && flags == (MAP_ANON | MAP_FIXED | MAP_PRIVATE))
+    if (flags & MAP_FIXED)
         result = _map_fixed(addr, length);
     else
-        result = (void*)-EINVAL;
+        result = _map(length);
 
     oe_spin_unlock(&_lock);
 
