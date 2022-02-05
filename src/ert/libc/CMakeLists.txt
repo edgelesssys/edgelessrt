@@ -49,9 +49,14 @@ endif ()
 set(PLATFORM_SRC "")
 
 if (OE_SGX)
-  list(APPEND PLATFORM_SRC ${LIBCDIR}/sgx/arc4random.c
-       ${MUSLSRC}/math/x86_64/sqrt.c ${MUSLSRC}/math/x86_64/sqrtl.c
-       ${MUSLSRC}/math/x86_64/sqrtf.c)
+  list(
+    APPEND
+    PLATFORM_SRC
+    ${LIBCDIR}/sgx/arc4random.c
+    ${MUSLSRC}/math/x86_64/sqrt.c
+    ${MUSLSRC}/math/x86_64/sqrtl.c
+    ${MUSLSRC}/math/x86_64/sqrtf.c
+    ${LIBCDIR}/sgx/init.c)
 else ()
   list(
     APPEND
@@ -62,6 +67,7 @@ else ()
     ${MUSLSRC}/string/memset.c
     optee/abort.c
     optee/arc4random.c
+    optee/init.c
     optee/trace.c)
 endif ()
 
@@ -99,14 +105,13 @@ add_enclave_library(
   ${LIBCDIR}/libunwind_stubs.c
   ${LIBCDIR}/link.c
   ${LIBCDIR}/malloc.c
+  mman.c
   pthread.c
   ${LIBCDIR}/sched_yield.c
-  #${LIBCDIR}/sigaction.c
   ${LIBCDIR}/signal.c
   ${LIBCDIR}/stdlib.c
   ${LIBCDIR}/strerror.c
   syscalls.c
-  #${LIBCDIR}/sysconf.c
   ${LIBCDIR}/regcomp.c
   ${LIBCDIR}/regexec.c
   ${LIBCDIR}/tre-mem.c
@@ -122,9 +127,7 @@ add_enclave_library(
   chk.c
   ertfutex.c
   misc.c
-  mman.c
   pthreadhooks.c
-  threaded.c
   ../common/bitset.c
   ${MUSLSRC}/complex/cabs.c
   ${MUSLSRC}/complex/cabsf.c
@@ -181,6 +184,11 @@ add_enclave_library(
   ${MUSLSRC}/complex/ctanhf.c
   ${MUSLSRC}/complex/ctanhl.c
   ${MUSLSRC}/complex/ctanl.c
+  ${MUSLSRC}/conf/confstr.c
+  ${MUSLSRC}/conf/fpathconf.c
+  ${MUSLSRC}/conf/legacy.c
+  ${MUSLSRC}/conf/pathconf.c
+  ${MUSLSRC}/conf/sysconf.c
   ${MUSLSRC}/ctype/__ctype_b_loc.c
   ${MUSLSRC}/ctype/__ctype_get_mb_cur_max.c
   ${MUSLSRC}/ctype/__ctype_tolower_loc.c
@@ -270,9 +278,10 @@ add_enclave_library(
   ${MUSLSRC}/locale/wcscoll.c
   ${MUSLSRC}/locale/wcsxfrm.c
   ${MUSLSRC}/linux/getrandom.c
-  ${MUSLSRC}/linux/mount.c
   ${MUSLSRC}/linux/epoll.c
   ${MUSLSRC}/linux/flock.c
+  ${MUSLSRC}/linux/mount.c
+  ${MUSLSRC}/linux/sysinfo.c
   ${MUSLSRC}/math/__math_divzero.c
   ${MUSLSRC}/math/__math_divzerof.c
   ${MUSLSRC}/math/__math_invalid.c
@@ -500,11 +509,10 @@ add_enclave_library(
   ${MUSLSRC}/misc/basename.c
   ${MUSLSRC}/misc/dirname.c
   ${MUSLSRC}/misc/getdomainname.c
+  ${MUSLSRC}/misc/getrlimit.c
   ${MUSLSRC}/misc/ioctl.c
   ${MUSLSRC}/misc/nftw.c
   ${MUSLSRC}/misc/uname.c
-  ${MUSLSRC}/mman/mmap.c
-  ${MUSLSRC}/mman/munmap.c
   ${MUSLSRC}/multibyte/btowc.c
   ${MUSLSRC}/multibyte/c16rtomb.c
   ${MUSLSRC}/multibyte/c32rtomb.c
@@ -811,22 +819,32 @@ add_enclave_library(
   ${MUSLSRC}/temp/__randname.c
   ${MUSLSRC}/thread/__lock.c
   ${MUSLSRC}/thread/__wait.c
+  ${MUSLSRC}/time/asctime.c
+  ${MUSLSRC}/time/asctime_r.c
   ${MUSLSRC}/time/clock_gettime.c
   ${MUSLSRC}/time/clock_nanosleep.c
+  ${MUSLSRC}/time/ctime.c
+  ${MUSLSRC}/time/ctime_r.c
   ${MUSLSRC}/time/difftime.c
+  ${MUSLSRC}/time/ftime.c
   ${MUSLSRC}/time/gettimeofday.c
   ${MUSLSRC}/time/gmtime.c
   ${MUSLSRC}/time/gmtime_r.c
+  ${MUSLSRC}/time/localtime_r.c
+  ${MUSLSRC}/time/localtime.c
   ${MUSLSRC}/time/__map_file.c
-  ${MUSLSRC}/time/__month_to_secs.c
   ${MUSLSRC}/time/mktime.c
+  ${MUSLSRC}/time/__month_to_secs.c
   ${MUSLSRC}/time/nanosleep.c
   ${MUSLSRC}/time/__secs_to_tm.c
   ${MUSLSRC}/time/strftime.c
-  ${MUSLSRC}/time/__tz.c
+  ${MUSLSRC}/time/strptime.c
   ${MUSLSRC}/time/time.c
   ${MUSLSRC}/time/timegm.c
+  ${MUSLSRC}/time/timespec_get.c
   ${MUSLSRC}/time/__tm_to_secs.c
+  ${MUSLSRC}/time/__tz.c
+  ${MUSLSRC}/time/wcsftime.c
   ${MUSLSRC}/time/__year_to_secs.c
   ${MUSLSRC}/unistd/access.c
   ${MUSLSRC}/unistd/chdir.c
@@ -863,11 +881,6 @@ add_enclave_library(
   ${MUSLSRC}/aio/aio.c
   ${MUSLSRC}/aio/aio_suspend.c
   ${MUSLSRC}/aio/lio_listio.c
-  ${MUSLSRC}/conf/confstr.c
-  ${MUSLSRC}/conf/fpathconf.c
-  ${MUSLSRC}/conf/legacy.c
-  ${MUSLSRC}/conf/pathconf.c
-  ${MUSLSRC}/conf/sysconf.c
   ${MUSLSRC}/crypt/crypt.c
   ${MUSLSRC}/crypt/crypt_blowfish.c
   ${MUSLSRC}/crypt/crypt_des.c
@@ -982,7 +995,6 @@ add_enclave_library(
   ${MUSLSRC}/linux/swap.c
   ${MUSLSRC}/linux/sync_file_range.c
   ${MUSLSRC}/linux/syncfs.c
-  ${MUSLSRC}/linux/sysinfo.c
   ${MUSLSRC}/linux/tee.c
   ${MUSLSRC}/linux/timerfd.c
   ${MUSLSRC}/linux/unshare.c
@@ -1007,7 +1019,6 @@ add_enclave_library(
   ${MUSLSRC}/misc/getpriority.c
   ${MUSLSRC}/misc/getresgid.c
   ${MUSLSRC}/misc/getresuid.c
-  ${MUSLSRC}/misc/getrlimit.c
   ${MUSLSRC}/misc/getrusage.c
   ${MUSLSRC}/misc/getsubopt.c
   ${MUSLSRC}/misc/initgroups.c
@@ -1028,11 +1039,13 @@ add_enclave_library(
   ${MUSLSRC}/mman/mincore.c
   ${MUSLSRC}/mman/mlock.c
   ${MUSLSRC}/mman/mlockall.c
+  ${MUSLSRC}/mman/mmap.c
   ${MUSLSRC}/mman/mprotect.c
   ${MUSLSRC}/mman/mremap.c
   ${MUSLSRC}/mman/msync.c
   ${MUSLSRC}/mman/munlock.c
   ${MUSLSRC}/mman/munlockall.c
+  ${MUSLSRC}/mman/munmap.c
   ${MUSLSRC}/mman/posix_madvise.c
   ${MUSLSRC}/mman/shm_open.c
   ${MUSLSRC}/mq/mq_close.c
@@ -1322,28 +1335,18 @@ add_enclave_library(
   ${MUSLSRC}/thread/tss_delete.c
   ${MUSLSRC}/thread/tss_set.c
   ${MUSLSRC}/thread/vmlock.c
-  ${MUSLSRC}/time/asctime.c
-  ${MUSLSRC}/time/asctime_r.c
   ${MUSLSRC}/time/clock.c
   ${MUSLSRC}/time/clock_getcpuclockid.c
   ${MUSLSRC}/time/clock_getres.c
   ${MUSLSRC}/time/clock_settime.c
-  ${MUSLSRC}/time/ctime.c
-  ${MUSLSRC}/time/ctime_r.c
-  ${MUSLSRC}/time/ftime.c
   ${MUSLSRC}/time/getdate.c
-  ${MUSLSRC}/time/localtime.c
-  ${MUSLSRC}/time/localtime_r.c
-  ${MUSLSRC}/time/strptime.c
   ${MUSLSRC}/time/timer_create.c
   ${MUSLSRC}/time/timer_delete.c
   ${MUSLSRC}/time/timer_getoverrun.c
   ${MUSLSRC}/time/timer_gettime.c
   ${MUSLSRC}/time/timer_settime.c
   ${MUSLSRC}/time/times.c
-  ${MUSLSRC}/time/timespec_get.c
   ${MUSLSRC}/time/utime.c
-  ${MUSLSRC}/time/wcsftime.c
   ${MUSLSRC}/unistd/_exit.c
   ${MUSLSRC}/unistd/acct.c
   ${MUSLSRC}/unistd/alarm.c

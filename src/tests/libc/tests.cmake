@@ -4,16 +4,17 @@ list(
   APPEND
   LIBC_TESTS
   3rdparty/musl/libc-test/src/functional/crypt.c
+  3rdparty/musl/libc-test/src/functional/mbc.c
   3rdparty/musl/libc-test/src/functional/pthread_cond.c
   3rdparty/musl/libc-test/src/functional/pthread_mutex.c
   3rdparty/musl/libc-test/src/functional/sem_init.c
   3rdparty/musl/libc-test/src/functional/stat.c
   3rdparty/musl/libc-test/src/functional/strftime.c
+  3rdparty/musl/libc-test/src/functional/swprintf.c
   3rdparty/musl/libc-test/src/functional/tls_init.c
   3rdparty/musl/libc-test/src/functional/tls_local_exec.c
   3rdparty/musl/libc-test/src/regression/dn_expand-empty.c
   3rdparty/musl/libc-test/src/regression/dn_expand-ptr-0.c
-  3rdparty/musl/libc-test/src/regression/flockfile-list.c
   3rdparty/musl/libc-test/src/regression/ftello-unflushed-append.c
   3rdparty/musl/libc-test/src/regression/getpwnam_r-crash.c
   3rdparty/musl/libc-test/src/regression/getpwnam_r-errno.c
@@ -22,6 +23,8 @@ list(
   3rdparty/musl/libc-test/src/regression/pthread_cond-smasher.c
   3rdparty/musl/libc-test/src/regression/pthread_once-deadlock.c
   3rdparty/musl/libc-test/src/regression/pthread_rwlock-ebusy.c
+  3rdparty/musl/libc-test/src/regression/regex-escaped-high-byte.c
   3rdparty/musl/libc-test/src/regression/rewind-clear-error.c
   3rdparty/musl/libc-test/src/regression/sigprocmask-internal.c
-  3rdparty/musl/libc-test/src/regression/syscall-sign-extend.c)
+  3rdparty/musl/libc-test/src/regression/syscall-sign-extend.c
+  3rdparty/musl/libc-test/src/regression/uselocale-0.c)

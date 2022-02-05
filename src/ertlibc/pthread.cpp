@@ -79,8 +79,6 @@ int pthread_create(
             return res;
     }
 
-    ert_musl_init_threaded();
-
     // create thread
     ert_thread_t* t;
     try
