@@ -89,7 +89,8 @@ void* ert_mmap(
     off_t offset)
 {
     // check for invalid args
-    if (!length || ((flags & MAP_FIXED) && (uintptr_t)addr % OE_PAGE_SIZE))
+    if (!length || !addr != !(flags & MAP_FIXED) ||
+        (uintptr_t)addr % OE_PAGE_SIZE)
         return (void*)-EINVAL;
 
     // check for unsupported args

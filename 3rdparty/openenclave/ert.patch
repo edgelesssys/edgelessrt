@@ -3042,7 +3042,7 @@ index 2c82b6c72..2ddd2619a 100644
  }
  
 diff --git a/tests/mman/enc/enc.c b/tests/mman/enc/enc.c
-index ae0d41a1e..4fd8506f3 100644
+index ae0d41a1e..3fe14efdc 100644
 --- a/tests/mman/enc/enc.c
 +++ b/tests/mman/enc/enc.c
 @@ -30,7 +30,6 @@ static void _test_basic()
@@ -3127,6 +3127,17 @@ index ae0d41a1e..4fd8506f3 100644
  }
  
  static void _test_mmap_params(void)
+@@ -142,8 +113,8 @@ static void _test_mmap_params(void)
+             PROT_READ,
+             MAP_ANONYMOUS | MAP_PRIVATE,
+             -1,
+-            0) != MAP_FAILED);
+-    OE_TEST(errno == 0);
++            0) == MAP_FAILED);
++    OE_TEST(errno == EINVAL);
+ 
+     // Zero length should fail.
+     OE_TEST(
 @@ -164,15 +135,16 @@ static void _test_mmap_params(void)
      OE_TEST(errno == ENOMEM);
  
@@ -3171,7 +3182,15 @@ index ae0d41a1e..4fd8506f3 100644
  
      errno = 0;
      // Test unsupported flags.
-@@ -262,7 +234,7 @@ static void _test_mmap_params(void)
+@@ -244,7 +216,6 @@ static void _test_mmap_params(void)
+ #ifdef MAP_32BIT
+         MAP_32BIT,
+ #endif
+-        MAP_FIXED,
+         MAP_FIXED_NOREPLACE,
+         MAP_GROWSDOWN,
+         MAP_HUGETLB,
+@@ -262,7 +233,7 @@ static void _test_mmap_params(void)
                  unsupported[i] | MAP_PRIVATE,
                  0,
                  0) == MAP_FAILED);
@@ -3180,7 +3199,7 @@ index ae0d41a1e..4fd8506f3 100644
      }
  
      int ignored[] = {
-@@ -278,7 +250,8 @@ static void _test_mmap_params(void)
+@@ -278,7 +249,8 @@ static void _test_mmap_params(void)
      {
          errno = 0;
          OE_TEST(
@@ -3190,7 +3209,7 @@ index ae0d41a1e..4fd8506f3 100644
              MAP_FAILED);
          OE_TEST(errno == 0);
      }
-@@ -329,8 +302,8 @@ static void _test_unmap_params(void)
+@@ -329,8 +301,8 @@ static void _test_unmap_params(void)
          for (size_t j = 0; j < OE_COUNTOF(lengths); ++j)
          {
              errno = -1;
