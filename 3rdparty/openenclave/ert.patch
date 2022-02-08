@@ -750,7 +750,7 @@ index d510591b7..dcf5b2f39 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index 512283c0b..9c6a81a71 100644
+index 512283c0b..f3853bc27 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -121,7 +121,8 @@ static oe_result_t _add_filled_pages(
@@ -1016,17 +1016,17 @@ index 512283c0b..9c6a81a71 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1298,6 +1442,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
-      * allows the exit functions to use switchless OCALLs and ECALLs (nested) */
-     OE_CHECK(oe_stop_switchless_manager(enclave));
+@@ -1280,6 +1424,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+     if (!enclave || enclave->magic != ENCLAVE_MAGIC)
+         OE_RAISE(OE_INVALID_PARAMETER);
  
 +    /* EDG: cancel lingering threads (if any) */
 +    oe_result_t ert_cancel_threads_created_inside_enclave(oe_enclave_t*);
 +    OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
 +
-     /* Call the enclave destructor */
-     OE_CHECK(oe_ecall(enclave, OE_ECALL_DESTRUCTOR, 0, NULL));
- 
+     /* Call the atexit functions (e.g., registered by atexit or the
+      * destructor attribute) */
+     result = oe_ecall(enclave, OE_ECALL_CALL_AT_EXIT_FUNCTIONS, 0, NULL);
 diff --git a/host/sgx/exception.c b/host/sgx/exception.c
 index 273e68e5e..619e3933b 100644
 --- a/host/sgx/exception.c
