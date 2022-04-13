@@ -82,6 +82,10 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             if (x4 == AT_SYMLINK_NOFOLLOW)
                 x4 = 0;
             break;
+        case OE_SYS_accept4:
+            if (!x4)
+                n = OE_SYS_accept;
+            break;
         case OE_SYS_getrandom:
             // clear flags because oe_getrandom fails if any are set and it
             // should be fine to ignore them

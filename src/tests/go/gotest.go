@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
 )
 
@@ -39,6 +40,10 @@ func gotest(simulate bool) int32 {
 	}
 	if _, err := os.Lstat("/"); err != nil {
 		return -7
+	}
+
+	if exec.Command("").Run().Error() != "exec not supported" {
+		return -8
 	}
 
 	return 42 // success magic
