@@ -14,13 +14,16 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        path: edgelessrt
+        submodules: recursive
 
     - name: Setup
       run: mkdir build
 
     - name: Build
       run: |
-        cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+        cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo ../edgelessrt
         ninja
       working-directory: build
 
