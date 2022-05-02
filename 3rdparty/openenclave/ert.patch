@@ -551,10 +551,10 @@ index 28e78c546..23acc8d09 100644
      if (result != OE_OK)
      {
 diff --git a/enclave/core/sgx/threadlocal.c b/enclave/core/sgx/threadlocal.c
-index 098f0d758..9181fbc9d 100644
+index fb7e1efc7..5178f177c 100644
 --- a/enclave/core/sgx/threadlocal.c
 +++ b/enclave/core/sgx/threadlocal.c
-@@ -286,6 +286,18 @@ oe_result_t oe_thread_local_init(oe_sgx_td_t* td)
+@@ -318,6 +318,18 @@ oe_result_t oe_sgx_thread_local_init(oe_sgx_td_t* td)
          // Copy the template
          oe_memcpy_s(tls_start, _tdata_size, tdata, _tdata_size);
  
@@ -573,7 +573,7 @@ index 098f0d758..9181fbc9d 100644
          // Perform thread-local relocations, only run once.
          if (!_thread_locals_relocated)
          {
-@@ -348,8 +360,10 @@ done:
+@@ -380,8 +392,10 @@ done:
  /**
   * Register a destructor to be called on the given object when the
   * thread exits. This call is emitted by the compiler.
@@ -585,7 +585,7 @@ index 098f0d758..9181fbc9d 100644
  {
      oe_sgx_td_t* td = oe_sgx_get_td();
  
-@@ -365,6 +379,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
+@@ -397,6 +411,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
      td->tls_atexit_functions[td->num_tls_atexit_functions - 1] = item;
  }
  
@@ -1095,10 +1095,10 @@ index 4ec690dd7..2f5e827b8 100644
  done:
      return result;
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index 70f32572b..19a68334b 100644
+index 05c03af72..1ad576c6b 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -740,6 +740,7 @@ static oe_result_t _link_elf_image(
+@@ -759,6 +759,7 @@ static oe_result_t _link_elf_image(
      uint64_t nrelocs = 0;
      const elf64_sym_t* symtab = NULL;
      size_t symtab_size = 0;
@@ -1106,7 +1106,7 @@ index 70f32572b..19a68334b 100644
  
      if (elf64_get_dynamic_symbol_table(&image->elf, &symtab, &symtab_size) != 0)
          goto done;
-@@ -802,12 +803,12 @@ static oe_result_t _link_elf_image(
+@@ -821,12 +822,12 @@ static oe_result_t _link_elf_image(
              else
              {
                  if ((symbol->st_info >> 4) != STB_WEAK)
@@ -1124,7 +1124,7 @@ index 70f32572b..19a68334b 100644
              }
          }
          /* Patch non-symbolic relocation records */
-@@ -818,6 +819,12 @@ static oe_result_t _link_elf_image(
+@@ -837,6 +838,12 @@ static oe_result_t _link_elf_image(
          }
      }
  
@@ -1137,7 +1137,7 @@ index 70f32572b..19a68334b 100644
      result = OE_OK;
  
  done:
-@@ -898,6 +905,11 @@ done:
+@@ -917,6 +924,11 @@ done:
      return result;
  }
  
@@ -1149,7 +1149,7 @@ index 70f32572b..19a68334b 100644
  static oe_result_t _patch_elf_image(
      oe_enclave_elf_image_t* image,
      oe_enclave_elf_image_t* module_image,
-@@ -1009,6 +1021,34 @@ static oe_result_t _patch_elf_image(
+@@ -1028,6 +1040,34 @@ static oe_result_t _patch_elf_image(
                  &module_info->fini_array_rva));
              module_info->fini_array_size = fini_section.sh_size;
          }
@@ -1184,7 +1184,7 @@ index 70f32572b..19a68334b 100644
      }
  
      /* Clear the hash when taking the measure */
-@@ -1374,8 +1414,12 @@ done:
+@@ -1393,8 +1433,12 @@ done:
  
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
@@ -1198,7 +1198,7 @@ index 70f32572b..19a68334b 100644
      oe_result_t result = OE_UNEXPECTED;
      char* module_path = NULL;
      oe_enclave_elf_image_t* module_image = NULL;
-@@ -1394,13 +1438,16 @@ static oe_result_t _load_dependent_image(
+@@ -1413,13 +1457,16 @@ static oe_result_t _load_dependent_image(
                  "Failed to locate the module. Please place the module under "
                  "the same directory as the enclave binary.",
                  NULL);
@@ -1217,7 +1217,7 @@ index 70f32572b..19a68334b 100644
          /* Update the RVA for the module */
          module_image->image_rva = image->elf.image_size;
          image->submodule = module_image;
-@@ -1435,7 +1482,8 @@ done:
+@@ -1454,7 +1501,8 @@ done:
  
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
@@ -1227,7 +1227,7 @@ index 70f32572b..19a68334b 100644
  {
      oe_result_t result = OE_UNEXPECTED;
  
-@@ -1445,7 +1493,7 @@ oe_result_t oe_load_elf_enclave_image(
+@@ -1464,7 +1512,7 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
  
      /* Load the dependent image into memory */
@@ -1249,18 +1249,9 @@ index f7220c44f..d3623bfa1 100644
  OE_EXTERNC_END
  
 diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
-index 42b6b572e..bf24bfebd 100644
+index 6be1fe542..aa4e723ee 100644
 --- a/include/openenclave/bits/sgx/sgxproperties.h
 +++ b/include/openenclave/bits/sgx/sgxproperties.h
-@@ -26,7 +26,7 @@ typedef struct _oe_sgx_enclave_image_info_t
- } oe_sgx_enclave_image_info_t;
- 
- /* Max number of threads in an enclave supported */
--#define OE_SGX_MAX_TCS 32
-+#define OE_SGX_MAX_TCS 64
- 
- // oe_sgx_enclave_properties_t SGX enclave properties derived type
- #define OE_SGX_FLAGS_DEBUG 0x0000000000000002ULL
 @@ -38,7 +38,9 @@ typedef struct _oe_sgx_enclave_flags_t
  {
      uint32_t capture_pf_gp_exceptions : 1;
@@ -2919,18 +2910,9 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 00a99f144..cb2e4a859 100644
+index fa883ed49..2938ded33 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -74,7 +74,7 @@ if (OE_SGX)
-   add_subdirectory(debugger)
-   add_subdirectory(host_verify)
-   add_subdirectory(invalid_image)
--  add_subdirectory(config_id)
-+  #add_subdirectory(config_id)
-   add_subdirectory(switchless)
-   add_subdirectory(switchless_atexit_calls)
-   add_subdirectory(switchless_threads)
 @@ -128,7 +128,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
@@ -2940,6 +2922,32 @@ index 00a99f144..cb2e4a859 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
+diff --git a/tests/config_id/host/host.c b/tests/config_id/host/host.c
+index ce504e169..1cfedc2df 100644
+--- a/tests/config_id/host/host.c
++++ b/tests/config_id/host/host.c
+@@ -2,6 +2,7 @@
+ // Licensed under the MIT License.
+ 
+ #include <openenclave/host.h>
++#include <openenclave/internal/sgx/tests.h>
+ #include <openenclave/internal/tests.h>
+ #include "../common.h"
+ #include "../host/sgx/cpuid.h"
+@@ -66,8 +67,11 @@ int main(int argc, const char* argv[])
+             1,
+             &enclave);
+         OE_TEST(result == OE_OK);
+-        enclave_test_config_id(enclave, &result);
+-        OE_TEST(result == OE_OK);
++        if (oe_has_sgx_quote_provider())
++        {
++            enclave_test_config_id(enclave, &result);
++            OE_TEST(result == OE_OK);
++        }
+     }
+     else
+     {
 diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
 index cfbd81120..862f0d4ea 100644
 --- a/tests/crypto/enclave/enc/enc.c
@@ -3018,16 +3026,17 @@ index 840d10c4e..648a7922b 100644
  }
  
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
-index c32f0d0f8..88cfb8708 100644
+index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
 +++ b/tests/invalid_image/main.cpp
-@@ -10,5 +10,6 @@ int main(int, char* argv[])
+@@ -10,5 +10,7 @@ int main(int, char* argv[])
      // expect failure
      // Linux  : ELF type is EXEC and not DYN
      // Windows: image is not ELF
 -    OE_TEST(oe_load_elf_enclave_image(argv[0], &image) == OE_INVALID_IMAGE);
 +    OE_TEST(
-+        oe_load_elf_enclave_image(argv[0], &image, NULL) == OE_INVALID_IMAGE);
++        oe_load_elf_enclave_image(argv[0], &image, nullptr) ==
++        OE_INVALID_IMAGE);
  }
 diff --git a/tests/mbed/enc/enc.c b/tests/mbed/enc/enc.c
 index 2c82b6c72..2ddd2619a 100644
