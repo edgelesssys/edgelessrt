@@ -182,7 +182,10 @@ extern "C" locale_t __newlocale(int mask, const char* locale, locale_t loc)
     // internals (see glibc/locale/global-locale.c). The following struct is
     // also compatible with musl.
     static const __locale_struct c_locale{
-        {}, reinterpret_cast<const unsigned short*>(nl_C_LC_CTYPE_class + 128)};
+        {},
+        reinterpret_cast<const unsigned short*>(nl_C_LC_CTYPE_class + 128),
+        reinterpret_cast<const int*>(nl_C_LC_CTYPE_tolower + 128),
+        reinterpret_cast<const int*>(nl_C_LC_CTYPE_toupper + 128)};
     return const_cast<locale_t>(&c_locale);
 }
 
