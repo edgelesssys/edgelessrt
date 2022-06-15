@@ -146,6 +146,7 @@ add_enclave_library(
   ${MUSLSRC}/complex/casinh.c
   ${MUSLSRC}/complex/casinhf.c
   ${MUSLSRC}/complex/casinhl.c
+  ${MUSLSRC}/complex/casinl.c
   ${MUSLSRC}/complex/catan.c
   ${MUSLSRC}/complex/catanf.c
   ${MUSLSRC}/complex/catanh.c

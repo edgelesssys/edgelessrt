@@ -1,3 +1,32 @@
+diff --git a/3rdparty/compiler-rt/CMakeLists.txt b/3rdparty/compiler-rt/CMakeLists.txt
+index b76d5e299..6e17361e7 100644
+--- a/3rdparty/compiler-rt/CMakeLists.txt
++++ b/3rdparty/compiler-rt/CMakeLists.txt
+@@ -72,14 +72,10 @@ set(GENERIC_SOURCES
+     fixunssfdi.c
+     fixunssfsi.c
+     fixunssfti.c
+-    floatdidf.c
+-    floatdisf.c
+     floatsidf.c
+     floatsisf.c
+     floattidf.c
+     floattisf.c
+-    floatundidf.c
+-    floatundisf.c
+     floatunsidf.c
+     floatunsisf.c
+     floatuntidf.c
+@@ -181,9 +177,7 @@ set(x86_ARCH_SOURCES
+     fixunsxfdi.c
+     fixunsxfsi.c
+     fixunsxfti.c
+-    floatdixf.c
+     floattixf.c
+-    floatundixf.c
+     floatuntixf.c
+     mulxc3.c
+     powixf2.c)
 diff --git a/3rdparty/dlmalloc/allocator.c b/3rdparty/dlmalloc/allocator.c
 index 510668721..b17909b5b 100644
 --- a/3rdparty/dlmalloc/allocator.c
