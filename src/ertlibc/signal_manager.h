@@ -35,8 +35,6 @@ class SignalManager final
     void set_stack(StackBuffer buffer);
 
   private:
-    static thread_local StackBuffer stack_;
-
     std::array<k_sigaction, NSIG> actions_;
     Spinlock spinlock_;
 

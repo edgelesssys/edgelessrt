@@ -1,11 +1,9 @@
 #include "signal_manager.h"
+#include <openenclave/internal/sgx/td.h>
 #include <mutex>
 
 using namespace std;
 using namespace ert;
-
-// defined in enclave/core/sgx/exception.c
-extern "C" __thread uint64_t ert_sigaltstack_sp;
 
 // currently only SIGSEGV is implemented
 static constexpr array _code_to_sig{
@@ -49,8 +47,6 @@ static_assert(_ureg_to_ereg[REG_RAX] == &oe_context_t::rax);
 static_assert(_ureg_to_ereg[REG_RCX] == &oe_context_t::rcx);
 static_assert(_ureg_to_ereg[REG_RSP] == &oe_context_t::rsp);
 static_assert(_ureg_to_ereg[REG_RIP] == &oe_context_t::rip);
-
-thread_local SignalManager::StackBuffer SignalManager::stack_;
 
 SignalManager& SignalManager::get_instance() noexcept
 {
@@ -111,27 +107,44 @@ bool SignalManager::vectored_exception_handler(
 
 SignalManager::StackBuffer SignalManager::get_stack() const noexcept
 {
-    return stack_;
+    const auto* const td = oe_sgx_get_td();
+    return {
+        reinterpret_cast<uint8_t*>(td->exception_handler_stack),
+        td->exception_handler_stack_size};
 }
 
 void SignalManager::set_stack(StackBuffer buffer)
 {
+    const auto td = oe_sgx_get_td();
+
     if (buffer.empty())
     {
-        stack_ = buffer;
-        ert_sigaltstack_sp = 0;
+        if (!oe_sgx_td_set_exception_handler_stack(td, nullptr, 0))
+            throw runtime_error("oe_sgx_td_set_exception_handler_stack failed");
+        if (!oe_sgx_td_unregister_exception_handler_stack(
+                td, OE_EXCEPTION_ACCESS_VIOLATION))
+            throw runtime_error(
+                "oe_sgx_td_unregister_exception_handler_stack failed");
         return;
     }
 
+    size_t size = buffer.size();
+
     // This should actually be MINSIGSTKSZ, but it's too small for the enclave
     // exception handling.
-    if (buffer.size() < SIGSTKSZ)
+    if (size < SIGSTKSZ)
         throw system_error(
             ENOMEM, system_category(), "sigaltstack: buffer too small");
 
-    stack_ = buffer;
-    ert_sigaltstack_sp =
-        reinterpret_cast<uint64_t>(buffer.data()) + buffer.size();
+    // ensure stack + size is 16-byte aligned
+    size -= reinterpret_cast<uintptr_t>(buffer.data()) % 16;
+
+    if (!oe_sgx_td_set_exception_handler_stack(td, buffer.data(), size))
+        throw runtime_error("oe_sgx_td_set_exception_handler_stack failed");
+    if (!oe_sgx_td_register_exception_handler_stack(
+            td, OE_EXCEPTION_ACCESS_VIOLATION))
+        throw runtime_error(
+            "oe_sgx_td_register_exception_handler_stack failed");
 }
 
 SignalManager::SignalManager() noexcept : actions_(), spinlock_()
