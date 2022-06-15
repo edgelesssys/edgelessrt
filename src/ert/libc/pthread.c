@@ -30,7 +30,7 @@ pthread_t __get_tp()
         uint8_t* const tcs = td_to_tcs(oe_sgx_get_td());
         self.pt.stack = tcs - guard_size;
 
-        self.pt.stack_size = oe_get_stack_size();
+        self.pt.stack_size = oe_get_num_stack_pages() * OE_PAGE_SIZE;
         self.pt.guard_size = guard_size;
         self.et.tid = self.pt.tid;
         self.et.tcs = tcs;

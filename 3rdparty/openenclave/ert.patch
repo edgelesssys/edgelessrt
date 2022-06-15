@@ -91,7 +91,7 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index aa32b64b5..0defdf988 100644
+index 0596a2660..d2b024a99 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -175,7 +175,8 @@ endif ()
@@ -114,7 +114,7 @@ index aa32b64b5..0defdf988 100644
  endif ()
  
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
-@@ -423,9 +425,9 @@ add_subdirectory(tools)
+@@ -419,9 +421,9 @@ add_subdirectory(tools)
  if (BUILD_ENCLAVES)
    add_subdirectory(enclave)
    add_subdirectory(3rdparty)
@@ -138,59 +138,6 @@ index 90864a682..f51cd9812 100644
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
-diff --git a/common/sgx/collateral.c b/common/sgx/collateral.c
-index f4d9fcc76..1118bb1f5 100644
---- a/common/sgx/collateral.c
-+++ b/common/sgx/collateral.c
-@@ -326,18 +326,46 @@ oe_result_t oe_validate_revocation_list(
-                 "Failed to read CRL. %s",
-                 oe_result_str(result));
-         }
--        // Otherwise, CRL should have v3 structure which is DER encoded
-+        // Otherwise, CRL should have v3 or v3.1 structure
-+        //    v3 is hex encoded DER
-+        //    v3.1 is DER
-         else
-         {
-             size_t der_data_size = sgx_endorsements->items[i].size;
-             if (der_data_size == 0)
-                 OE_RAISE(OE_INVALID_PARAMETER);
- 
--            // If DER CRL buffer has null terminator, need to remove it before
-+            // If CRL buffer has null terminator, need to remove it before
-             // send the DER data to crypto API for reading.
-             if (sgx_endorsements->items[i].data[der_data_size - 1] == 0)
-                 der_data_size -= 1;
- 
-+            // If the CRL is only composed of hex digits we need to manually
-+            // convert to DER
-+            bool ishex = true;
-+            for (size_t l = 0; l < der_data_size; ++l)
-+            {
-+                const uint8_t c = sgx_endorsements->items[i].data[l];
-+                if (!((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') ||
-+                      (c >= '0' && c <= '9')))
-+                {
-+                    ishex = false;
-+                    break;
-+                }
-+            }
-+            if (ishex)
-+            {
-+                OE_CHECK_MSG(
-+                    oe_hex_to_buf(
-+                        (const char*)sgx_endorsements->items[i].data,
-+                        der_data_size,
-+                        sgx_endorsements->items[i].data,
-+                        der_data_size),
-+                    "Failed to convert to DER. %s",
-+                    oe_result_str(result));
-+                der_data_size /= 2;
-+            }
-+
-             OE_CHECK_MSG(
-                 oe_crl_read_der(
-                     &crls[j], sgx_endorsements->items[i].data, der_data_size),
 diff --git a/debugger/gdb-extension/load_symbol_cmd.py b/debugger/gdb-extension/load_symbol_cmd.py
 index ca0e0f893..ea04aa53b 100644
 --- a/debugger/gdb-extension/load_symbol_cmd.py
@@ -204,19 +151,6 @@ index ca0e0f893..ea04aa53b 100644
              for j in range(i):
                  gdbcmd += Out[j][0] + " " + Out[j][1] + " " + '%(Location)#08x' % {'Location' : int(Out[j][2])} + " " + Out[j][3]
          else:
-diff --git a/enclave/core/__stack_chk_fail.c b/enclave/core/__stack_chk_fail.c
-index 825e5d10f..ffc34fa20 100644
---- a/enclave/core/__stack_chk_fail.c
-+++ b/enclave/core/__stack_chk_fail.c
-@@ -3,7 +3,7 @@
- 
- #include <openenclave/enclave.h>
- 
--void __stack_chk_fail(void)
-+OE_EXPORT void __stack_chk_fail(void)
- {
-     __oe_assert_fail(
-         "Stack smashing detected!", __FILE__, __LINE__, __FUNCTION__);
 diff --git a/enclave/core/init_fini.c b/enclave/core/init_fini.c
 index 47bfc0d10..1ea5f124e 100644
 --- a/enclave/core/init_fini.c
@@ -249,10 +183,10 @@ index 47bfc0d10..1ea5f124e 100644
  }
  
 diff --git a/enclave/core/sgx/backtrace.c b/enclave/core/sgx/backtrace.c
-index b9d64b1b4..4c5f03803 100644
+index 37724480c..d467e9d95 100644
 --- a/enclave/core/sgx/backtrace.c
 +++ b/enclave/core/sgx/backtrace.c
-@@ -68,7 +68,28 @@ const void* _check_address(const void* ptr)
+@@ -85,7 +85,28 @@ const void* _check_address(const void* ptr)
      if (!oe_is_within_enclave(ptr, sizeof(uint64_t)))
          return NULL;
  
@@ -283,10 +217,10 @@ index b9d64b1b4..4c5f03803 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index 6f8ee30f1..4c6eda65a 100644
+index c4fe4f542..e8c44b1af 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
-@@ -46,6 +46,22 @@
+@@ -50,6 +50,22 @@ void oe_abort_with_td(oe_sgx_td_t* td) OE_NO_RETURN;
  oe_result_t __oe_enclave_status = OE_OK;
  uint8_t __oe_initialized = 0;
  
@@ -309,7 +243,7 @@ index 6f8ee30f1..4c6eda65a 100644
  /*
  **==============================================================================
  **
-@@ -193,14 +209,20 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
+@@ -197,14 +213,20 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
              /* Initialize the OE crypto library. */
              oe_crypto_initialize();
  
@@ -334,7 +268,7 @@ index 6f8ee30f1..4c6eda65a 100644
          }
  
          oe_spin_unlock(&_lock);
-@@ -413,6 +435,9 @@ static void _call_at_exit_functions(void)
+@@ -428,6 +450,9 @@ static void _call_at_exit_functions(void)
      oe_spin_lock(&_lock);
      if (!_at_exit_functions_done)
      {
@@ -344,7 +278,7 @@ index 6f8ee30f1..4c6eda65a 100644
          /* Call functions installed by oe_cxa_atexit() and oe_atexit()
           */
          oe_call_atexit_functions();
-@@ -535,6 +560,17 @@ static void _handle_ecall(
+@@ -550,6 +575,17 @@ static void _handle_ecall(
          goto done;
      }
  
@@ -362,7 +296,7 @@ index 6f8ee30f1..4c6eda65a 100644
      /* Dispatch the ECALL */
      switch (func)
      {
-@@ -770,6 +806,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
+@@ -782,6 +818,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
  
  oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
  {
@@ -377,8 +311,8 @@ index 6f8ee30f1..4c6eda65a 100644
      oe_result_t result = OE_UNEXPECTED;
      oe_sgx_td_t* td = oe_sgx_get_td();
      oe_callsite_t* callsite = td->callsites;
-@@ -817,6 +861,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
-         /* ORET here */
+@@ -838,6 +882,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
+         }
      }
  
 +    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
@@ -389,136 +323,84 @@ index 6f8ee30f1..4c6eda65a 100644
      result = OE_OK;
  
  done:
-@@ -1204,6 +1253,10 @@ void __oe_handle_main(
- 
- void oe_abort(void)
- {
-+    // EDG: print stack trace
-+    if (is_enclave_debug_allowed())
-+        oe_print_backtrace();
-+
-     // Once it starts to crash, the state can only transit forward, not
-     // backward.
-     if (__oe_enclave_status < OE_ENCLAVE_ABORTING)
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
-index bd61ea6fa..e39d9f15a 100644
+index 90dcb42a6..827665a00 100644
 --- a/enclave/core/sgx/exception.c
 +++ b/enclave/core/sgx/exception.c
-@@ -23,6 +23,12 @@ uint32_t g_current_exception_handler_count = 0;
+@@ -33,6 +33,9 @@ uint32_t g_current_exception_handler_count = 0;
  oe_vectored_exception_handler_t
      g_exception_handler_arr[MAX_EXCEPTION_HANDLER_COUNT];
  
 +// EDG: enclave dev can enable SIGSEGV by overriding this symbol
 +OE_WEAK bool ert_enable_sigsegv;
 +
-+__thread uint64_t ert_sigaltstack_sp;
-+static __thread uint64_t _original_sp;
-+
  oe_result_t oe_add_vectored_exception_handler(
      bool is_first_handler,
      oe_vectored_exception_handler_t vectored_handler)
-@@ -237,6 +243,10 @@ int _emulate_illegal_instruction(sgx_ssa_gpr_t* ssa_gpr)
- */
- void oe_real_exception_dispatcher(oe_context_t* oe_context)
- {
-+    // EDG: restore sp if sigaltstack has been used
-+    if (ert_sigaltstack_sp)
-+        oe_context->rsp = _original_sp;
-+
-     oe_sgx_td_t* td = oe_sgx_get_td();
- 
-     // Change the rip of oe_context to the real exception address.
-@@ -290,6 +300,9 @@ void oe_real_exception_dispatcher(oe_context_t* oe_context)
- 
-     // Exception can't be handled by trusted handlers, abort the enclave.
-     // Let the oe_abort to run on the stack where the exception happens.
-+    // EDG: but fix the stack alignment!
-+    oe_exception_record.context->rsp &= ~0xFull;
-+    oe_exception_record.context->rsp -= 8;
-     oe_exception_record.context->rip = (uint64_t)oe_abort;
-     oe_continue_execution(oe_exception_record.context);
- 
-@@ -329,8 +342,15 @@ void oe_virtual_exception_dispatcher(
-     if (!ssa_gpr->exit_info.as_fields.valid)
+@@ -527,7 +530,7 @@ void oe_virtual_exception_dispatcher(
+         td->host_signal = arg_in;
+     }
+     else if (
+-        oe_is_enclave_debug_allowed() &&
++        arg_in != MAX_SIGNAL_NUMBER + 1 && oe_is_enclave_debug_allowed() &&
+         oe_is_outside_enclave((void*)arg_in, sizeof(oe_exception_record_t)))
      {
-         // Not a valid/expected enclave exception;
--        *arg_out = OE_EXCEPTION_CONTINUE_SEARCH;
--        return;
-+        if (!(ert_enable_sigsegv && arg_in == 11)) // EDG: allow SIGSEGV
-+        {
-+            *arg_out = OE_EXCEPTION_CONTINUE_SEARCH;
-+            return;
-+        }
+         oe_exception_record = (oe_exception_record_t*)arg_in;
+@@ -566,6 +569,16 @@ void oe_virtual_exception_dispatcher(
+         }
+     }
+ 
++    // EDG: allow SIGSEGV
++    if (ert_enable_sigsegv && !ssa_gpr->exit_info.as_fields.valid &&
++        arg_in == MAX_SIGNAL_NUMBER + 1)
++    {
 +        sgx_exit_info* const ei = &ssa_gpr->exit_info;
 +        ei->as_fields.vector = 13; // #GP
 +        ei->as_fields.exit_type = SGX_EXIT_TYPE_HARDWARE;
 +        ei->as_fields.valid = 1;
-     }
- 
-     // Get the exception address, code, and flags.
-@@ -385,6 +405,13 @@ void oe_virtual_exception_dispatcher(
-         // Modify the ssa_gpr so that e_resume will go to second pass exception
-         // handler.
-         ssa_gpr->rip = (uint64_t)oe_exception_dispatcher;
++    }
 +
-+        // EDG: use alternative sp if sigaltstack has been used
-+        if (ert_sigaltstack_sp)
-+        {
-+            _original_sp = ssa_gpr->rsp;
-+            ssa_gpr->rsp = ert_sigaltstack_sp;
-+        }
-     }
- 
-     // Cleanup the exception flag to avoid the exception handler is called
+     /* Get the exception code and flags only if the exception type
+      * is recognized by the SGX hardware */
+     if (ssa_gpr->exit_info.as_fields.valid)
 diff --git a/enclave/core/sgx/globals.c b/enclave/core/sgx/globals.c
-index 8e2a907a5..711201682 100644
+index 8e2a907a5..44270d7f2 100644
 --- a/enclave/core/sgx/globals.c
 +++ b/enclave/core/sgx/globals.c
-@@ -178,6 +178,11 @@ uint8_t __oe_get_enclave_create_zero_base_flag()
-         oe_enclave_properties_sgx.config.flags.create_zero_base_enclave;
+@@ -305,3 +305,15 @@ const oe_enclave_module_info_t* oe_get_module_info(void)
+ {
+     return (const oe_enclave_module_info_t*)&_module_info;
  }
- 
++
++// EDG
++
 +uint64_t oe_get_num_tcs(void)
 +{
 +    return oe_enclave_properties_sgx.header.size_settings.num_tcs;
 +}
 +
- /*
- **==============================================================================
- **
-@@ -305,3 +310,22 @@ const oe_enclave_module_info_t* oe_get_module_info(void)
- {
-     return (const oe_enclave_module_info_t*)&_module_info;
- }
-+
-+/*
-+**==============================================================================
-+**
-+** Stack:
-+**
-+**==============================================================================
-+*/
-+
 +size_t oe_get_num_stack_pages(void)
 +{
 +    return oe_enclave_properties_sgx.header.size_settings.num_stack_pages;
 +}
-+
-+size_t oe_get_stack_size(void)
-+{
-+    return oe_enclave_properties_sgx.header.size_settings.num_stack_pages *
-+           OE_PAGE_SIZE;
-+}
 diff --git a/enclave/core/sgx/keys.c b/enclave/core/sgx/keys.c
-index 28e78c546..23acc8d09 100644
+index 28e78c546..e20396153 100644
 --- a/enclave/core/sgx/keys.c
 +++ b/enclave/core/sgx/keys.c
-@@ -31,6 +31,22 @@ static oe_result_t _get_key_imp(
+@@ -9,6 +9,7 @@
+ #include <openenclave/internal/utils.h>
+ #include "asmdefs.h"
+ #include "report.h"
++#include "tracee.h"
+ 
+ OE_STATIC_ASSERT(sizeof(oe_seal_policy_t) == sizeof(unsigned int));
+ 
+@@ -31,6 +32,22 @@ static oe_result_t _get_key_imp(
      sgx_key_request_t tmp_key_request = *sgx_key_request;
      OE_ALIGNED(SGX_KEY_ALIGNMENT) sgx_key_t tmp_sgx_key;
  
 +    // EDG: return test key in simulation mode
-+    if (oe_sgx_get_td()->simulate)
++    if (oe_sgx_is_in_simulation_mode())
 +    {
 +        // satisfy unit test
 +        if (tmp_key_request.key_name != SGX_KEYSELECT_REPORT &&
@@ -536,7 +418,7 @@ index 28e78c546..23acc8d09 100644
      // Execute EGETKEY instruction.
      egetkey_result = oe_egetkey(&tmp_key_request, &tmp_sgx_key);
  
-@@ -193,10 +209,11 @@ static oe_result_t _get_default_key_request_attributes(
+@@ -193,10 +210,11 @@ static oe_result_t _get_default_key_request_attributes(
  {
      sgx_report_t sgx_report = {{{0}}};
  
@@ -545,7 +427,7 @@ index 28e78c546..23acc8d09 100644
  
      // Get a local report of current enclave.
 -    result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
-+    if (!oe_sgx_get_td()->simulate) // EDG: skip in simulation mode
++    if (!oe_sgx_is_in_simulation_mode()) // EDG: skip in simulation mode
 +        result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
  
      if (result != OE_OK)
@@ -598,32 +480,32 @@ index fb7e1efc7..5178f177c 100644
   * Cleanup the thread-local section for a given thread.
   * This must be called *before* the td itself is cleaned up.
 diff --git a/enclave/sgx/report.c b/enclave/sgx/report.c
-index 752ce5154..424937618 100644
+index 657993af5..965176cbe 100644
 --- a/enclave/sgx/report.c
 +++ b/enclave/sgx/report.c
-@@ -14,6 +14,7 @@
- #include <openenclave/internal/report.h>
- #include <openenclave/internal/safecrt.h>
- #include <openenclave/internal/sgx/plugin.h>
-+#include <openenclave/internal/sgx/td.h>
- #include <openenclave/internal/sgxkeys.h>
+@@ -18,6 +18,7 @@
  #include <openenclave/internal/utils.h>
  #include <stdlib.h>
+ #include "../common/sgx/quote.h"
++#include "../core/sgx/tracee.h"
+ #include "platform_t.h"
+ 
+ OE_STATIC_ASSERT(OE_REPORT_DATA_SIZE == sizeof(sgx_report_data_t));
 @@ -177,6 +178,9 @@ oe_result_t oe_get_report_v2(
      else
          format_id = &_local_uuid;
  
-+    if (oe_sgx_get_td()->simulate)
++    if (oe_sgx_is_in_simulation_mode())
 +        OE_RAISE_MSG(OE_UNSUPPORTED, "can't get report in simulation mode");
 +
      OE_CHECK(oe_attester_initialize());
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index f82e71363..85b78cb23 100644
+index 514965f79..b556abcd7 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
-@@ -333,10 +333,16 @@ list(
+@@ -359,10 +359,16 @@ list(
    strings.c
    traceh_enclave.c)
  
@@ -640,7 +522,7 @@ index f82e71363..85b78cb23 100644
  add_library(oehostverify STATIC ${PLATFORM_HOST_ONLY_SRC})
  
  target_link_libraries(oehostverify PUBLIC oe_includes)
-@@ -454,7 +460,8 @@ endif ()
+@@ -481,7 +487,8 @@ endif ()
  if (UNIX)
    target_compile_options(
      oehost
@@ -689,7 +571,7 @@ index e3255a942..77351b2ac 100644
      if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
      {
 diff --git a/host/sgx/calls.c b/host/sgx/calls.c
-index d510591b7..dcf5b2f39 100644
+index eed0c4dcf..fb791663e 100644
 --- a/host/sgx/calls.c
 +++ b/host/sgx/calls.c
 @@ -36,6 +36,8 @@
@@ -701,7 +583,7 @@ index d510591b7..dcf5b2f39 100644
  /*
  **==============================================================================
  **
-@@ -246,6 +248,8 @@ oe_result_t oe_handle_call_host_function(uint64_t arg, oe_enclave_t* enclave)
+@@ -253,6 +255,8 @@ oe_result_t oe_handle_call_host_function(uint64_t arg, oe_enclave_t* enclave)
          goto done;
      }
  
@@ -710,7 +592,7 @@ index d510591b7..dcf5b2f39 100644
      OE_CHECK(oe_safe_add_u64(
          args_ptr->input_buffer_size,
          args_ptr->output_buffer_size,
-@@ -358,22 +362,27 @@ static oe_result_t _handle_ocall(
+@@ -365,22 +369,27 @@ static oe_result_t _handle_ocall(
              break;
  
          case OE_OCALL_MALLOC:
@@ -738,7 +620,7 @@ index d510591b7..dcf5b2f39 100644
              oe_handle_get_time(arg_in, arg_out);
              break;
  
-@@ -384,6 +393,10 @@ static oe_result_t _handle_ocall(
+@@ -391,6 +400,10 @@ static oe_result_t _handle_ocall(
          }
      }
  
@@ -750,10 +632,20 @@ index d510591b7..dcf5b2f39 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index 512283c0b..f3853bc27 100644
+index 14e4f92af..22b2c7539 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
-@@ -121,7 +121,8 @@ static oe_result_t _add_filled_pages(
+@@ -87,9 +87,6 @@ static void _initialize_enclave_host_impl(void)
+     oe_is_avx_enabled = ((xfrm & SGX_XFRM_AVX) == SGX_XFRM_AVX) ||
+                         ((xfrm & SGX_XFRM_AVX512) == SGX_XFRM_AVX512);
+ 
+-    if (oe_sgx_initialize_vdso() == OE_OK)
+-        oe_sgx_is_vdso_enabled = true;
+-
+     oe_initialize_host_exception();
+ }
+ 
+@@ -137,7 +134,8 @@ static oe_result_t _add_filled_pages(
      uint64_t* vaddr,
      size_t npages,
      uint32_t filler,
@@ -763,7 +655,7 @@ index 512283c0b..f3853bc27 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_page_t* page = NULL;
-@@ -154,6 +155,10 @@ static oe_result_t _add_filled_pages(
+@@ -170,6 +168,10 @@ static oe_result_t _add_filled_pages(
          uint64_t src = (uint64_t)page;
          uint64_t flags = SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W;
  
@@ -774,7 +666,7 @@ index 512283c0b..f3853bc27 100644
          OE_CHECK(oe_sgx_load_enclave_data(
              context, enclave->base_address, addr, src, flags, extend));
          (*vaddr) += OE_PAGE_SIZE;
-@@ -176,7 +181,7 @@ static oe_result_t _add_stack_pages(
+@@ -192,7 +194,7 @@ static oe_result_t _add_stack_pages(
  {
      const bool extend = true;
      return _add_filled_pages(
@@ -783,7 +675,7 @@ index 512283c0b..f3853bc27 100644
  }
  
  static oe_result_t _add_heap_pages(
-@@ -187,7 +192,8 @@ static oe_result_t _add_heap_pages(
+@@ -203,7 +205,8 @@ static oe_result_t _add_heap_pages(
  {
      /* Do not measure heap pages */
      const bool extend = false;
@@ -793,7 +685,7 @@ index 512283c0b..f3853bc27 100644
  }
  
  static oe_result_t _add_control_pages(
-@@ -301,7 +307,7 @@ static oe_result_t _add_control_pages(
+@@ -317,7 +320,7 @@ static oe_result_t _add_control_pages(
      }
  
      /* Add two blank pages */
@@ -802,7 +694,7 @@ index 512283c0b..f3853bc27 100644
  
      /* Skip over guard page */
      (*vaddr) += OE_PAGE_SIZE;
-@@ -309,10 +315,10 @@ static oe_result_t _add_control_pages(
+@@ -325,10 +328,10 @@ static oe_result_t _add_control_pages(
      /* Add blank pages (for either FS segment or GS segment) */
      if (tls_page_count)
          OE_CHECK(_add_filled_pages(
@@ -815,7 +707,7 @@ index 512283c0b..f3853bc27 100644
  
      result = OE_OK;
  
-@@ -796,11 +802,76 @@ done:
+@@ -885,11 +888,76 @@ done:
  }
  #endif
  
@@ -893,15 +785,15 @@ index 512283c0b..f3853bc27 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      size_t loaded_enclave_pages_size = 0;
-@@ -812,6 +883,7 @@ oe_result_t oe_sgx_build_enclave(
-     size_t tls_page_count;
+@@ -902,6 +970,7 @@ oe_result_t oe_sgx_build_enclave(
      uint64_t vaddr = 0;
      oe_sgx_enclave_properties_t props;
+     size_t extra_data_size = 0;
 +    uint64_t payload_data_offset = 0;
  
      /* Reject invalid parameters */
      if (!context || !path || !enclave)
-@@ -833,7 +905,7 @@ oe_result_t oe_sgx_build_enclave(
+@@ -923,7 +992,7 @@ oe_result_t oe_sgx_build_enclave(
          OE_RAISE(OE_FAILURE);
  
      /* Load the elf object */
@@ -910,7 +802,7 @@ index 512283c0b..f3853bc27 100644
          OE_RAISE(OE_FAILURE);
  
      // If the **properties** parameter is non-null, use those properties.
-@@ -857,6 +929,47 @@ oe_result_t oe_sgx_build_enclave(
+@@ -947,6 +1016,47 @@ oe_result_t oe_sgx_build_enclave(
              sizeof(props));
      }
  
@@ -958,7 +850,7 @@ index 512283c0b..f3853bc27 100644
      /* Validate the enclave prop_override structure */
      OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
  
-@@ -902,7 +1015,9 @@ oe_result_t oe_sgx_build_enclave(
+@@ -992,7 +1102,9 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Calculate the size of this enclave in memory */
      OE_CHECK(_calculate_enclave_size(
@@ -969,7 +861,7 @@ index 512283c0b..f3853bc27 100644
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -990,6 +1105,22 @@ oe_result_t oe_sgx_build_enclave(
+@@ -1113,6 +1225,22 @@ oe_result_t oe_sgx_build_enclave(
          &vaddr));
  #endif
  
@@ -992,7 +884,7 @@ index 512283c0b..f3853bc27 100644
      /* Add data pages */
      OE_CHECK(_add_data_pages(
          context,
-@@ -1203,8 +1334,21 @@ oe_result_t oe_create_enclave(
+@@ -1326,8 +1454,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
  
@@ -1016,7 +908,7 @@ index 512283c0b..f3853bc27 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1280,6 +1424,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1405,6 +1546,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      if (!enclave || enclave->magic != ENCLAVE_MAGIC)
          OE_RAISE(OE_INVALID_PARAMETER);
  
@@ -1028,47 +920,19 @@ index 512283c0b..f3853bc27 100644
       * destructor attribute) */
      result = oe_ecall(enclave, OE_ECALL_CALL_AT_EXIT_FUNCTIONS, 0, NULL);
 diff --git a/host/sgx/exception.c b/host/sgx/exception.c
-index 273e68e5e..619e3933b 100644
+index 32543e720..de4e306b4 100644
 --- a/host/sgx/exception.c
 +++ b/host/sgx/exception.c
-@@ -47,8 +47,11 @@ uint64_t oe_host_handle_exception(oe_host_exception_context_t* context)
+@@ -86,6 +86,9 @@ uint64_t oe_host_handle_exception(oe_host_exception_context_t* context)
+          * interrupt support. For the rest of cases, pass zero value. */
+         if (signal_number == LINUX_SIGSEGV && _debug_pf_simulation)
+             arg_in = (uint64_t)&oe_exception_record;
++        else if (signal_number == LINUX_SIGSEGV)
++            // EDG: MAX_SIGNAL_NUMBER + 1 as in enclave/core/sgx/exception.c
++            arg_in = 65;
+         else if (signal_number != 0 && signal_number != LINUX_SIGSEGV)
+             arg_in = signal_number;
  
-         // Call into enclave first pass exception handler.
-         uint64_t arg_out = 0;
--        oe_result_t result =
--            oe_ecall(enclave, OE_ECALL_VIRTUAL_EXCEPTION_HANDLER, 0, &arg_out);
-+        oe_result_t result = oe_ecall(
-+            enclave,
-+            OE_ECALL_VIRTUAL_EXCEPTION_HANDLER,
-+            (uint64_t)context->sig_num,
-+            &arg_out);
- 
-         // Reset the flag
-         thread_data->flags &= (~_OE_THREAD_HANDLING_EXCEPTION);
-diff --git a/host/sgx/exception.h b/host/sgx/exception.h
-index 0552194e7..a86ad4800 100644
---- a/host/sgx/exception.h
-+++ b/host/sgx/exception.h
-@@ -12,6 +12,7 @@ typedef struct _host_exception_context
-     uint64_t rax;
-     uint64_t rbx;
-     uint64_t rip;
-+    int sig_num;
- } oe_host_exception_context_t;
- 
- /* Initialize the exception processing. */
-diff --git a/host/sgx/linux/exception.c b/host/sgx/linux/exception.c
-index 6242e15f5..300d50a8c 100644
---- a/host/sgx/linux/exception.c
-+++ b/host/sgx/linux/exception.c
-@@ -37,6 +37,7 @@ static void _host_signal_handler(
-     host_context.rax = (uint64_t)context->uc_mcontext.gregs[REG_RAX];
-     host_context.rbx = (uint64_t)context->uc_mcontext.gregs[REG_RBX];
-     host_context.rip = (uint64_t)context->uc_mcontext.gregs[REG_RIP];
-+    host_context.sig_num = sig_num;
- 
-     // Call platform neutral handler.
-     uint64_t action = oe_host_handle_exception(&host_context);
 diff --git a/host/sgx/load.c b/host/sgx/load.c
 index 4ec690dd7..2f5e827b8 100644
 --- a/host/sgx/load.c
@@ -1095,49 +959,10 @@ index 4ec690dd7..2f5e827b8 100644
  done:
      return result;
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index 05c03af72..1ad576c6b 100644
+index b4b9eac9d..db87cf8c6 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -759,6 +759,7 @@ static oe_result_t _link_elf_image(
-     uint64_t nrelocs = 0;
-     const elf64_sym_t* symtab = NULL;
-     size_t symtab_size = 0;
-+    int missing_symbols_count = 0;
- 
-     if (elf64_get_dynamic_symbol_table(&image->elf, &symtab, &symtab_size) != 0)
-         goto done;
-@@ -821,12 +822,12 @@ static oe_result_t _link_elf_image(
-             else
-             {
-                 if ((symbol->st_info >> 4) != STB_WEAK)
--                    OE_RAISE_MSG(
--                        OE_UNSUPPORTED_ENCLAVE_IMAGE,
--                        "symbol %s not found\n",
--                        name);
-+                {
-+                    ++missing_symbols_count;
-+                    OE_TRACE_ERROR("symbol not found: %s", name);
-+                }
-                 else
--                    OE_TRACE_WARNING("Weak symbol %s is not resolved\n");
-+                    OE_TRACE_WARNING("weak symbol is not resolved: %s", name);
-             }
-         }
-         /* Patch non-symbolic relocation records */
-@@ -837,6 +838,12 @@ static oe_result_t _link_elf_image(
-         }
-     }
- 
-+    if (missing_symbols_count)
-+        OE_RAISE_MSG(
-+            OE_UNSUPPORTED_ENCLAVE_IMAGE,
-+            "%d symbols not found",
-+            missing_symbols_count);
-+
-     result = OE_OK;
- 
- done:
-@@ -917,6 +924,11 @@ done:
+@@ -945,6 +945,11 @@ done:
      return result;
  }
  
@@ -1149,7 +974,7 @@ index 05c03af72..1ad576c6b 100644
  static oe_result_t _patch_elf_image(
      oe_enclave_elf_image_t* image,
      oe_enclave_elf_image_t* module_image,
-@@ -1028,6 +1040,34 @@ static oe_result_t _patch_elf_image(
+@@ -1066,6 +1071,34 @@ static oe_result_t _patch_elf_image(
                  &module_info->fini_array_rva));
              module_info->fini_array_size = fini_section.sh_size;
          }
@@ -1184,7 +1009,7 @@ index 05c03af72..1ad576c6b 100644
      }
  
      /* Clear the hash when taking the measure */
-@@ -1393,8 +1433,12 @@ done:
+@@ -1431,8 +1464,12 @@ done:
  
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
@@ -1198,7 +1023,7 @@ index 05c03af72..1ad576c6b 100644
      oe_result_t result = OE_UNEXPECTED;
      char* module_path = NULL;
      oe_enclave_elf_image_t* module_image = NULL;
-@@ -1413,13 +1457,16 @@ static oe_result_t _load_dependent_image(
+@@ -1451,13 +1488,16 @@ static oe_result_t _load_dependent_image(
                  "Failed to locate the module. Please place the module under "
                  "the same directory as the enclave binary.",
                  NULL);
@@ -1217,7 +1042,7 @@ index 05c03af72..1ad576c6b 100644
          /* Update the RVA for the module */
          module_image->image_rva = image->elf.image_size;
          image->submodule = module_image;
-@@ -1454,7 +1501,8 @@ done:
+@@ -1492,7 +1532,8 @@ done:
  
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
@@ -1227,7 +1052,7 @@ index 05c03af72..1ad576c6b 100644
  {
      oe_result_t result = OE_UNEXPECTED;
  
-@@ -1464,7 +1512,7 @@ oe_result_t oe_load_elf_enclave_image(
+@@ -1502,7 +1543,7 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
  
      /* Load the dependent image into memory */
@@ -1249,7 +1074,7 @@ index f7220c44f..d3623bfa1 100644
  OE_EXTERNC_END
  
 diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
-index 6be1fe542..aa4e723ee 100644
+index 5eb12b6e9..40087c299 100644
 --- a/include/openenclave/bits/sgx/sgxproperties.h
 +++ b/include/openenclave/bits/sgx/sgxproperties.h
 @@ -38,7 +38,9 @@ typedef struct _oe_sgx_enclave_flags_t
@@ -1264,7 +1089,7 @@ index 6be1fe542..aa4e723ee 100644
  
  typedef struct oe_sgx_enclave_config_t
 diff --git a/include/openenclave/edl/fcntl.edl b/include/openenclave/edl/fcntl.edl
-index 5a28f71af..a8cf8939b 100644
+index 5a28f71af..0547d3100 100644
 --- a/include/openenclave/edl/fcntl.edl
 +++ b/include/openenclave/edl/fcntl.edl
 @@ -56,7 +56,8 @@ enclave
@@ -1277,11 +1102,12 @@ index 5a28f71af..a8cf8939b 100644
              propagate_errno;
  
          ssize_t oe_syscall_read_ocall(
-@@ -198,5 +199,27 @@ enclave
+@@ -198,5 +199,29 @@ enclave
              uint64_t argsize,
              [in,out,size=argsize] void* argout)
              propagate_errno;
 +
++/* EDG: Disabled for now. Need to apply mitigation for MMIO vulnerability.
 +        oe_host_fd_t ert_mmapfs_open_ocall(
 +            [in, string] const char* pathname,
 +            int flags,
@@ -1303,16 +1129,17 @@ index 5a28f71af..a8cf8939b 100644
 +            size_t file_size,
 +            size_t new_region)
 +            propagate_errno;
++*/
      };
  };
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
-index 7b86fc8b8..89d2643bc 100644
+index 1dcd2afd1..5f044713e 100644
 --- a/include/openenclave/edl/sgx/debug.edl
 +++ b/include/openenclave/edl/sgx/debug.edl
-@@ -29,5 +29,7 @@ enclave
-             [out, size=symbols_buffer_size] void* symbols_buffer,
-             size_t symbols_buffer_size,
-             [out] size_t* symbols_buffer_size_out);
+@@ -35,5 +35,7 @@ enclave
+             [user_check] oe_enclave_t* oe_enclave,
+             [in, count=size] const uint64_t* buffer,
+             size_t size);
 +
 +        void** oe_sgx_get_backtrace_buffer_ocall();
      };
@@ -1389,43 +1216,35 @@ index d0f279ec5..cf32117c2 100644
   * Terminate an enclave and reclaims its resources.
   *
 diff --git a/include/openenclave/internal/globals.h b/include/openenclave/internal/globals.h
-index 0e94f7237..6e10cbe48 100644
+index 0e94f7237..75e73cb57 100644
 --- a/include/openenclave/internal/globals.h
 +++ b/include/openenclave/internal/globals.h
-@@ -18,6 +18,7 @@ const void* __oe_get_enclave_elf_header(void);
- uint8_t __oe_get_enclave_create_zero_base_flag(void);
- size_t __oe_get_enclave_size(void);
- uint64_t __oe_get_configured_enclave_start_address(void);
-+uint64_t oe_get_num_tcs(void);
- 
- /* Reloc */
- const void* __oe_get_reloc_base(void);
-@@ -43,6 +44,10 @@ const void* __oe_get_eeid(void);
+@@ -43,6 +43,10 @@ const void* __oe_get_eeid(void);
  
  const oe_enclave_module_info_t* oe_get_module_info(void);
  
-+/* Stack */
++// EDG
++uint64_t oe_get_num_tcs(void);
 +size_t oe_get_num_stack_pages(void);
-+size_t oe_get_stack_size(void);
 +
  OE_EXTERNC_END
  
  #endif /* _OE_GLOBALS_H */
 diff --git a/include/openenclave/internal/load.h b/include/openenclave/internal/load.h
-index 0d1875aa7..e27dd8304 100644
+index e8f320492..5ac6b0d80 100644
 --- a/include/openenclave/internal/load.h
 +++ b/include/openenclave/internal/load.h
-@@ -77,6 +77,9 @@ struct _oe_enclave_elf_image
-     /* Offset to write back to the file oe_sgx_enclave_properties_t
-      * during signing */
-     uint64_t oeinfo_file_pos;
+@@ -80,6 +80,9 @@ struct _oe_enclave_elf_image
+ 
+     /* Offset of the dynamic section. Needed by submodule allocation */
+     uint64_t dynamic_rva;
 +
 +    // EDG: payload properties
 +    uint64_t payload_data_size;
  };
  
  typedef enum _oe_image_type
-@@ -129,11 +132,15 @@ struct _oe_enclave_image
+@@ -135,11 +138,15 @@ struct _oe_enclave_image
      oe_result_t (*unload)(oe_enclave_image_t* image);
  };
  
@@ -1461,7 +1280,7 @@ index 2d720612b..e4043f759 100644
  
  OE_EXTERNC_END
 diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
-index 2a5b4c50c..041e1814e 100644
+index 68d59d05d..5ead35968 100644
 --- a/include/openenclave/internal/sgxcreate.h
 +++ b/include/openenclave/internal/sgxcreate.h
 @@ -75,6 +75,9 @@ struct _oe_sgx_load_context
@@ -1554,68 +1373,16 @@ index 095a16d1e..e152df4c7 100644
  int oe_gethostname(char* name, size_t len);
  
  int oe_getdomainname(char* name, size_t len);
-diff --git a/include/openenclave/internal/utils.h b/include/openenclave/internal/utils.h
-index 82337b74e..56a6b433d 100644
---- a/include/openenclave/internal/utils.h
-+++ b/include/openenclave/internal/utils.h
-@@ -228,6 +228,33 @@ OE_INLINE void oe_mem_reverse_inplace(void* mem, size_t n)
-     }
- }
- 
-+OE_INLINE unsigned char oe_hex_digit_to_num(char c)
-+{
-+    if (c >= '0' && c <= '9')
-+        return (unsigned char)(c - '0');
-+
-+    if (c >= 'A' && c <= 'F')
-+        return (unsigned char)(10 + (c - 'A'));
-+
-+    return (unsigned char)(10 + (c - 'a'));
-+}
-+
-+OE_INLINE oe_result_t
-+oe_hex_to_buf(const char* str, size_t strsize, uint8_t* buf, size_t bufsize)
-+{
-+    if (bufsize * 2 < strsize)
-+    {
-+        return OE_BUFFER_TOO_SMALL;
-+    }
-+    for (size_t i = 0; i < strsize; i += 2)
-+    {
-+        unsigned char v =
-+            (unsigned char)(16 * oe_hex_digit_to_num(str[i]) + oe_hex_digit_to_num(str[i + 1]));
-+        buf[i / 2] = v;
-+    }
-+    return OE_OK;
-+}
-+
- OE_EXTERNC_END
- 
- #endif /* _OE_UTILS_H */
 diff --git a/libc/malloc.c b/libc/malloc.c
-index 9d9fb25e5..888f06840 100644
+index 526ae583f..8198d8da0 100644
 --- a/libc/malloc.c
 +++ b/libc/malloc.c
-@@ -23,3 +23,6 @@
-  * musl/src/malloc/lite_malloc.c
+@@ -28,3 +28,5 @@ OE_WEAK_ALIAS(malloc, __libc_malloc);
+  * __libc_free is used by MUSL locale functions.
   */
- OE_WEAK_ALIAS(malloc, __libc_malloc);
+ OE_WEAK_ALIAS(free, __libc_free);
 +
-+OE_WEAK_ALIAS(free, __libc_free);
 +OE_WEAK_ALIAS(calloc, __libc_calloc);
-diff --git a/libc/sgx/abort.S b/libc/sgx/abort.S
-index 069cb7874..d0a27e531 100644
---- a/libc/sgx/abort.S
-+++ b/libc/sgx/abort.S
-@@ -6,7 +6,7 @@
- abort:
- .cfi_startproc
- 
--    call oe_abort
-+    jmp oe_abort  // EDG: was call, but that breaks x64 stack alignment
-     ud2
- 
- .cfi_endproc
 diff --git a/pkgconfig/CMakeLists.txt b/pkgconfig/CMakeLists.txt
 index ae0663d31..02cb0ed26 100644
 --- a/pkgconfig/CMakeLists.txt
@@ -1629,8 +1396,34 @@ index ae0663d31..02cb0ed26 100644
  
  set(ENCLAVE_CLIBS_LIST ${ENCLAVE_CLIBS_1} ${ENCLAVE_CLIBS_2})
  list(JOIN ENCLAVE_CLIBS_LIST " " ENCLAVE_CLIBS)
+diff --git a/samples/apkman/CMakeLists.txt b/samples/apkman/CMakeLists.txt
+index b4c85c1ed..0bbf5fe42 100644
+--- a/samples/apkman/CMakeLists.txt
++++ b/samples/apkman/CMakeLists.txt
+@@ -7,7 +7,7 @@ if (NOT UNIX)
+   message(FATAL "oeapkman is currently supported only on Linux.")
+ endif ()
+ 
+-project("OEAPKMAN Sample" LANGUAGES C)
++project("OEAPKMAN Sample" LANGUAGES C CXX)
+ 
+ # Currently the `OpenEnclave` package depends on `project()`.
+ find_package(OpenEnclave CONFIG REQUIRED)
+diff --git a/samples/apkman/host/Makefile b/samples/apkman/host/Makefile
+index 410bdd9ae..e7d1e8283 100644
+--- a/samples/apkman/host/Makefile
++++ b/samples/apkman/host/Makefile
+@@ -14,7 +14,7 @@ build:
+ 		--search-path $(INCDIR)/openenclave/edl/sgx
+ 	$(CC) -g -c $(CFLAGS) host.c
+ 	$(CC) -g -c $(CFLAGS) sqlite_u.c
+-	$(CC) -o sqlite_host sqlite_u.o host.o $(LDFLAGS)
++	$(CXX) -o sqlite_host sqlite_u.o host.o $(LDFLAGS)
+ 
+ clean:
+ 	rm -f sqlite_host host.o sqlite_u.o sqlite_u.c sqlite_u.h sqlite_args.h
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index be66af8d1..1e0e7501b 100644
+index 0a6f91c4e..aa850ee17 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
 @@ -40,7 +40,7 @@ build:
@@ -1643,7 +1436,7 @@ index be66af8d1..1e0e7501b 100644
  sign:
  	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
-index f93de6a1b..44f35d565 100644
+index 03f44fef4..677f7aacc 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
 @@ -42,7 +42,7 @@ build:
@@ -1708,10 +1501,10 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index b44cab12d..07928cd42 100644
+index 095e5c1b9..55e98fdf8 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
-@@ -75,20 +75,14 @@ else ()
+@@ -80,20 +80,14 @@ else ()
          APPEND
          SAMPLES_LIST
          attested_tls
@@ -1764,7 +1557,7 @@ index 1cb00423c..63664a178 100644
  **==============================================================================
  **
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
-index b86f2ab10..ae15812c6 100644
+index b86f2ab10..8fb04d228 100644
 --- a/syscall/devices/hostfs/hostfs.c
 +++ b/syscall/devices/hostfs/hostfs.c
 @@ -21,6 +21,7 @@
@@ -2151,10 +1944,11 @@ index b86f2ab10..ae15812c6 100644
      return file ? file->host_fd : -1;
  }
  
-@@ -1526,6 +1550,15 @@ oe_result_t oe_load_module_host_file_system(void)
+@@ -1526,6 +1550,17 @@ oe_result_t oe_load_module_host_file_system(void)
              OE_RAISE(OE_FAILURE);
          }
  
++#if 0 // EDG: Disabled for now. Need to apply mitigation for MMIO vulnerability.
 +        if (oe_device_table_set(
 +                OE_DEVID_HOST_FILE_SYSTEM_MMAP, &oe_hostfs_mmap.base) != 0)
 +        {
@@ -2163,6 +1957,7 @@ index b86f2ab10..ae15812c6 100644
 +            oe_errno = 0;
 +            OE_RAISE(OE_FAILURE);
 +        }
++#endif
 +
          _loaded = true;
      }
@@ -2254,36 +2049,6 @@ index 9f2a6f51e..ef6be069e 100644
      /* Call the host. */
      if (oe_syscall_bind_ocall(&ret, sock->host_fd, &buf.addr, addrlen) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
-diff --git a/syscall/hostcalls.c b/syscall/hostcalls.c
-index f2939fdd0..b38c05fc5 100644
---- a/syscall/hostcalls.c
-+++ b/syscall/hostcalls.c
-@@ -129,7 +129,8 @@ oe_result_t _oe_syscall_open_ocall(
-     oe_host_fd_t* _retval,
-     const char* pathname,
-     int flags,
--    oe_mode_t mode);
-+    oe_mode_t mode,
-+    uint64_t* dir);
- oe_result_t _oe_syscall_read_ocall(
-     ssize_t* _retval,
-     oe_host_fd_t fd,
-@@ -229,12 +230,14 @@ oe_result_t _oe_syscall_open_ocall(
-     oe_host_fd_t* _retval,
-     const char* pathname,
-     int flags,
--    oe_mode_t mode)
-+    oe_mode_t mode,
-+    uint64_t* dir)
- {
-     OE_UNUSED(_retval);
-     OE_UNUSED(pathname);
-     OE_UNUSED(flags);
-     OE_UNUSED(mode);
-+    OE_UNUSED(dir);
-     return OE_UNSUPPORTED;
- }
- OE_WEAK_ALIAS(_oe_syscall_open_ocall, oe_syscall_open_ocall);
 diff --git a/syscall/mount.c b/syscall/mount.c
 index 6de079f60..07e1e1c32 100644
 --- a/syscall/mount.c
@@ -2854,7 +2619,7 @@ index 072e4fec5..a70034931 100644
  
      if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
 diff --git a/syscall/syscall.c b/syscall/syscall.c
-index c77f3b87c..b46890514 100644
+index 6c0d99c80..b215f8f04 100644
 --- a/syscall/syscall.c
 +++ b/syscall/syscall.c
 @@ -209,6 +209,15 @@ OE_WEAK OE_DEFINE_SYSCALL4_M(SYS_epoll_wait)
@@ -2873,8 +2638,8 @@ index c77f3b87c..b46890514 100644
  OE_WEAK OE_DEFINE_SYSCALL1(SYS_exit)
  {
      oe_errno = 0;
-@@ -1190,6 +1199,7 @@ static long _syscall(
- #if __x86_64__ || _M_X64
+@@ -1201,6 +1210,7 @@ static long _syscall(
+ #if defined(__x86_64__) || defined(_M_X64)
          OE_SYSCALL_DISPATCH(SYS_epoll_wait, arg1, arg2, arg3, arg4);
  #endif
 +        OE_SYSCALL_DISPATCH(SYS_eventfd2, arg1, arg2);
@@ -2910,10 +2675,10 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index fa883ed49..2938ded33 100644
+index cd2ee2718..d460355f3 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -128,7 +128,7 @@ if (UNIX
+@@ -143,7 +143,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
@@ -2922,34 +2687,8 @@ index fa883ed49..2938ded33 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-diff --git a/tests/config_id/host/host.c b/tests/config_id/host/host.c
-index ce504e169..1cfedc2df 100644
---- a/tests/config_id/host/host.c
-+++ b/tests/config_id/host/host.c
-@@ -2,6 +2,7 @@
- // Licensed under the MIT License.
- 
- #include <openenclave/host.h>
-+#include <openenclave/internal/sgx/tests.h>
- #include <openenclave/internal/tests.h>
- #include "../common.h"
- #include "../host/sgx/cpuid.h"
-@@ -66,8 +67,11 @@ int main(int argc, const char* argv[])
-             1,
-             &enclave);
-         OE_TEST(result == OE_OK);
--        enclave_test_config_id(enclave, &result);
--        OE_TEST(result == OE_OK);
-+        if (oe_has_sgx_quote_provider())
-+        {
-+            enclave_test_config_id(enclave, &result);
-+            OE_TEST(result == OE_OK);
-+        }
-     }
-     else
-     {
 diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
-index cfbd81120..862f0d4ea 100644
+index 8a1389e0e..87767ccf4 100644
 --- a/tests/crypto/enclave/enc/enc.c
 +++ b/tests/crypto/enclave/enc/enc.c
 @@ -168,7 +168,7 @@ static long _syscall_dispatch(
@@ -3000,10 +2739,10 @@ index 482218255..32aa9dce1 100644
 -set_tests_properties(oelldb-test-simulation-mode
 -                     PROPERTIES PASS_REGULAR_EXPRESSION "oelldb test passed")
 diff --git a/tests/edl_opt_out/enc/CMakeLists.txt b/tests/edl_opt_out/enc/CMakeLists.txt
-index 802b24407..52415da75 100644
+index a6d870bfc..5ba866b22 100644
 --- a/tests/edl_opt_out/enc/CMakeLists.txt
 +++ b/tests/edl_opt_out/enc/CMakeLists.txt
-@@ -26,7 +26,6 @@ add_enclave(
+@@ -27,7 +27,6 @@ add_enclave(
    UUID
    892e7f65-5da1-45d0-8209-53795ce5be8f
    CRYPTO_LIB
@@ -3012,10 +2751,10 @@ index 802b24407..52415da75 100644
    enc.c
    ${CMAKE_CURRENT_BINARY_DIR}/edl_opt_out_t.c)
 diff --git a/tests/edl_opt_out/enc/enc.c b/tests/edl_opt_out/enc/enc.c
-index 840d10c4e..648a7922b 100644
+index 944422b4b..b5bb443ff 100644
 --- a/tests/edl_opt_out/enc/enc.c
 +++ b/tests/edl_opt_out/enc/enc.c
-@@ -171,9 +171,6 @@ void enc_edl_opt_out()
+@@ -97,9 +97,6 @@ void enc_edl_opt_out()
  
      /* sgx/entropy.edl */
      /* Only available with oecryptoopenssl */
@@ -3039,10 +2778,10 @@ index c32f0d0f8..57ba0486c 100644
 +        OE_INVALID_IMAGE);
  }
 diff --git a/tests/mbed/enc/enc.c b/tests/mbed/enc/enc.c
-index 2c82b6c72..2ddd2619a 100644
+index 247731017..a6882400e 100644
 --- a/tests/mbed/enc/enc.c
 +++ b/tests/mbed/enc/enc.c
-@@ -130,6 +130,7 @@ OE_DEFINE_SYSCALL3_M(SYS_writev)
+@@ -138,6 +138,7 @@ OE_DEFINE_SYSCALL3_M(SYS_writev)
      // expecting the runtime implementation of SYS_writev to also be
      // called.
      tls_result = OE_UNSUPPORTED;
@@ -3051,10 +2790,10 @@ index 2c82b6c72..2ddd2619a 100644
  }
  
 diff --git a/tests/mman/enc/enc.c b/tests/mman/enc/enc.c
-index ae0d41a1e..3fe14efdc 100644
+index 6c39b1d86..ca4ea042d 100644
 --- a/tests/mman/enc/enc.c
 +++ b/tests/mman/enc/enc.c
-@@ -30,7 +30,6 @@ static void _test_basic()
+@@ -31,7 +31,6 @@ static void _test_basic()
  
      OE_TEST(munmap(ptr, chunk_size) == 0);
      OE_TEST(errno == 0);
@@ -3062,7 +2801,7 @@ index ae0d41a1e..3fe14efdc 100644
  }
  
  static void _test_partial_unmapping(void)
-@@ -45,10 +44,6 @@ static void _test_partial_unmapping(void)
+@@ -46,10 +45,6 @@ static void _test_partial_unmapping(void)
          0);
      uint64_t p1_end = p1_start + p1_length;
  
@@ -3073,7 +2812,7 @@ index ae0d41a1e..3fe14efdc 100644
      uint64_t p2_length = 3 * OE_PAGE_SIZE;
      uint64_t p2_start = (uint64_t)mmap(
          NULL,
-@@ -58,9 +53,6 @@ static void _test_partial_unmapping(void)
+@@ -59,9 +54,6 @@ static void _test_partial_unmapping(void)
          -1,
          0);
      uint64_t p2_end = p2_start + p2_length;
@@ -3082,28 +2821,50 @@ index ae0d41a1e..3fe14efdc 100644
 -    OE_TEST(m->end == p2_end);
  
      // Swap p1 and p2 if p2 lies before p1.
-     if (p2_start < p1_start)
-@@ -81,30 +73,15 @@ static void _test_partial_unmapping(void)
+     bool swapped = false;
+@@ -84,52 +76,15 @@ static void _test_partial_unmapping(void)
      OE_TEST(errno == 0);
  
      // Partial unmapping only changes the status vectors and not the bounds.
 -    m = oe_test_get_mappings();
--    OE_TEST(m->start == p2_start);
--    OE_TEST(m->end == p2_end);
--    m = m->next;
--    OE_TEST(m->start == p1_start);
--    OE_TEST(m->end == p1_end);
+-    if (swapped)
+-    {
+-        OE_TEST(m->start == p1_start);
+-        OE_TEST(m->end == p1_end);
+-        m = m->next;
+-        OE_TEST(m->start == p2_start);
+-        OE_TEST(m->end == p2_end);
+-    }
+-    else
+-    {
+-        OE_TEST(m->start == p2_start);
+-        OE_TEST(m->end == p2_end);
+-        m = m->next;
+-        OE_TEST(m->start == p1_start);
+-        OE_TEST(m->end == p1_end);
+-    }
  
      // Do another partial unmap.
      start -= OE_PAGE_SIZE;
      OE_TEST(munmap((void*)start, end - start) == 0);
      OE_TEST(errno == 0);
 -    m = oe_test_get_mappings();
--    OE_TEST(m->start == p2_start);
--    OE_TEST(m->end == p2_end);
--    m = m->next;
--    OE_TEST(m->start == p1_start);
--    OE_TEST(m->end == p1_end);
+-    if (swapped)
+-    {
+-        OE_TEST(m->start == p1_start);
+-        OE_TEST(m->end == p1_end);
+-        m = m->next;
+-        OE_TEST(m->start == p2_start);
+-        OE_TEST(m->end == p2_end);
+-    }
+-    else
+-    {
+-        OE_TEST(m->start == p2_start);
+-        OE_TEST(m->end == p2_end);
+-        m = m->next;
+-        OE_TEST(m->start == p1_start);
+-        OE_TEST(m->end == p1_end);
+-    }
  
      // Do an unmap till the start.
      // This ought to delete one mapping completely.
@@ -3114,7 +2875,7 @@ index ae0d41a1e..3fe14efdc 100644
  
      // Do another unmapping that spans entire enclave memory.
      // This ought to get rid of all mappings.
-@@ -115,21 +92,15 @@ static void _test_partial_unmapping(void)
+@@ -140,21 +95,15 @@ static void _test_partial_unmapping(void)
              MAP_FAILED);
          OE_TEST(errno == 0);
      }
@@ -3136,7 +2897,7 @@ index ae0d41a1e..3fe14efdc 100644
  }
  
  static void _test_mmap_params(void)
-@@ -142,8 +113,8 @@ static void _test_mmap_params(void)
+@@ -167,8 +116,8 @@ static void _test_mmap_params(void)
              PROT_READ,
              MAP_ANONYMOUS | MAP_PRIVATE,
              -1,
@@ -3147,7 +2908,7 @@ index ae0d41a1e..3fe14efdc 100644
  
      // Zero length should fail.
      OE_TEST(
-@@ -164,15 +135,16 @@ static void _test_mmap_params(void)
+@@ -189,15 +138,16 @@ static void _test_mmap_params(void)
      OE_TEST(errno == ENOMEM);
  
      // Test various prots.
@@ -3168,7 +2929,7 @@ index ae0d41a1e..3fe14efdc 100644
  
      errno = 0;
      OE_TEST(
-@@ -203,8 +175,8 @@ static void _test_mmap_params(void)
+@@ -228,8 +178,8 @@ static void _test_mmap_params(void)
  
      // Test various flags.
      OE_TEST(
@@ -3179,7 +2940,7 @@ index ae0d41a1e..3fe14efdc 100644
  
      errno = 0;
      // One of MAP_SHARED, MAP_SHARED_VALIDATE, MAP_PRIVATE must be used.
-@@ -229,9 +201,9 @@ static void _test_mmap_params(void)
+@@ -254,9 +204,9 @@ static void _test_mmap_params(void)
      OE_TEST(errno == 0);
  
      OE_TEST(
@@ -3191,7 +2952,7 @@ index ae0d41a1e..3fe14efdc 100644
  
      errno = 0;
      // Test unsupported flags.
-@@ -244,7 +216,6 @@ static void _test_mmap_params(void)
+@@ -269,7 +219,6 @@ static void _test_mmap_params(void)
  #ifdef MAP_32BIT
          MAP_32BIT,
  #endif
@@ -3199,7 +2960,7 @@ index ae0d41a1e..3fe14efdc 100644
          MAP_FIXED_NOREPLACE,
          MAP_GROWSDOWN,
          MAP_HUGETLB,
-@@ -262,7 +233,7 @@ static void _test_mmap_params(void)
+@@ -287,7 +236,7 @@ static void _test_mmap_params(void)
                  unsupported[i] | MAP_PRIVATE,
                  0,
                  0) == MAP_FAILED);
@@ -3208,7 +2969,7 @@ index ae0d41a1e..3fe14efdc 100644
      }
  
      int ignored[] = {
-@@ -278,7 +249,8 @@ static void _test_mmap_params(void)
+@@ -303,7 +252,8 @@ static void _test_mmap_params(void)
      {
          errno = 0;
          OE_TEST(
@@ -3218,7 +2979,7 @@ index ae0d41a1e..3fe14efdc 100644
              MAP_FAILED);
          OE_TEST(errno == 0);
      }
-@@ -329,8 +301,8 @@ static void _test_unmap_params(void)
+@@ -354,8 +304,8 @@ static void _test_unmap_params(void)
          for (size_t j = 0; j < OE_COUNTOF(lengths); ++j)
          {
              errno = -1;
@@ -3265,18 +3026,18 @@ index 90d0d7e2e..d17c9028c 100644
  
  # Add the enclave for postive tests
 diff --git a/tests/module_loading/module/module.c b/tests/module_loading/module/module.c
-index 1e9315794..099ace1e7 100644
+index 3fbecd8a5..199a280c9 100644
 --- a/tests/module_loading/module/module.c
 +++ b/tests/module_loading/module/module.c
-@@ -57,7 +57,6 @@ int test_libc_symbols()
-     TEST_SYMBOL(memcpy);
+@@ -59,7 +59,6 @@ int test_libc_symbols()
      TEST_SYMBOL(memmove);
      TEST_SYMBOL(memset);
+     TEST_SYMBOL(__stack_chk_fail);
 -    TEST_SYMBOL(oe_sgx_get_additional_host_entropy);
      TEST_SYMBOL(pthread_mutex_destroy);
      TEST_SYMBOL(pthread_mutex_init);
      TEST_SYMBOL(pthread_mutex_lock);
-@@ -71,9 +70,5 @@ int test_libc_symbols()
+@@ -73,9 +72,5 @@ int test_libc_symbols()
      if (sizeof(pthread_mutex_t) != 40)
          return 0;
  
@@ -3286,22 +3047,6 @@ index 1e9315794..099ace1e7 100644
 -
      return 1;
  }
-diff --git a/tests/pf_gp_exceptions/host/host.c b/tests/pf_gp_exceptions/host/host.c
-index 8e3997d8d..f94f8c93c 100644
---- a/tests/pf_gp_exceptions/host/host.c
-+++ b/tests/pf_gp_exceptions/host/host.c
-@@ -42,7 +42,10 @@ int main(int argc, const char* argv[])
-     if (result != OE_OK)
-         oe_put_err("oe_create_enclave(): result=%u", result);
- 
--    if (_is_misc_region_supported())
-+    if (flags & OE_ENCLAVE_FLAG_SIMULATE)
-+        printf("Simulation mode does not support exceptions. Skip the test "
-+               "ECALL.\n");
-+    else if (_is_misc_region_supported())
-     {
-         result = enc_pf_gp_exceptions(enclave, &return_value);
-         if (result != OE_OK)
 diff --git a/tests/props/host/host.c b/tests/props/host/host.c
 index 6d95d6943..abfb269b9 100644
 --- a/tests/props/host/host.c
@@ -3331,108 +3076,23 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
-diff --git a/tests/sgx_zerobase/CMakeLists.txt b/tests/sgx_zerobase/CMakeLists.txt
-index e1d5dc8ea..879c96308 100644
---- a/tests/sgx_zerobase/CMakeLists.txt
-+++ b/tests/sgx_zerobase/CMakeLists.txt
-@@ -9,19 +9,27 @@ endif ()
- 
- add_enclave_test(tests/sgx_zerobase_macro_only sgx_zerobase_host
-                  sgx_zerobase_macro_only_enc)
-+set_enclave_tests_properties(tests/sgx_zerobase_macro_only PROPERTIES
-+                             SKIP_RETURN_CODE 2)
- 
- # Tests 0-base enclave creation when OE_SET_ENCLAVE_SGX*() macro is not
- # used and only oesign configuration file is used to set properties.
- add_enclave_test(tests/sgx_zerobase_conf_only sgx_zerobase_host
-                  sgx_zerobase_conf_only_enc_signed)
-+set_enclave_tests_properties(tests/sgx_zerobase_conf_only PROPERTIES
-+                             SKIP_RETURN_CODE 2)
- 
- # Tests 0-base enclave creation when OE_SET_ENCLAVE_SGX*() macro disables
- # 0-base enclave creation and oesign configuration file enables 0-base enclave creation.
- add_enclave_test(
-   tests/sgx_zerobase_prop_macro_disable_conf_enable sgx_zerobase_host
-   sgx_zerobase_macro_disable_conf_enable_enc_signed)
-+set_enclave_tests_properties(tests/sgx_zerobase_prop_macro_disable_conf_enable
-+                             PROPERTIES SKIP_RETURN_CODE 2)
- 
- # Tests 0-base enclave creation when OE_SET_ENCLAVE_SGX*() macro enables
- # 0-base enclave creation but oesign configuration file disables 0-base enclave creation.
- add_enclave_test(tests/sgx_zerobase_macro_enable_conf_disable sgx_zerobase_host
-                  sgx_zerobase_macro_enable_conf_disable_enc_signed)
-+set_enclave_tests_properties(tests/sgx_zerobase_macro_enable_conf_disable
-+                             PROPERTIES SKIP_RETURN_CODE 2)
-diff --git a/tests/sgx_zerobase/host/host.cpp b/tests/sgx_zerobase/host/host.cpp
-index 104902bfb..a04f775aa 100644
---- a/tests/sgx_zerobase/host/host.cpp
-+++ b/tests/sgx_zerobase/host/host.cpp
-@@ -4,6 +4,8 @@
- #include <openenclave/bits/exception.h>
- #include <openenclave/host.h>
- #include <openenclave/internal/error.h>
-+#include <openenclave/internal/raise.h>
-+#include <openenclave/internal/sgx/tests.h>
- #include <openenclave/internal/tests.h>
- #include <sys/mman.h>
- #include <iostream>
-@@ -11,6 +13,8 @@
- #include "../host/sgx/cpuid.h"
- #include "sgx_zerobase_u.h"
- 
-+#define SKIP_RETURN_CODE 2
-+
- const char* message = "Hello world from Host\n\0";
- 
- static bool _is_misc_region_supported()
-@@ -46,6 +50,13 @@ int main(int argc, const char* argv[])
-         return 1;
-     }
- 
-+    if (!oe_has_sgx_quote_provider())
-+    {
-+        // this test should not run on any platforms where FLC is not supported
-+        OE_TRACE_INFO("=== tests skipped when DCAP libraries are not found.\n");
-+        return SKIP_RETURN_CODE;
-+    }
-+
-     if (strstr(argv[1], "_conf_") == NULL)
-     {
-         fprintf(
 diff --git a/tests/syscall/fs/enc/enc.cpp b/tests/syscall/fs/enc/enc.cpp
-index db536819d..75f456101 100644
+index 0664f845e..75f456101 100644
 --- a/tests/syscall/fs/enc/enc.cpp
 +++ b/tests/syscall/fs/enc/enc.cpp
-@@ -450,6 +450,42 @@ static void test_unlink_file(FILE_SYSTEM& fs, const char* tmp_dir)
-     OE_TEST(fs.stat(path, &buf) != 0);
- }
- 
-+template <class FILE_SYSTEM>
-+static void test_flock_file(FILE_SYSTEM& fs, const char* tmp_dir)
-+{
-+    char path[OE_PAGE_SIZE];
-+
-+    printf("--- %s()\n", __FUNCTION__);
-+
-+    mkpath(path, tmp_dir, "alphabet");
-+
-+    /* Lock the file. */
-+    const auto file = fs.open(path, O_RDONLY, 0);
-+    OE_TEST(file);
-+    OE_TEST(fs.flock(file, LOCK_EX) == 0);
-+
-+    /* Try to lock the file using another handle. */
-+    const auto file2 = fs.open(path, O_RDONLY, 0);
-+    OE_TEST(file2);
+@@ -467,13 +467,23 @@ static void test_flock_file(FILE_SYSTEM& fs, const char* tmp_dir)
+     /* Try to lock the file using another handle. */
+     const auto file2 = fs.open(path, O_RDONLY, 0);
+     OE_TEST(file2);
 +#ifndef ERT_TEST_MEMFS
-+    OE_TEST(fs.flock(file2, LOCK_EX | LOCK_NB) == -1);
-+    OE_TEST(errno == EWOULDBLOCK);
+     OE_TEST(fs.flock(file2, LOCK_EX | LOCK_NB) == -1);
+     OE_TEST(errno == EWOULDBLOCK);
 +#endif
-+
-+    /* Closing should unlock the file. */
-+    OE_TEST(fs.close(file) == 0);
-+    OE_TEST(fs.flock(file2, LOCK_EX) == 0);
-+    OE_TEST(fs.close(file2) == 0);
+ 
+     /* Closing should unlock the file. */
+     OE_TEST(fs.close(file) == 0);
+     OE_TEST(fs.flock(file2, LOCK_EX) == 0);
+     OE_TEST(fs.close(file2) == 0);
 +
 +    // EDG: lock folder
 +    const auto folder = fs.open(tmp_dir, O_RDONLY, 0);
@@ -3441,67 +3101,9 @@ index db536819d..75f456101 100644
 +    OE_TEST(fs.flock(folder, LOCK_EX) == 0);
 +#endif
 +    OE_TEST(fs.close(folder) == 0);
-+}
-+
- template <class FILE_SYSTEM>
- static void test_invalid_path(FILE_SYSTEM& fs)
- {
-@@ -485,6 +521,7 @@ void test_pio(FILE_SYSTEM& fs, const char* tmp_dir)
-     test_create_file(fs, tmp_dir);
-     test_pread_file(fs, tmp_dir);
-     test_pwrite_file(fs, tmp_dir);
-+    test_flock_file(fs, tmp_dir);
-     cleanup(fs, tmp_dir);
  }
  
-diff --git a/tests/syscall/fs/enc/file_system.h b/tests/syscall/fs/enc/file_system.h
-index ec2e40a6d..fa510c038 100644
---- a/tests/syscall/fs/enc/file_system.h
-+++ b/tests/syscall/fs/enc/file_system.h
-@@ -18,6 +18,7 @@
- #include <openenclave/internal/syscall/sys/stat.h>
- #include <openenclave/internal/syscall/unistd.h>
- #include <stdio.h>
-+#include <sys/file.h>
- #include <sys/stat.h>
- #include <sys/types.h>
- #include <unistd.h>
-@@ -81,6 +82,11 @@ class oe_fd_file_system
-         return oe_fdatasync(file);
-     }
- 
-+    int flock(file_handle file, int operation)
-+    {
-+        return oe_flock(file, operation);
-+    }
-+
-     int close(file_handle file)
-     {
-         return oe_close(file);
-@@ -251,6 +257,11 @@ class fd_file_system
-         return ::fdatasync(file);
-     }
- 
-+    int flock(file_handle file, int operation)
-+    {
-+        return ::flock(file, operation);
-+    }
-+
-     int close(file_handle file)
-     {
-         return ::close(file);
-@@ -539,6 +550,11 @@ class stream_file_system
-         return fflush(file);
-     }
- 
-+    int flock(file_handle file, int operation)
-+    {
-+        return ::flock(fileno(file), operation);
-+    }
-+
-     int close(file_handle file)
-     {
-         return ::fclose(file);
+ template <class FILE_SYSTEM>
 diff --git a/tests/syscall/getrandom/enc/enc.c b/tests/syscall/getrandom/enc/enc.c
 index 98e48740e..a75ab0ba0 100644
 --- a/tests/syscall/getrandom/enc/enc.c
@@ -4062,11 +3664,11 @@ index f116c9051..6afc87535 100644
  #include <openenclave/internal/tests.h>
  #include <stdio.h>
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
-index 7a2e970fb..45523a262 100644
+index b52ce1d24..397975850 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
 +++ b/tests/tools/oesign/test-enclave/host/host.c
-@@ -45,7 +45,7 @@ int main(int argc, const char* argv[])
-     bool is_kss_supported = _is_kss_supported();
+@@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
+     bool is_kss_supported = oe_sgx_is_kss_supported();
  
      /* Load the ELF image */
 -    if ((result = oe_load_enclave_image(argv[1], &oeimage)) != OE_OK)
@@ -4075,7 +3677,7 @@ index 7a2e970fb..45523a262 100644
          oe_put_err("oe_load_enclave_image(): result=%u", result);
      }
 diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
-index 3e7b850fe..87d912c06 100644
+index 4ab2d85bb..9167e909e 100644
 --- a/tools/CMakeLists.txt
 +++ b/tools/CMakeLists.txt
 @@ -29,7 +29,9 @@ endif ()
@@ -4090,7 +3692,7 @@ index 3e7b850fe..87d912c06 100644
    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
               -DCMAKE_C_COMPILER=${EDGER8R_C_COMPILER}
 diff --git a/tools/oesign/main.c b/tools/oesign/main.c
-index cfcfb50bc..d9ad29551 100644
+index 97f9c51bc..3d08a949d 100644
 --- a/tools/oesign/main.c
 +++ b/tools/oesign/main.c
 @@ -26,20 +26,25 @@ int oesign(
@@ -4123,7 +3725,7 @@ index cfcfb50bc..d9ad29551 100644
      "\n"
      "For help with a specific command, enter \"%s <command> --help\"\n";
  
-@@ -151,6 +156,24 @@ static const char _usage_dump[] =
+@@ -170,6 +175,24 @@ static const char _usage_dump[] =
      "signature information for the specified enclave.\n"
      "\n";
  
@@ -4148,7 +3750,7 @@ index cfcfb50bc..d9ad29551 100644
  int dump_parser(int argc, const char* argv[])
  {
      int ret = 0;
-@@ -301,6 +324,7 @@ int sign_parser(int argc, const char* argv[])
+@@ -318,6 +341,7 @@ int sign_parser(int argc, const char* argv[])
      const char* engine_id = NULL;
      const char* engine_load_path = NULL;
      const char* key_id = NULL;
@@ -4156,15 +3758,15 @@ index cfcfb50bc..d9ad29551 100644
  
      const struct option long_options[] = {
          {"help", no_argument, NULL, 'h'},
-@@ -317,6 +341,7 @@ int sign_parser(int argc, const char* argv[])
+@@ -332,6 +356,7 @@ int sign_parser(int argc, const char* argv[])
          {"load-path", required_argument, NULL, 'p'},
          {"key-id", required_argument, NULL, 'i'},
  #endif
 +        {"payload", required_argument, NULL, 0x101},
          {NULL, 0, NULL, 0},
      };
-     const char short_options[] = "he:c:k:n:p:i:d:o:x:z:s:";
-@@ -379,6 +404,9 @@ int sign_parser(int argc, const char* argv[])
+     const char short_options[] = "he:c:k:n:p:i:d:o:x:";
+@@ -389,6 +414,9 @@ int sign_parser(int argc, const char* argv[])
                  key_id = optarg;
                  break;
  #endif
@@ -4174,7 +3776,7 @@ index cfcfb50bc..d9ad29551 100644
              case ':':
                  // Missing option argument
                  ret = 1;
-@@ -456,7 +484,8 @@ int sign_parser(int argc, const char* argv[])
+@@ -466,7 +494,8 @@ int sign_parser(int argc, const char* argv[])
              x509,
              engine_id,
              engine_load_path,
@@ -4184,7 +3786,7 @@ index cfcfb50bc..d9ad29551 100644
      }
  
  done:
-@@ -547,6 +576,122 @@ done:
+@@ -557,6 +586,122 @@ done:
      return ret;
  }
  
@@ -4307,7 +3909,7 @@ index cfcfb50bc..d9ad29551 100644
  int arg_handler(int argc, const char* argv[])
  {
      int ret = 1;
-@@ -560,6 +705,10 @@ int arg_handler(int argc, const char* argv[])
+@@ -570,6 +715,10 @@ int arg_handler(int argc, const char* argv[])
          ret = sign_parser(argc, argv);
      else if ((strcmp(argv[1], "digest") == 0))
          ret = digest_parser(argc, argv);
@@ -4341,7 +3943,7 @@ index 6e047eef5..c6957ad63 100644
          path);
  
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index e18456047..6c810610a 100644
+index 67ec94fc3..c8fcde8ee 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
 @@ -53,6 +53,8 @@ typedef struct _config_file_options
@@ -4396,7 +3998,7 @@ index e18456047..6c810610a 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -579,6 +608,11 @@ void _merge_config_file_options(
+@@ -583,6 +612,11 @@ void _merge_config_file_options(
      if (options->create_zero_base_enclave.value == 1 &&
          options->start_address.has_value)
          properties->config.start_address = options->start_address.value;
@@ -4408,7 +4010,7 @@ index e18456047..6c810610a 100644
  }
  
  oe_result_t _initialize_enclave_properties(
-@@ -652,7 +686,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
+@@ -656,7 +690,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
  oe_result_t _get_sgx_enclave_hash(
      const char* enclave,
      const oe_sgx_enclave_properties_t* properties,
@@ -4418,7 +4020,7 @@ index e18456047..6c810610a 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t enc;
-@@ -668,7 +703,7 @@ oe_result_t _get_sgx_enclave_hash(
+@@ -672,7 +707,7 @@ oe_result_t _get_sgx_enclave_hash(
  
      /* Build an enclave to obtain the MRENCLAVE measurement */
      OE_CHECK_ERR(
@@ -4427,7 +4029,7 @@ index e18456047..6c810610a 100644
          "oe_sgx_build_enclave(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -725,7 +760,8 @@ int oesign(
+@@ -729,7 +764,8 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -4437,7 +4039,7 @@ index e18456047..6c810610a 100644
  {
      int ret = 1;
      oe_result_t result = OE_UNEXPECTED;
-@@ -739,7 +775,8 @@ int oesign(
+@@ -743,7 +779,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
@@ -4447,7 +4049,7 @@ index e18456047..6c810610a 100644
  
      if (engine_id)
      {
-@@ -764,7 +801,7 @@ int oesign(
+@@ -768,7 +805,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -4456,7 +4058,7 @@ index e18456047..6c810610a 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -815,7 +852,7 @@ int oesign(
+@@ -819,7 +856,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -4465,7 +4067,7 @@ index e18456047..6c810610a 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
-@@ -841,7 +878,10 @@ int oesign(
+@@ -845,7 +882,10 @@ int oesign(
  
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
@@ -4477,7 +4079,7 @@ index e18456047..6c810610a 100644
          "oe_write_oeinfo_sgx(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -869,7 +909,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+@@ -873,7 +913,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  

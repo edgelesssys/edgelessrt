@@ -132,13 +132,20 @@ add_enclave_library(
   ${MUSLSRC}/complex/cabs.c
   ${MUSLSRC}/complex/cabsf.c
   ${MUSLSRC}/complex/cabsl.c
+  ${MUSLSRC}/complex/cacos.c
   ${MUSLSRC}/complex/cacosf.c
+  ${MUSLSRC}/complex/cacosh.c
   ${MUSLSRC}/complex/cacoshf.c
+  ${MUSLSRC}/complex/cacoshl.c
+  ${MUSLSRC}/complex/cacosl.c
   ${MUSLSRC}/complex/carg.c
   ${MUSLSRC}/complex/cargf.c
   ${MUSLSRC}/complex/cargl.c
+  ${MUSLSRC}/complex/casin.c
   ${MUSLSRC}/complex/casinf.c
+  ${MUSLSRC}/complex/casinh.c
   ${MUSLSRC}/complex/casinhf.c
+  ${MUSLSRC}/complex/casinhl.c
   ${MUSLSRC}/complex/catan.c
   ${MUSLSRC}/complex/catanf.c
   ${MUSLSRC}/complex/catanh.c
@@ -165,6 +172,9 @@ add_enclave_library(
   ${MUSLSRC}/complex/conj.c
   ${MUSLSRC}/complex/conjf.c
   ${MUSLSRC}/complex/conjl.c
+  ${MUSLSRC}/complex/cpow.c
+  ${MUSLSRC}/complex/cpowf.c
+  ${MUSLSRC}/complex/cpowl.c
   ${MUSLSRC}/complex/cproj.c
   ${MUSLSRC}/complex/cprojf.c
   ${MUSLSRC}/complex/cprojl.c
@@ -177,7 +187,9 @@ add_enclave_library(
   ${MUSLSRC}/complex/csinhf.c
   ${MUSLSRC}/complex/csinhl.c
   ${MUSLSRC}/complex/csinl.c
+  ${MUSLSRC}/complex/csqrt.c
   ${MUSLSRC}/complex/csqrtf.c
+  ${MUSLSRC}/complex/csqrtl.c
   ${MUSLSRC}/complex/ctan.c
   ${MUSLSRC}/complex/ctanf.c
   ${MUSLSRC}/complex/ctanh.c
@@ -277,9 +289,9 @@ add_enclave_library(
   ${MUSLSRC}/locale/uselocale.c
   ${MUSLSRC}/locale/wcscoll.c
   ${MUSLSRC}/locale/wcsxfrm.c
-  ${MUSLSRC}/linux/getrandom.c
   ${MUSLSRC}/linux/epoll.c
   ${MUSLSRC}/linux/flock.c
+  ${MUSLSRC}/linux/getrandom.c
   ${MUSLSRC}/linux/mount.c
   ${MUSLSRC}/linux/sysinfo.c
   ${MUSLSRC}/math/__math_divzero.c
@@ -506,13 +518,26 @@ add_enclave_library(
   ${MUSLSRC}/math/trunc.c
   ${MUSLSRC}/math/truncf.c
   ${MUSLSRC}/math/truncl.c
+  ${MUSLSRC}/misc/a64l.c
   ${MUSLSRC}/misc/basename.c
   ${MUSLSRC}/misc/dirname.c
+  ${MUSLSRC}/misc/ffs.c
+  ${MUSLSRC}/misc/ffsl.c
+  ${MUSLSRC}/misc/ffsll.c
+  ${MUSLSRC}/misc/get_current_dir_name.c
+  ${MUSLSRC}/misc/getauxval.c
   ${MUSLSRC}/misc/getdomainname.c
+  ${MUSLSRC}/misc/gethostid.c
+  ${MUSLSRC}/misc/getopt.c
+  ${MUSLSRC}/misc/getopt_long.c
   ${MUSLSRC}/misc/getrlimit.c
+  ${MUSLSRC}/misc/getsubopt.c
+  ${MUSLSRC}/misc/issetugid.c
   ${MUSLSRC}/misc/ioctl.c
+  ${MUSLSRC}/misc/mntent.c
   ${MUSLSRC}/misc/nftw.c
   ${MUSLSRC}/misc/uname.c
+  ${MUSLSRC}/misc/wordexp.c
   ${MUSLSRC}/multibyte/btowc.c
   ${MUSLSRC}/multibyte/c16rtomb.c
   ${MUSLSRC}/multibyte/c32rtomb.c
@@ -601,15 +626,18 @@ add_enclave_library(
   ${MUSLSRC}/search/lsearch.c
   ${MUSLSRC}/select/select.c
   ${MUSLSRC}/select/poll.c
-  ${MUSLSRC}/stat/mkdir.c
+  ${MUSLSRC}/search/hsearch.c
+  ${MUSLSRC}/search/insque.c
+  ${MUSLSRC}/search/lsearch.c
   ${MUSLSRC}/search/tdelete.c
+  ${MUSLSRC}/search/tdestroy.c
   ${MUSLSRC}/search/tfind.c
   ${MUSLSRC}/search/tsearch.c
   ${MUSLSRC}/search/twalk.c
   ${MUSLSRC}/stat/fstat.c
   ${MUSLSRC}/stat/fstatat.c
+  ${MUSLSRC}/stat/mkdir.c
   ${MUSLSRC}/stat/stat.c
-  ${MUSLSRC}/stdio/asprintf.c
   ${MUSLSRC}/stdio/asprintf.c
   ${MUSLSRC}/stdio/clearerr.c
   ${MUSLSRC}/stdio/dprintf.c
@@ -691,7 +719,6 @@ add_enclave_library(
   ${MUSLSRC}/stdio/sscanf.c
   ${MUSLSRC}/stdio/stderr.c
   ${MUSLSRC}/stdio/stdin.c
-  ${MUSLSRC}/stdio/tmpfile.c
   ${MUSLSRC}/stdio/__stdio_close.c
   ${MUSLSRC}/stdio/__stdio_exit.c
   ${MUSLSRC}/stdio/__stdio_read.c
@@ -701,6 +728,8 @@ add_enclave_library(
   ${MUSLSRC}/stdio/__stdout_write.c
   ${MUSLSRC}/stdio/swprintf.c
   ${MUSLSRC}/stdio/swscanf.c
+  ${MUSLSRC}/stdio/tempnam.c
+  ${MUSLSRC}/stdio/tmpfile.c
   ${MUSLSRC}/stdio/__toread.c
   ${MUSLSRC}/stdio/__towrite.c
   ${MUSLSRC}/stdio/__uflow.c
@@ -730,6 +759,9 @@ add_enclave_library(
   ${MUSLSRC}/stdlib/atoll.c
   ${MUSLSRC}/stdlib/bsearch.c
   ${MUSLSRC}/stdlib/div.c
+  ${MUSLSRC}/stdlib/ecvt.c
+  ${MUSLSRC}/stdlib/fcvt.c
+  ${MUSLSRC}/stdlib/gcvt.c
   ${MUSLSRC}/stdlib/imaxabs.c
   ${MUSLSRC}/stdlib/imaxdiv.c
   ${MUSLSRC}/stdlib/labs.c
@@ -744,6 +776,7 @@ add_enclave_library(
   ${MUSLSRC}/string/bcmp.c
   ${MUSLSRC}/string/bcopy.c
   ${MUSLSRC}/string/bzero.c
+  ${MUSLSRC}/string/explicit_bzero.c
   ${MUSLSRC}/string/index.c
   ${MUSLSRC}/string/memccpy.c
   ${MUSLSRC}/string/memchr.c
@@ -776,6 +809,7 @@ add_enclave_library(
   ${MUSLSRC}/string/strpbrk.c
   ${MUSLSRC}/string/strrchr.c
   ${MUSLSRC}/string/strsep.c
+  ${MUSLSRC}/string/strsignal.c
   ${MUSLSRC}/string/strspn.c
   ${MUSLSRC}/string/strstr.c
   ${MUSLSRC}/string/strtok.c
@@ -1004,28 +1038,16 @@ add_enclave_library(
   ${MUSLSRC}/linux/wait3.c
   ${MUSLSRC}/linux/wait4.c
   ${MUSLSRC}/linux/xattr.c
-  ${MUSLSRC}/misc/a64l.c
-  ${MUSLSRC}/misc/ffs.c
-  ${MUSLSRC}/misc/ffsl.c
-  ${MUSLSRC}/misc/ffsll.c
   ${MUSLSRC}/misc/fmtmsg.c
   ${MUSLSRC}/misc/forkpty.c
-  ${MUSLSRC}/misc/get_current_dir_name.c
-  ${MUSLSRC}/misc/getauxval.c
   ${MUSLSRC}/misc/getentropy.c
-  ${MUSLSRC}/misc/gethostid.c
-  ${MUSLSRC}/misc/getopt.c
-  ${MUSLSRC}/misc/getopt_long.c
   ${MUSLSRC}/misc/getpriority.c
   ${MUSLSRC}/misc/getresgid.c
   ${MUSLSRC}/misc/getresuid.c
   ${MUSLSRC}/misc/getrusage.c
-  ${MUSLSRC}/misc/getsubopt.c
   ${MUSLSRC}/misc/initgroups.c
-  ${MUSLSRC}/misc/issetugid.c
   ${MUSLSRC}/misc/lockf.c
   ${MUSLSRC}/misc/login_tty.c
-  ${MUSLSRC}/misc/mntent.c
   ${MUSLSRC}/misc/openpty.c
   ${MUSLSRC}/misc/ptsname.c
   ${MUSLSRC}/misc/pty.c
@@ -1034,7 +1056,6 @@ add_enclave_library(
   ${MUSLSRC}/misc/setrlimit.c
   ${MUSLSRC}/misc/syscall.c
   ${MUSLSRC}/misc/syslog.c
-  ${MUSLSRC}/misc/wordexp.c
   ${MUSLSRC}/mman/madvise.c
   ${MUSLSRC}/mman/mincore.c
   ${MUSLSRC}/mman/mlock.c
@@ -1142,7 +1163,6 @@ add_enclave_library(
   ${MUSLSRC}/sched/sched_rr_get_interval.c
   ${MUSLSRC}/sched/sched_setparam.c
   ${MUSLSRC}/sched/sched_setscheduler.c
-  ${MUSLSRC}/search/tdestroy.c
   ${MUSLSRC}/select/pselect.c
   ${MUSLSRC}/setjmp/longjmp.c
   ${MUSLSRC}/setjmp/setjmp.c
@@ -1198,13 +1218,7 @@ add_enclave_library(
   ${MUSLSRC}/stat/umask.c
   ${MUSLSRC}/stat/utimensat.c
   ${MUSLSRC}/stdio/popen.c
-  ${MUSLSRC}/stdio/tempnam.c
   ${MUSLSRC}/stdio/tmpnam.c
-  ${MUSLSRC}/stdlib/ecvt.c
-  ${MUSLSRC}/stdlib/fcvt.c
-  ${MUSLSRC}/stdlib/gcvt.c
-  ${MUSLSRC}/string/explicit_bzero.c
-  ${MUSLSRC}/string/strsignal.c
   ${MUSLSRC}/termios/cfgetospeed.c
   ${MUSLSRC}/termios/cfmakeraw.c
   ${MUSLSRC}/termios/cfsetospeed.c
@@ -1497,6 +1511,7 @@ enclave_link_libraries(
   oesyscall
   oecore
   oelibc_includes
+  oecompiler-rt
   PRIVATE
   oelibasm)
 

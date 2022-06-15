@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     const uint32_t flags = oe_get_create_flags();
     oe_enclave_t* enclave = nullptr;
 
-    if ((flags & OE_ENCLAVE_FLAG_SIMULATE) || !oe_has_sgx_quote_provider())
+    if ((flags & OE_ENCLAVE_FLAG_SIMULATE) || !oe_sgx_has_quote_provider())
         return 2; // skip
 
     OE_TEST(
