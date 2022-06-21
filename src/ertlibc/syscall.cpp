@@ -19,6 +19,11 @@
 #include "locale.h"
 #include "syscalls.h"
 
+extern "C"
+{
+#include "../enclave/core/sgx/report.h"
+}
+
 using namespace std;
 using namespace ert;
 
@@ -151,6 +156,33 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 
             case 1008:
                 return oe_free_claims(reinterpret_cast<oe_claim_t*>(x1), x2);
+
+            case 1009:
+            {
+                void* target_info_buffer = nullptr;
+                size_t target_info_size = 0;
+                if (x3)
+                {
+                    const auto res = oe_get_target_info_v2(
+                        reinterpret_cast<uint8_t*>(x3),
+                        x4,
+                        &target_info_buffer,
+                        &target_info_size);
+                    if (res != OE_OK)
+                        return res;
+                }
+                const auto res = oe_get_report_v2_internal(
+                    0,
+                    nullptr,
+                    reinterpret_cast<uint8_t*>(x1),
+                    x2,
+                    target_info_buffer,
+                    target_info_size,
+                    reinterpret_cast<uint8_t**>(x5),
+                    reinterpret_cast<size_t*>(x6));
+                oe_free_target_info(target_info_buffer);
+                return res;
+            }
         }
     }
     catch (const system_error& e)
