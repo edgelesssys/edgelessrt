@@ -34,7 +34,7 @@ Then proceed with [Use](#use).
 ## Build
 On Ubuntu 20.04 build with:
 ```bash
-sudo apt install build-essential clang-10 cmake doxygen gdb libssl-dev ninja-build python3
+sudo apt install build-essential clang-10 cmake gdb libssl-dev ninja-build python3
 mkdir build
 cd build
 cmake -GNinja ..
