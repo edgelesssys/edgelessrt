@@ -1,6 +1,6 @@
 # Copyright (c) Open Enclave SDK contributors.
 # Licensed under the MIT License.
-option(ENABLE_REFMAN "Enable Doxygen reference manual generation" ON)
+option(ENABLE_REFMAN "Enable Doxygen reference manual generation" OFF)
 
 if (ENABLE_REFMAN)
   find_package(Doxygen)
