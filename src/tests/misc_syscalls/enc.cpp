@@ -4,6 +4,7 @@
 #include <openenclave/internal/tests.h>
 #include <sys/mount.h>
 #include <sys/random.h>
+#include <sys/statfs.h>
 #include <unistd.h>
 #include <algorithm>
 #include <array>
@@ -103,6 +104,48 @@ static void _test_readlink()
     OE_TEST(!buf.front());
 }
 
+static void _test_statfs()
+{
+    const size_t expected_blocks = 20000000;
+    struct statfs buf = {};
+
+    // statfs
+
+    OE_TEST(statfs("/", &buf) == 0);
+    OE_TEST(buf.f_blocks == expected_blocks);
+
+    OE_TEST(statfs("/edg/hostfs/", &buf) == 0);
+    OE_TEST(buf.f_files > 0);
+
+    // statfs errors
+
+    errno = 0;
+    OE_TEST(statfs("", &buf) == -1);
+    OE_TEST(errno == ENOENT);
+
+    errno = 0;
+    OE_TEST(statfs("/edg/hostfs/doesnotexist", &buf) == -1);
+    OE_TEST(errno == ENOENT);
+
+    // fstatfs
+
+    OE_TEST(fstatfs(0, &buf) == 0);
+    OE_TEST(buf.f_blocks == expected_blocks);
+
+    OE_TEST(fstatfs(3, &buf) == 0);
+    OE_TEST(buf.f_blocks == expected_blocks);
+
+    // fstatfs errors
+
+    errno = 0;
+    OE_TEST(fstatfs(-1, &buf) == -1);
+    OE_TEST(errno == EBADF);
+
+    errno = 0;
+    OE_TEST(fstatfs(-2, &buf) == -1);
+    OE_TEST(errno == EBADF);
+}
+
 static void _test_syconf()
 {
     OE_TEST(sysconf(_SC_PAGESIZE) == OE_PAGE_SIZE);
@@ -132,6 +175,7 @@ void test_ecall()
     _test_dynlink();
     _test_getrandom();
     _test_readlink();
+    _test_statfs();
     _test_syconf();
     _test_time();
 }

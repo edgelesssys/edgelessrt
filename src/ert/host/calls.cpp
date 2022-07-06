@@ -3,6 +3,7 @@
 
 #include <openenclave/internal/trace.h>
 #include <sched.h>
+#include <sys/statfs.h>
 #include <cassert>
 #include <exception>
 #include "enclave_thread_manager.h"
@@ -54,4 +55,9 @@ size_t ert_getaffinity_cpucount()
     if (sched_getaffinity(0, sizeof cpuset, &cpuset) != 0)
         return 0;
     return static_cast<size_t>(CPU_COUNT(&cpuset));
+}
+
+int ert_statfs_ocall(const char* path, uint64_t* buf)
+{
+    return statfs(path, reinterpret_cast<struct statfs*>(buf));
 }
