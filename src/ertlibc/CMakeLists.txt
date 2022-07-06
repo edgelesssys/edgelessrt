@@ -9,6 +9,7 @@ add_library(
   sched.cpp
   signal.cpp
   signal_manager.cpp
+  statfs.cpp
   stdio.cpp
   stdlib.cpp
   stubs.cpp

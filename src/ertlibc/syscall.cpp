@@ -55,6 +55,13 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                                  x4)                          // bufsiz
                            : -EBADF;
 
+            case SYS_statfs:
+                return sc::statfs(
+                    reinterpret_cast<char*>(x1),
+                    reinterpret_cast<struct statfs*>(x2));
+            case SYS_fstatfs:
+                return sc::fstatfs(x1, reinterpret_cast<struct statfs*>(x2));
+
             case SYS_exit_group:
                 sc::exit_group(static_cast<int>(x1));
                 return 0;

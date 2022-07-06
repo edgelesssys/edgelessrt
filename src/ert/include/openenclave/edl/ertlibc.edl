@@ -26,5 +26,10 @@ enclave {
         size_t ert_getaffinity_cpucount();
 
         void ert_restart_host_process_ocall();
+
+        int ert_statfs_ocall(
+            [in, string] const char* path,
+            [out, count=15] uint64_t* buf)
+            propagate_errno;
     };
 }
