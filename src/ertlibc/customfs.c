@@ -596,6 +596,11 @@ done:
     return ret;
 }
 
+static int _fstat_unlocked(
+    const oe_customfs_t* fs,
+    void* handle,
+    oe_stat_t* statbuf);
+
 static ssize_t _fs_pread(
     oe_fd_t* desc,
     void* buf,
@@ -622,6 +627,13 @@ static ssize_t _fs_pread(
     oe_spin_lock(&_lock);
     ret = file->device->pread(
         _get_context(file), file->handle, buf, count, offset);
+    if (ret == -OE_EINVAL && offset > 0)
+    {
+        oe_stat_t statbuf = {0};
+        if (_fstat_unlocked(file->device, file->handle, &statbuf) == 0 &&
+            offset > statbuf.st_size)
+            ret = 0; // mystikos workaround: pread beyond end of file is fine
+    }
     oe_spin_unlock(&_lock);
     ret = _err_ssize(ret);
 

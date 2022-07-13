@@ -40,6 +40,18 @@ void test_ecall()
         test_dup_case1("");
     }
 
+    // test mystikos workaround for pread beyond end of file
+    {
+        const Memfs memfs(myfs);
+        OE_TEST(mount("/", "/", myfs, 0, nullptr) == 0);
+        const int fd = open("foo", O_RDONLY | O_CREAT, 0);
+        OE_TEST(fd >= 0);
+        uint8_t b = 0;
+        OE_TEST(pread(fd, &b, 1, 1) == 0);
+        OE_TEST(close(fd) == 0);
+        OE_TEST(umount("/") == 0);
+    }
+
     // test different mount sources
     {
         const Memfs memfs(myfs);
