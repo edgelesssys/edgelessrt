@@ -2704,10 +2704,10 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index cd2ee2718..d460355f3 100644
+index bb7569897..eda6d51d9 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -143,7 +143,7 @@ if (UNIX
+@@ -144,7 +144,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
