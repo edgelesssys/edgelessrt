@@ -1,5 +1,5 @@
 module meshpremain
 
-go 1.14
+go 1.16
 
-require github.com/edgelesssys/marblerun v0.5.1
+require github.com/edgelesssys/marblerun v0.6.0
