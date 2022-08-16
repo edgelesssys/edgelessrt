@@ -47,7 +47,7 @@ To run your applications in SGX mode, install these packages:
 ```bash
 wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
 sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
-sudo apt install libsgx-dcap-ql-dev libsgx-enclave-common libsgx-launch
+sudo apt install libsgx-dcap-ql libsgx-enclave-common libsgx-launch
 ```
 
 ## Test
