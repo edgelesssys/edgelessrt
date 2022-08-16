@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     libsgx-ae-qe3=$DCAP_VERSION \
     libsgx-dcap-default-qpl=$DCAP_VERSION \
     libsgx-dcap-ql=$DCAP_VERSION \
-    libsgx-dcap-ql-dev=$DCAP_VERSION \
     libsgx-enclave-common=$PSW_VERSION \
     libsgx-headers=$PSW_VERSION \
     libsgx-launch=$PSW_VERSION \
