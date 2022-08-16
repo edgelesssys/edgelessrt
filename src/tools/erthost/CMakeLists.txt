@@ -26,6 +26,7 @@ target_link_libraries(
   ertcalls
   PRIVATE $<BUILD_INTERFACE:oe_includes>
   INTERFACE ertlibc)
+set_property(TARGET ertcalls PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(ertttls ttls.cpp $<TARGET_OBJECTS:ttlsobj>)
 target_link_libraries(

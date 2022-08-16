@@ -28,7 +28,7 @@ void oe_new_thread_init(
     new_thread->arg = arg;
     new_thread->_next = NULL;
     new_thread->_state = OE_NEWTHREADSTATE_QUEUED;
-    _check(oe_mutex_init(&new_thread->_mutex));
+    _check(oe_mutex_init(&new_thread->_mutex, nullptr));
     _check(oe_cond_init(&new_thread->_cond));
     new_thread->_detached = false;
 }
