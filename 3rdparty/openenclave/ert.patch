@@ -1040,6 +1040,23 @@ index ff11d460e..b20cd23fa 100644
          else if (signal_number != 0 && signal_number != LINUX_SIGSEGV)
              arg_in = signal_number;
  
+diff --git a/host/sgx/linux/sgxquoteproviderloader.c b/host/sgx/linux/sgxquoteproviderloader.c
+index 970dbe65f..a4e4f0aff 100644
+--- a/host/sgx/linux/sgxquoteproviderloader.c
++++ b/host/sgx/linux/sgxquoteproviderloader.c
+@@ -27,6 +27,12 @@ void oe_load_quote_provider()
+         OE_TRACE_INFO("oe_load_quote_provider libdcap_quoteprov.so\n");
+         provider.handle =
+             dlopen("libdcap_quoteprov.so", RTLD_LAZY | RTLD_LOCAL);
++
++        // EDG: also try .so.1
++        if (!provider.handle)
++            provider.handle =
++                dlopen("libdcap_quoteprov.so.1", RTLD_LAZY | RTLD_LOCAL);
++
+         if (provider.handle != 0)
+         {
+             if (oe_sgx_set_quote_provider_logger(oe_quote_provider_log) ==
 diff --git a/host/sgx/load.c b/host/sgx/load.c
 index 4ec690dd7..2f5e827b8 100644
 --- a/host/sgx/load.c
@@ -1168,6 +1185,23 @@ index b4b9eac9d..db87cf8c6 100644
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
+diff --git a/host/sgx/sgxquoteprovider.c b/host/sgx/sgxquoteprovider.c
+index f2b02e28f..f72e04746 100644
+--- a/host/sgx/sgxquoteprovider.c
++++ b/host/sgx/sgxquoteprovider.c
+@@ -30,10 +30,10 @@ void oe_quote_provider_log(sgx_ql_log_level_t level, const char* message)
+     char formatted[OE_LOG_MESSAGE_LEN_MAX] = {0};
+     oe_log_level_t oe_log_level[] = {
+         OE_LOG_LEVEL_ERROR,
+-        OE_LOG_LEVEL_WARNING,
++        OE_LOG_LEVEL_INFO, // EDG: was WARN, but default qpl doesn't have WARN
+         OE_LOG_LEVEL_INFO,
+         OE_LOG_LEVEL_NONE};
+-    const char* dcap_level_strings[] = {"ERROR", "WARN", "INFO", "NONE"};
++    const char* dcap_level_strings[] = {"ERROR", "", "INFO", "NONE"};
+ 
+     if (level >= SGX_QL_LOG_NONE || level < SGX_QL_LOG_ERROR)
+     {
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
 index f7220c44f..d3623bfa1 100644
 --- a/include/openenclave/bits/fs.h
