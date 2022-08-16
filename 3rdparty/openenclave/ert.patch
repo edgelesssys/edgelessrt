@@ -1,8 +1,8 @@
 diff --git a/3rdparty/compiler-rt/CMakeLists.txt b/3rdparty/compiler-rt/CMakeLists.txt
-index b76d5e299..6e17361e7 100644
+index 7fe981dab..df691b576 100644
 --- a/3rdparty/compiler-rt/CMakeLists.txt
 +++ b/3rdparty/compiler-rt/CMakeLists.txt
-@@ -72,14 +72,10 @@ set(GENERIC_SOURCES
+@@ -71,14 +71,10 @@ set(GENERIC_SOURCES
      fixunssfdi.c
      fixunssfsi.c
      fixunssfti.c
@@ -17,7 +17,7 @@ index b76d5e299..6e17361e7 100644
      floatunsidf.c
      floatunsisf.c
      floatuntidf.c
-@@ -181,9 +177,7 @@ set(x86_ARCH_SOURCES
+@@ -180,9 +176,7 @@ set(x86_ARCH_SOURCES
      fixunsxfdi.c
      fixunsxfsi.c
      fixunsxfti.c
@@ -120,7 +120,7 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 0596a2660..d2b024a99 100644
+index f89f0b315..e645fd376 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -175,7 +175,8 @@ endif ()
@@ -133,7 +133,7 @@ index 0596a2660..d2b024a99 100644
  endif ()
  
  set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
-@@ -288,7 +289,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
+@@ -292,7 +293,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
    set(COMPILER_SUPPORTS_SNMALLOC off)
  else ()
@@ -143,7 +143,7 @@ index 0596a2660..d2b024a99 100644
  endif ()
  
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
-@@ -419,9 +421,9 @@ add_subdirectory(tools)
+@@ -423,9 +425,9 @@ add_subdirectory(tools)
  if (BUILD_ENCLAVES)
    add_subdirectory(enclave)
    add_subdirectory(3rdparty)
@@ -155,7 +155,7 @@ index 0596a2660..d2b024a99 100644
  
  if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
-index 90864a682..f51cd9812 100644
+index 3e46e07db..896111169 100644
 --- a/cmake/compiler_settings.cmake
 +++ b/cmake/compiler_settings.cmake
 @@ -24,7 +24,7 @@ endif ()
@@ -212,10 +212,10 @@ index 47bfc0d10..1ea5f124e 100644
  }
  
 diff --git a/enclave/core/sgx/backtrace.c b/enclave/core/sgx/backtrace.c
-index 37724480c..d467e9d95 100644
+index 9d55a56e1..04f755c08 100644
 --- a/enclave/core/sgx/backtrace.c
 +++ b/enclave/core/sgx/backtrace.c
-@@ -85,7 +85,28 @@ const void* _check_address(const void* ptr)
+@@ -87,7 +87,28 @@ const void* _check_address(const void* ptr)
      if (!oe_is_within_enclave(ptr, sizeof(uint64_t)))
          return NULL;
  
@@ -246,7 +246,7 @@ index 37724480c..d467e9d95 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index c4fe4f542..e8c44b1af 100644
+index 9bfdc5588..140f458fa 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
 @@ -50,6 +50,22 @@ void oe_abort_with_td(oe_sgx_td_t* td) OE_NO_RETURN;
@@ -297,7 +297,7 @@ index c4fe4f542..e8c44b1af 100644
          }
  
          oe_spin_unlock(&_lock);
-@@ -428,6 +450,9 @@ static void _call_at_exit_functions(void)
+@@ -435,6 +457,9 @@ static void _call_at_exit_functions(void)
      oe_spin_lock(&_lock);
      if (!_at_exit_functions_done)
      {
@@ -307,7 +307,7 @@ index c4fe4f542..e8c44b1af 100644
          /* Call functions installed by oe_cxa_atexit() and oe_atexit()
           */
          oe_call_atexit_functions();
-@@ -550,6 +575,17 @@ static void _handle_ecall(
+@@ -557,6 +582,17 @@ static void _handle_ecall(
          goto done;
      }
  
@@ -325,7 +325,7 @@ index c4fe4f542..e8c44b1af 100644
      /* Dispatch the ECALL */
      switch (func)
      {
-@@ -782,6 +818,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
+@@ -789,6 +825,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
  
  oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
  {
@@ -340,7 +340,7 @@ index c4fe4f542..e8c44b1af 100644
      oe_result_t result = OE_UNEXPECTED;
      oe_sgx_td_t* td = oe_sgx_get_td();
      oe_callsite_t* callsite = td->callsites;
-@@ -838,6 +882,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
+@@ -845,6 +889,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
          }
      }
  
@@ -353,10 +353,10 @@ index c4fe4f542..e8c44b1af 100644
  
  done:
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
-index 90dcb42a6..827665a00 100644
+index 15590ff45..575700109 100644
 --- a/enclave/core/sgx/exception.c
 +++ b/enclave/core/sgx/exception.c
-@@ -33,6 +33,9 @@ uint32_t g_current_exception_handler_count = 0;
+@@ -35,6 +35,9 @@ uint32_t g_current_exception_handler_count = 0;
  oe_vectored_exception_handler_t
      g_exception_handler_arr[MAX_EXCEPTION_HANDLER_COUNT];
  
@@ -366,7 +366,7 @@ index 90dcb42a6..827665a00 100644
  oe_result_t oe_add_vectored_exception_handler(
      bool is_first_handler,
      oe_vectored_exception_handler_t vectored_handler)
-@@ -527,7 +530,7 @@ void oe_virtual_exception_dispatcher(
+@@ -542,7 +545,7 @@ void oe_virtual_exception_dispatcher(
          td->host_signal = arg_in;
      }
      else if (
@@ -375,7 +375,7 @@ index 90dcb42a6..827665a00 100644
          oe_is_outside_enclave((void*)arg_in, sizeof(oe_exception_record_t)))
      {
          oe_exception_record = (oe_exception_record_t*)arg_in;
-@@ -566,6 +569,16 @@ void oe_virtual_exception_dispatcher(
+@@ -581,6 +584,16 @@ void oe_virtual_exception_dispatcher(
          }
      }
  
@@ -661,7 +661,7 @@ index eed0c4dcf..fb791663e 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index 14e4f92af..22b2c7539 100644
+index ba8c398be..f6296ed23 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -87,9 +87,6 @@ static void _initialize_enclave_host_impl(void)
@@ -913,7 +913,7 @@ index 14e4f92af..22b2c7539 100644
      /* Add data pages */
      OE_CHECK(_add_data_pages(
          context,
-@@ -1326,8 +1454,21 @@ oe_result_t oe_create_enclave(
+@@ -1341,8 +1469,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
  
@@ -937,7 +937,7 @@ index 14e4f92af..22b2c7539 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1405,6 +1546,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1437,6 +1578,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      if (!enclave || enclave->magic != ENCLAVE_MAGIC)
          OE_RAISE(OE_INVALID_PARAMETER);
  
@@ -949,7 +949,7 @@ index 14e4f92af..22b2c7539 100644
       * destructor attribute) */
      result = oe_ecall(enclave, OE_ECALL_CALL_AT_EXIT_FUNCTIONS, 0, NULL);
 diff --git a/host/sgx/exception.c b/host/sgx/exception.c
-index 32543e720..de4e306b4 100644
+index ff11d460e..b20cd23fa 100644
 --- a/host/sgx/exception.c
 +++ b/host/sgx/exception.c
 @@ -86,6 +86,9 @@ uint64_t oe_host_handle_exception(oe_host_exception_context_t* context)
@@ -1162,11 +1162,11 @@ index 5a28f71af..0547d3100 100644
      };
  };
 diff --git a/include/openenclave/edl/sgx/debug.edl b/include/openenclave/edl/sgx/debug.edl
-index 1dcd2afd1..5f044713e 100644
+index c59fdf194..7037ce788 100644
 --- a/include/openenclave/edl/sgx/debug.edl
 +++ b/include/openenclave/edl/sgx/debug.edl
-@@ -35,5 +35,7 @@ enclave
-             [user_check] oe_enclave_t* oe_enclave,
+@@ -37,5 +37,7 @@ enclave
+             oe_log_level_t level,
              [in, count=size] const uint64_t* buffer,
              size_t size);
 +
@@ -2704,10 +2704,10 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index bb7569897..eda6d51d9 100644
+index 74cc0939d..bb6d4658b 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -144,7 +144,7 @@ if (UNIX
+@@ -148,7 +148,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
@@ -2739,34 +2739,26 @@ index 8a1389e0e..87767ccf4 100644
  done:
      return result;
  }
-diff --git a/tests/debugger/CMakeLists.txt b/tests/debugger/CMakeLists.txt
-index 482218255..32aa9dce1 100644
---- a/tests/debugger/CMakeLists.txt
-+++ b/tests/debugger/CMakeLists.txt
-@@ -23,23 +23,3 @@ add_test(
-     --command=${CMAKE_CURRENT_SOURCE_DIR}/commands.gdb
-     --return-child-result # This fails the test in case of any error.
-     -arg host/db_test_host enc/db_test_enc --simulation-mode)
+diff --git a/tests/debugger/non_debug/CMakeLists.txt b/tests/debugger/non_debug/CMakeLists.txt
+index 26364240b..ecdb261fb 100644
+--- a/tests/debugger/non_debug/CMakeLists.txt
++++ b/tests/debugger/non_debug/CMakeLists.txt
+@@ -19,15 +19,3 @@ set_tests_properties(
+   oegdb-non-debug-enclave-test
+   PROPERTIES PASS_REGULAR_EXPRESSION "The enclave is not debuggable"
+              FAIL_REGULAR_EXPRESSION "This should not be hit")
 -
 -add_test(
 -  NAME oelldb-test
 -  COMMAND
 -    ${OE_BINDIR}/oelldb -o
 -    "command script import ${CMAKE_CURRENT_SOURCE_DIR}/commands.py" -o "quit"
--    -- host/db_test_host enc/db_test_enc)
+-    -- host/non_debug_host enc/non_debug_enc --simulation-mode)
 -
--set_tests_properties(oelldb-test PROPERTIES PASS_REGULAR_EXPRESSION
--                                            "oelldb test passed")
--
--add_test(
--  NAME oelldb-test-simulation-mode
--  COMMAND
--    ${OE_BINDIR}/oelldb -o
--    "command script import ${CMAKE_CURRENT_SOURCE_DIR}/commands.py" -o "quit"
--    -- host/db_test_host enc/db_test_enc --simulation-mode)
--
--set_tests_properties(oelldb-test-simulation-mode
--                     PROPERTIES PASS_REGULAR_EXPRESSION "oelldb test passed")
+-set_tests_properties(
+-  oelldb-test
+-  PROPERTIES PASS_REGULAR_EXPRESSION "The enclave is not debuggable"
+-             FAIL_REGULAR_EXPRESSION "This should not be hit")
 diff --git a/tests/edl_opt_out/enc/CMakeLists.txt b/tests/edl_opt_out/enc/CMakeLists.txt
 index a6d870bfc..5ba866b22 100644
 --- a/tests/edl_opt_out/enc/CMakeLists.txt
@@ -2807,7 +2799,7 @@ index c32f0d0f8..57ba0486c 100644
 +        OE_INVALID_IMAGE);
  }
 diff --git a/tests/mbed/enc/enc.c b/tests/mbed/enc/enc.c
-index 247731017..a6882400e 100644
+index 1f1cd729f..86b97ccff 100644
 --- a/tests/mbed/enc/enc.c
 +++ b/tests/mbed/enc/enc.c
 @@ -138,6 +138,7 @@ OE_DEFINE_SYSCALL3_M(SYS_writev)
@@ -3019,27 +3011,6 @@ index 6c39b1d86..ca4ea042d 100644
          }
      }
  
-diff --git a/tests/module_loading/CMakeLists.txt b/tests/module_loading/CMakeLists.txt
-index 66b27aa56..f9df67921 100644
---- a/tests/module_loading/CMakeLists.txt
-+++ b/tests/module_loading/CMakeLists.txt
-@@ -55,16 +55,5 @@ if (BUILD_TYPE_UPPER STREQUAL "DEBUG" OR BUILD_TYPE_UPPER STREQUAL
-         --command=${CMAKE_CURRENT_SOURCE_DIR}/commands.gdb
-         --return-child-result # This fails the test in case of any error.
-         -arg host/module_loading_host enc/module_loading_enc)
--
--    add_test(
--      NAME oelldb-multi-module-test
--      COMMAND
--        ${OE_BINDIR}/oelldb -o
--        "command script import ${CMAKE_CURRENT_SOURCE_DIR}/commands.py" -o
--        "quit" -- host/module_loading_host enc/module_loading_enc)
--
--    set_tests_properties(
--      oelldb-multi-module-test PROPERTIES PASS_REGULAR_EXPRESSION
--                                          "oelldb-multi-module-test passed")
-   endif ()
- endif ()
 diff --git a/tests/module_loading/enc/CMakeLists.txt b/tests/module_loading/enc/CMakeLists.txt
 index 90d0d7e2e..d17c9028c 100644
 --- a/tests/module_loading/enc/CMakeLists.txt
@@ -3105,6 +3076,19 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
+diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
+index 20e247eca..eecea0bb5 100644
+--- a/tests/stack_overflow_exception/enc/enc.c
++++ b/tests/stack_overflow_exception/enc/enc.c
+@@ -33,7 +33,7 @@ uint64_t test_stack_overflow_handler(oe_exception_record_t* exception_record)
+     uint64_t stack_base = (uint64_t)tcs - PAGE_SIZE;
+ 
+     /* Verify that the stack is overflowed */
+-    OE_TEST(exception_record->context->rsp < (stack_base - STACK_SIZE));
++    OE_TEST(exception_record->context->rsp <= (stack_base - STACK_SIZE));
+ 
+     uint64_t stack = (uint64_t)exception_handler_stack;
+     uint64_t stack_end = stack + EXCEPTION_HANDLER_STACK_SIZE;
 diff --git a/tests/syscall/fs/enc/enc.cpp b/tests/syscall/fs/enc/enc.cpp
 index 0664f845e..75f456101 100644
 --- a/tests/syscall/fs/enc/enc.cpp
@@ -3692,6 +3676,19 @@ index f116c9051..6afc87535 100644
  #include <openenclave/enclave.h>
  #include <openenclave/internal/tests.h>
  #include <stdio.h>
+diff --git a/tests/tools/oeseal/enc/CMakeLists.txt b/tests/tools/oeseal/enc/CMakeLists.txt
+index 8663be27f..0aa6e579f 100644
+--- a/tests/tools/oeseal/enc/CMakeLists.txt
++++ b/tests/tools/oeseal/enc/CMakeLists.txt
+@@ -10,8 +10,6 @@ add_custom_command(
+ add_enclave(
+   TARGET
+   sgx_oeseal_enc
+-  CRYPTO_LIB
+-  openssl
+   SOURCES
+   enc.c
+   ${CMAKE_CURRENT_BINARY_DIR}/oeseal_t.c)
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
 index b52ce1d24..397975850 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
@@ -3972,7 +3969,7 @@ index 6e047eef5..c6957ad63 100644
          path);
  
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index 67ec94fc3..c8fcde8ee 100644
+index 752e74ab2..1b4671051 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
 @@ -53,6 +53,8 @@ typedef struct _config_file_options
@@ -4027,7 +4024,7 @@ index 67ec94fc3..c8fcde8ee 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -583,6 +612,11 @@ void _merge_config_file_options(
+@@ -584,6 +613,11 @@ void _merge_config_file_options(
      if (options->create_zero_base_enclave.value == 1 &&
          options->start_address.has_value)
          properties->config.start_address = options->start_address.value;
@@ -4039,7 +4036,7 @@ index 67ec94fc3..c8fcde8ee 100644
  }
  
  oe_result_t _initialize_enclave_properties(
-@@ -656,7 +690,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
+@@ -657,7 +691,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
  oe_result_t _get_sgx_enclave_hash(
      const char* enclave,
      const oe_sgx_enclave_properties_t* properties,
@@ -4049,7 +4046,7 @@ index 67ec94fc3..c8fcde8ee 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t enc;
-@@ -672,7 +707,7 @@ oe_result_t _get_sgx_enclave_hash(
+@@ -673,7 +708,7 @@ oe_result_t _get_sgx_enclave_hash(
  
      /* Build an enclave to obtain the MRENCLAVE measurement */
      OE_CHECK_ERR(
@@ -4058,7 +4055,7 @@ index 67ec94fc3..c8fcde8ee 100644
          "oe_sgx_build_enclave(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -729,7 +764,8 @@ int oesign(
+@@ -730,7 +765,8 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -4068,7 +4065,7 @@ index 67ec94fc3..c8fcde8ee 100644
  {
      int ret = 1;
      oe_result_t result = OE_UNEXPECTED;
-@@ -743,7 +779,8 @@ int oesign(
+@@ -744,7 +780,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
@@ -4078,7 +4075,7 @@ index 67ec94fc3..c8fcde8ee 100644
  
      if (engine_id)
      {
-@@ -768,7 +805,7 @@ int oesign(
+@@ -769,7 +806,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -4087,7 +4084,7 @@ index 67ec94fc3..c8fcde8ee 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -819,7 +856,7 @@ int oesign(
+@@ -820,7 +857,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -4096,7 +4093,7 @@ index 67ec94fc3..c8fcde8ee 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
-@@ -845,7 +882,10 @@ int oesign(
+@@ -846,7 +883,10 @@ int oesign(
  
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
@@ -4108,7 +4105,7 @@ index 67ec94fc3..c8fcde8ee 100644
          "oe_write_oeinfo_sgx(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -873,7 +913,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+@@ -874,7 +914,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  

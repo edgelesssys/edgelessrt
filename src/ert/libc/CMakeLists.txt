@@ -10,7 +10,6 @@ if (OE_SGX)
   add_enclave_library(
     oelibasm
     OBJECT
-    ${LIBCDIR}/sgx/abort.S
     ${LIBCDIR}/sgx/exp2l.S
     ${MUSLSRC}/fenv/x86_64/fenv.s
     ${MUSLSRC}/math/x86_64/acosl.s
@@ -65,7 +64,6 @@ else ()
     ${MUSLSRC}/string/memcpy.c
     ${MUSLSRC}/string/memmove.c
     ${MUSLSRC}/string/memset.c
-    optee/abort.c
     optee/arc4random.c
     optee/init.c
     optee/trace.c)
@@ -92,6 +90,7 @@ endif ()
 add_enclave_library(
   oelibc
   STATIC
+  ${LIBCDIR}/abort.c
   ${LIBCDIR}/atexit.c
   ${LIBCDIR}/backtrace.c
   ${LIBCDIR}/dladdr.c
