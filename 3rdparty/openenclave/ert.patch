@@ -431,7 +431,7 @@ index 2b3bd4b82..1e439a66a 100644
  
  done:
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
-index 15590ff45..575700109 100644
+index 15590ff45..6659da71d 100644
 --- a/enclave/core/sgx/exception.c
 +++ b/enclave/core/sgx/exception.c
 @@ -35,6 +35,9 @@ uint32_t g_current_exception_handler_count = 0;
@@ -458,8 +458,8 @@ index 15590ff45..575700109 100644
      }
  
 +    // EDG: allow SIGSEGV
-+    if (ert_enable_sigsegv && !ssa_gpr->exit_info.as_fields.valid &&
-+        arg_in == MAX_SIGNAL_NUMBER + 1)
++    if ((oe_is_enclave_debug_allowed() || ert_enable_sigsegv) &&
++        !ssa_gpr->exit_info.as_fields.valid && arg_in == MAX_SIGNAL_NUMBER + 1)
 +    {
 +        sgx_exit_info* const ei = &ssa_gpr->exit_info;
 +        ei->as_fields.vector = 13; // #GP
