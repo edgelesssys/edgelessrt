@@ -180,7 +180,7 @@ static void _log(
     if (!regex_match(message, ma_message, re_message))
     {
         // not this form, so just print it
-        cout << level_string << ": " << message << '\n';
+        cout << level_string << ": " << message;
         return;
     }
     string msg = ma_message[1];

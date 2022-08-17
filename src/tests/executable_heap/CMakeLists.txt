@@ -58,5 +58,5 @@ add_test(
   NAME tests/ert/nonexecutable_heap
   COMMAND
     sh -c
-    "$<TARGET_FILE:erttest_host> $<TARGET_FILE:erttest_nonexecutable_heap>.signed ; test $? -eq 139"
+    "$<TARGET_FILE:erttest_host> $<TARGET_FILE:erttest_nonexecutable_heap>.signed ; test $? -eq $((134+5*OE_SIMULATION))"
 )
