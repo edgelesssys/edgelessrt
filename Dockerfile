@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     libsgx-dcap-default-qpl=$DCAP_VERSION \
     libsgx-dcap-ql=$DCAP_VERSION \
     libsgx-enclave-common=$PSW_VERSION \
-    libsgx-headers=$PSW_VERSION \
     libsgx-launch=$PSW_VERSION \
     libsgx-pce-logic=$DCAP_VERSION \
     libsgx-qe3-logic=$DCAP_VERSION \
@@ -37,7 +36,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     clang-10 \
     clang-tidy-10 \
     curl \
-    doxygen \
     gdb \
     git \
     libssl-dev \
