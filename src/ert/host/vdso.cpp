@@ -3,7 +3,6 @@
 
 #include "../common/vdso.h"
 #include <openenclave/internal/trace.h>
-#include <sys/utsname.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -17,68 +16,22 @@
 
 using namespace std;
 
-// v3.15 -v5.2: arch/x86/include/asm/vgtod.h
-// v5.3 - v5.4: include/vdso/datapage.h
+// from Linux kernel include/vdso/datapage.h
 struct vdso_data
 {
     uint32_t seq; // timebase sequence counter
     uint32_t clock_mode;
     uint64_t cycle_last;
     uint64_t mask;
-    uint64_t reserved;
+    uint64_t reserved0;
 
-    oe_vdso_timestamp_t t0;
-    oe_vdso_timestamp_t t1;
-    oe_vdso_timestamp_t v_3_15_to_v4_19_realtime_coarse;
-    oe_vdso_timestamp_t v_3_15_to_v4_19_monotonic_coarse;
-    oe_vdso_timestamp_t t4;
-    oe_vdso_timestamp_t v4_20_realtime_coarse;
-    oe_vdso_timestamp_t v4_20_monotonic_coarse;
+    oe_vdso_timestamp_t reserved1[5];
+    oe_vdso_timestamp_t realtime_coarse;
+    oe_vdso_timestamp_t monotonic_coarse;
 };
 
-// from arch/x86/include/asm/vvar.h, valid for at least kernel v3.0 to v5.4
+// from arch/x86/include/asm/vvar.h, valid for at least kernel v3.0 to v6.0
 static const size_t _vvar_vdso_data_offset = 128;
-
-namespace
-{
-class KernelVersion final
-{
-  public:
-    KernelVersion()
-    {
-        // Get kernel version from OS.
-
-        utsname u{};
-        if (uname(&u) != 0 || !*u.release)
-            throw runtime_error("uname() failed");
-
-        istringstream release(u.release);
-        release.exceptions(ios::badbit | ios::failbit | ios::eofbit);
-
-        char dot = 0;
-        release >> major_ >> dot >> minor_;
-
-        if (!major_ || dot != '.')
-            throw runtime_error("cannot parse utsname::release: "s + u.release);
-    }
-
-    KernelVersion(unsigned int major, unsigned int minor) noexcept
-        : major_(major), minor_(minor)
-    {
-        assert(major);
-    }
-
-    bool operator<(KernelVersion rhs) const noexcept
-    {
-        return major_ < rhs.major_ ||
-               (major_ == rhs.major_ && minor_ < rhs.minor_);
-    }
-
-  private:
-    unsigned int major_;
-    unsigned int minor_;
-};
-} // namespace
 
 static byte* _get_vvar()
 {
@@ -109,24 +62,14 @@ static void _get_clock_vdso_pointers(
     const auto vdsodata =
         reinterpret_cast<vdso_data*>(_get_vvar() + _vvar_vdso_data_offset);
 
-    // TODO get pointers dynamically indepentent of kernel version
-
-    const KernelVersion kernel_version;
-    if (kernel_version < KernelVersion(3, 15))
-        throw runtime_error("Linux kernel below 3.15 is not supported");
+    // TODO This heuristic check is not guaranteed to catch the error. There
+    // could be (future) kernels that have some other data at these offsets.
+    if (!vdsodata->realtime_coarse.sec || !vdsodata->monotonic_coarse.sec)
+        throw runtime_error("kernel doesn't provide vDSO clock");
 
     seq = &vdsodata->seq;
-
-    if (kernel_version < KernelVersion(4, 20))
-    {
-        clock_realtime_coarse = &vdsodata->v_3_15_to_v4_19_realtime_coarse;
-        clock_monotonic_coarse = &vdsodata->v_3_15_to_v4_19_monotonic_coarse;
-    }
-    else
-    {
-        clock_realtime_coarse = &vdsodata->v4_20_realtime_coarse;
-        clock_monotonic_coarse = &vdsodata->v4_20_monotonic_coarse;
-    }
+    clock_realtime_coarse = &vdsodata->realtime_coarse;
+    clock_monotonic_coarse = &vdsodata->monotonic_coarse;
 }
 
 extern "C" oe_result_t oe_get_clock_vdso_pointers_ocall(
@@ -137,6 +80,10 @@ extern "C" oe_result_t oe_get_clock_vdso_pointers_ocall(
     assert(seq);
     assert(clock_realtime_coarse);
     assert(clock_monotonic_coarse);
+
+    const char* const disable = getenv("ERT_DISABLE_VDSO_CLOCK");
+    if (disable && *disable == '1')
+        return OE_UNSUPPORTED;
 
     try
     {
