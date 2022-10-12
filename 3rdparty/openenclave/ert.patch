@@ -1185,6 +1185,49 @@ index b4b9eac9d..db87cf8c6 100644
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
+diff --git a/host/sgx/ocalls/debug.c b/host/sgx/ocalls/debug.c
+index 2471fe6f1..f7296ef7d 100644
+--- a/host/sgx/ocalls/debug.c
++++ b/host/sgx/ocalls/debug.c
+@@ -144,6 +144,7 @@ oe_result_t oe_sgx_log_backtrace_ocall(
+ {
+     oe_result_t result = OE_UNEXPECTED;
+     char** strings = NULL;
++    char** strings_mod = NULL;
+ 
+     oe_log(level, "Backtrace:\n");
+ 
+@@ -158,9 +159,21 @@ oe_result_t oe_sgx_log_backtrace_ocall(
+         OE_RAISE(OE_FAILURE);
+     }
+ 
++    // EDG: get symbols for payload module
++    if (oe_enclave->debug_modules)
++    {
++        oe_enclave_t enc = *oe_enclave;
++        enc.start_address = (uint64_t)oe_enclave->debug_modules->base_address;
++        enc.path = (char*)oe_enclave->debug_modules->path;
++        strings_mod = _backtrace_symbols(&enc, (void*)buffer, (int)size);
++    }
++
+     for (size_t i = 0; i < size; ++i)
+     {
+-        oe_log(level, "%s(): %p\n", strings[i], buffer[i]);
++        const char* str = strings[i];
++        if (strings_mod && (!str || strcmp(str, "<unknown>")) == 0)
++            str = strings_mod[i];
++        oe_log(level, "%s(): %p\n", str, buffer[i]);
+     }
+ 
+     result = OE_OK;
+@@ -170,5 +183,7 @@ done:
+     if (strings)
+         free(strings);
+ 
++    free(strings_mod);
++
+     return result;
+ }
 diff --git a/host/sgx/sgxquoteprovider.c b/host/sgx/sgxquoteprovider.c
 index f2b02e28f..f72e04746 100644
 --- a/host/sgx/sgxquoteprovider.c
