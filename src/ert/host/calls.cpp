@@ -12,7 +12,12 @@
 using namespace std;
 using namespace ert;
 
-static void _invoke_create_thread_ecall(oe_enclave_t* enclave) noexcept
+// This function is supposed to be run in a new thread created by the
+// EnclaveThreadManager. The thread may be canceled. In the implementation of
+// glibc, the canceled thread throws the internal exception type __forced_unwind
+// to end itself. This exception must not be caught by, e.g., noexcept or
+// catch(...).
+static void _invoke_create_thread_ecall(oe_enclave_t* enclave)
 {
     assert(enclave);
     if (ert_create_thread_ecall(enclave) != OE_OK)
