@@ -55,6 +55,19 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                                  x4)                          // bufsiz
                            : -EBADF;
 
+            case SYS_prlimit64:
+                return sc::prlimit(
+                    x1,                             // pid
+                    x2,                             // resource
+                    reinterpret_cast<rlimit*>(x3),  // new_limit
+                    reinterpret_cast<rlimit*>(x4)); // old_limit
+            case SYS_getrlimit:
+                return sc::prlimit(
+                    0, x1, nullptr, reinterpret_cast<rlimit*>(x2));
+            case SYS_setrlimit:
+                return sc::prlimit(
+                    0, x1, reinterpret_cast<rlimit*>(x2), nullptr);
+
             case SYS_statfs:
                 return sc::statfs(
                     reinterpret_cast<char*>(x1),
