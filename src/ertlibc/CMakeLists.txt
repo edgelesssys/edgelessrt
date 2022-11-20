@@ -6,6 +6,7 @@ add_library(
   memfs.cpp
   new_thread.cpp
   pthread.cpp
+  resource.cpp
   sched.cpp
   signal.cpp
   signal_manager.cpp

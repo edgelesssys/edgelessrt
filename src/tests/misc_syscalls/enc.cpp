@@ -4,6 +4,7 @@
 #include <openenclave/internal/tests.h>
 #include <sys/mount.h>
 #include <sys/random.h>
+#include <sys/resource.h>
 #include <sys/statfs.h>
 #include <unistd.h>
 #include <algorithm>
@@ -104,6 +105,75 @@ static void _test_readlink()
     OE_TEST(!buf.front());
 }
 
+static void _test_rlimit()
+{
+    // test get for all resources
+    for (int i = 0; i < RLIM_NLIMITS; ++i)
+    {
+        rlimit lim{};
+        OE_TEST(getrlimit(i, &lim) == 0);
+        OE_TEST(lim.rlim_cur <= lim.rlim_max);
+    }
+
+    const auto expect = [](int resource, rlim_t cur, rlim_t max) {
+        rlimit lim{};
+        OE_TEST(getrlimit(resource, &lim) == 0);
+        OE_TEST(lim.rlim_cur == cur);
+        OE_TEST(lim.rlim_max == max);
+    };
+
+    // test selected values
+    {
+        expect(RLIMIT_CPU, RLIM_INFINITY, RLIM_INFINITY);
+        expect(RLIMIT_STACK, 64 * 4096, 64 * 4096);
+        expect(RLIMIT_NPROC, 5 - 2, 5 - 2);
+    }
+
+    // test set
+    {
+        rlimit lim{};
+
+        // cur > max is invalid
+        lim.rlim_cur = 1;
+        lim.rlim_max = 0;
+        OE_TEST(setrlimit(RLIMIT_CPU, &lim) == -1);
+        OE_TEST(errno == EINVAL);
+        expect(RLIMIT_CPU, RLIM_INFINITY, RLIM_INFINITY);
+
+        // reduce max
+        lim.rlim_cur = 6;
+        lim.rlim_max = 8;
+        OE_TEST(setrlimit(RLIMIT_CPU, &lim) == 0);
+        expect(RLIMIT_CPU, 6, 8);
+
+        // can't increase max
+        lim.rlim_cur = 6;
+        lim.rlim_max = 9;
+        OE_TEST(setrlimit(RLIMIT_CPU, &lim) == -1);
+        OE_TEST(errno == EPERM);
+        expect(RLIMIT_CPU, 6, 8);
+
+        // increase cur
+        lim.rlim_cur = 8;
+        lim.rlim_max = 8;
+        OE_TEST(setrlimit(RLIMIT_CPU, &lim) == 0);
+        expect(RLIMIT_CPU, 8, 8);
+    }
+
+    // test invalid resource
+    {
+        rlimit lim{};
+        OE_TEST(getrlimit(-1, &lim) == -1);
+        OE_TEST(errno == EINVAL);
+        OE_TEST(getrlimit(RLIM_NLIMITS, &lim) == -1);
+        OE_TEST(errno == EINVAL);
+        OE_TEST(setrlimit(-1, &lim) == -1);
+        OE_TEST(errno == EINVAL);
+        OE_TEST(setrlimit(RLIM_NLIMITS, &lim) == -1);
+        OE_TEST(errno == EINVAL);
+    }
+}
+
 static void _test_statfs()
 {
     const size_t expected_blocks = 20000000;
@@ -175,6 +245,7 @@ void test_ecall()
     _test_dynlink();
     _test_getrandom();
     _test_readlink();
+    _test_rlimit();
     _test_statfs();
     _test_syconf();
     _test_time();
@@ -186,4 +257,4 @@ OE_SET_ENCLAVE_SGX(
     true, /* Debug */
     64,   /* NumHeapPages */
     64,   /* NumStackPages */
-    1);   /* NumTCS */
+    5);   /* NumTCS */
