@@ -1458,6 +1458,27 @@ index 5f328735d..6c15cb5c4 100644
             ##__VA_ARGS__, __err, __FILE__, __FUNCTION__, __LINE__); \
          oe_errno = __err;                                           \
          goto done;                                                  \
+diff --git a/include/openenclave/internal/syscall/sys/ioctl.h b/include/openenclave/internal/syscall/sys/ioctl.h
+index 9beb41c0c..7841c0f46 100644
+--- a/include/openenclave/internal/syscall/sys/ioctl.h
++++ b/include/openenclave/internal/syscall/sys/ioctl.h
+@@ -10,6 +10,16 @@
+ 
+ OE_EXTERNC_BEGIN
+ 
++#define OE_TCGETS 0x5401
++#define OE_TCSETS 0x5402
++#define OE_TCSETSW 0x5403
++#define OE_TCSETSF 0x5404
++#define OE_TCSBRK 0x5409
++#define OE_TCXONC 0x540A
++#define OE_TCFLSH 0x540B
++#define OE_TIOCEXCL 0x540C
++#define OE_TIOCNXCL 0x540D
++#define OE_TIOCSCTTY 0x540E
+ #define OE_TIOCGWINSZ 0x5413
+ 
+ int __oe_ioctl(int fd, unsigned long request, uint64_t arg);
 diff --git a/include/openenclave/internal/syscall/unistd.h b/include/openenclave/internal/syscall/unistd.h
 index 095a16d1e..e152df4c7 100644
 --- a/include/openenclave/internal/syscall/unistd.h
@@ -1645,6 +1666,177 @@ index 17866f5b6..d9747109e 100644
  enclave_compile_options(oesyscall PRIVATE -ffunction-sections)
  
  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/syscall_t.c
+diff --git a/syscall/consolefs.c b/syscall/consolefs.c
+index 1c1f7b1c2..0b6225296 100644
+--- a/syscall/consolefs.c
++++ b/syscall/consolefs.c
+@@ -91,44 +91,75 @@ static int _consolefs_ioctl(oe_fd_t* file_, unsigned long request, uint64_t arg)
+ {
+     int ret = -1;
+     file_t* file = _cast_file(file_);
++    uint64_t argin = 0;
++    void* argout = NULL;
++    uint64_t argsize = 0;
+ 
+     if (!file)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+-    /*
+-     * MUSL uses the TIOCGWINSZ ioctl request to determine whether the file
+-     * descriptor refers to a terminal device (such as stdin, stdout, and
+-     * stderr) so that it can use line-bufferred input and output. This check
+-     * fails when delegated to the host since this implementation opens the
+-     * devices by name (/dev/stdin, /dev/stderr, /dev/stdout). So the following
+-     * block works around this problem by implementing TIOCGWINSZ on the
+-     * enclave side. Other terminal control ioctls are left unimplemented.
+-     */
+-    if (request == OE_TIOCGWINSZ)
++    switch (request)
+     {
+-        struct winsize
++        /*
++         * MUSL uses the TIOCGWINSZ ioctl request to determine whether the file
++         * descriptor refers to a terminal device (such as stdin, stdout, and
++         * stderr) so that it can use line-bufferred input and output. This
++         * check fails when delegated to the host since this implementation
++         * opens the devices by name (/dev/stdin, /dev/stderr, /dev/stdout). So
++         * the following block works around this problem by implementing
++         * TIOCGWINSZ on the enclave side.
++         */
++        case OE_TIOCGWINSZ:
+         {
+-            unsigned short int ws_row;
+-            unsigned short int ws_col;
+-            unsigned short int ws_xpixel;
+-            unsigned short int ws_ypixel;
+-        };
+-        struct winsize* p;
+-
+-        if (!(p = (struct winsize*)arg))
+-            OE_RAISE_ERRNO(OE_EINVAL);
++            struct winsize
++            {
++                unsigned short int ws_row;
++                unsigned short int ws_col;
++                unsigned short int ws_xpixel;
++                unsigned short int ws_ypixel;
++            };
++            struct winsize* p;
++
++            if (!(p = (struct winsize*)arg))
++                OE_RAISE_ERRNO(OE_EINVAL);
++
++            p->ws_row = 24;
++            p->ws_col = 80;
++            p->ws_xpixel = 0;
++            p->ws_ypixel = 0;
++
++            ret = 0;
++            goto done;
++        }
++
++        // arg: void
++        case OE_TIOCEXCL:
++        case OE_TIOCNXCL:
++            break;
+ 
+-        p->ws_row = 24;
+-        p->ws_col = 80;
+-        p->ws_xpixel = 0;
+-        p->ws_ypixel = 0;
++        // arg: int
++        case OE_TCSBRK:
++        case OE_TCXONC:
++        case OE_TCFLSH:
++        case OE_TIOCSCTTY:
++            argin = arg;
++            break;
+ 
+-        ret = 0;
+-        goto done;
++        // arg: struct termios*
++        case OE_TCGETS:
++        case OE_TCSETS:
++        case OE_TCSETSW:
++        case OE_TCSETSF:
++            argsize = 60; // sizeof(struct termios)
++            argout = (void*)arg;
++            break;
++
++        default:
++            OE_RAISE_ERRNO(OE_ENOTTY);
+     }
+ 
+-    if (oe_syscall_ioctl_ocall(&ret, file->host_fd, request, arg, 0, NULL) !=
+-        OE_OK)
++    if (oe_syscall_ioctl_ocall(
++            &ret, file->host_fd, request, argin, argsize, argout) != OE_OK)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+ done:
+@@ -139,6 +170,7 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
+ {
+     int ret = -1;
+     file_t* file = _cast_file(file_);
++    uint64_t argin = 0;
+     void* argout = NULL;
+     uint64_t argsize = 0;
+ 
+@@ -147,37 +179,27 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
+ 
+     switch (cmd)
+     {
++        // arg: void
+         case OE_F_GETFD:
+-        case OE_F_SETFD:
+         case OE_F_GETFL:
++            break;
++
++        // arg: int
++        case OE_F_SETFD:
+         case OE_F_SETFL:
++            argin = arg;
+             break;
+ 
++        // arg: struct flock*
+         case OE_F_GETLK:
+         case OE_F_OFD_GETLK:
+-            argsize = sizeof(struct oe_flock);
+-            argout = (void*)arg;
+-            break;
+-
+         case OE_F_SETLKW:
+         case OE_F_SETLK:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
+-            argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
+-            break;
+-        }
+-
+         case OE_F_OFD_SETLK:
+         case OE_F_OFD_SETLKW:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
++            argsize = sizeof(struct oe_flock);
+             argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
+             break;
+-        }
+ 
+         // for sockets
+         default:
+@@ -193,7 +215,7 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
+     }
+ 
+     if (oe_syscall_fcntl_ocall(
+-            &ret, file->host_fd, cmd, arg, argsize, argout) != OE_OK)
++            &ret, file->host_fd, cmd, argin, argsize, argout) != OE_OK)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+ done:
 diff --git a/syscall/device.c b/syscall/device.c
 index 1cb00423c..63664a178 100644
 --- a/syscall/device.c
@@ -1662,8 +1854,78 @@ index 1cb00423c..63664a178 100644
  /*
  **==============================================================================
  **
+diff --git a/syscall/devices/hostepoll/hostepoll.c b/syscall/devices/hostepoll/hostepoll.c
+index 9a2fb4f48..cfbcc5f3a 100644
+--- a/syscall/devices/hostepoll/hostepoll.c
++++ b/syscall/devices/hostepoll/hostepoll.c
+@@ -597,6 +597,7 @@ static int _epoll_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+ {
+     int ret = -1;
+     epoll_t* epoll = _cast_epoll(desc);
++    uint64_t argin = 0;
+     void* argout = NULL;
+     uint64_t argsize = 0;
+ 
+@@ -605,37 +606,27 @@ static int _epoll_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+ 
+     switch (cmd)
+     {
++        // arg: void
+         case OE_F_GETFD:
+-        case OE_F_SETFD:
+         case OE_F_GETFL:
+-        case OE_F_SETFL:
+-            break;
+-
+-        case OE_F_GETLK64:
+-        case OE_F_OFD_GETLK:
+-            argsize = sizeof(struct oe_flock);
+-            argout = (void*)arg;
+             break;
+ 
+-        case OE_F_SETLKW64:
+-        case OE_F_SETLK64:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
+-            argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
++        // arg: int
++        case OE_F_SETFD:
++        case OE_F_SETFL:
++            argin = arg;
+             break;
+-        }
+ 
++        // arg: struct flock*
++        case OE_F_GETLK:
++        case OE_F_OFD_GETLK:
++        case OE_F_SETLKW:
++        case OE_F_SETLK:
+         case OE_F_OFD_SETLK:
+         case OE_F_OFD_SETLKW:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
++            argsize = sizeof(struct oe_flock);
+             argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
+             break;
+-        }
+ 
+         // for sockets
+         default:
+@@ -651,7 +642,7 @@ static int _epoll_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+     }
+ 
+     if (oe_syscall_fcntl_ocall(
+-            &ret, epoll->host_fd, cmd, arg, argsize, argout) != OE_OK)
++            &ret, epoll->host_fd, cmd, argin, argsize, argout) != OE_OK)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+ done:
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
-index b86f2ab10..8fb04d228 100644
+index b86f2ab10..df7923e25 100644
 --- a/syscall/devices/hostfs/hostfs.c
 +++ b/syscall/devices/hostfs/hostfs.c
 @@ -21,6 +21,7 @@
@@ -1869,7 +2131,73 @@ index b86f2ab10..8fb04d228 100644
  }
  
  static int _hostfs_flock(oe_fd_t* desc, int operation)
-@@ -1076,7 +1105,7 @@ static oe_fd_t* _hostfs_opendir(oe_device_t* device, const char* name)
+@@ -1003,6 +1032,7 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+ {
+     int ret = -1;
+     file_t* file = _cast_file(desc);
++    uint64_t argin = 0;
+     void* argout = NULL;
+     uint64_t argsize = 0;
+ 
+@@ -1011,37 +1041,27 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+ 
+     switch (cmd)
+     {
++        // arg: void
+         case OE_F_GETFD:
+-        case OE_F_SETFD:
+         case OE_F_GETFL:
+-        case OE_F_SETFL:
+-            break;
+-
+-        case OE_F_GETLK64:
+-        case OE_F_OFD_GETLK:
+-            argsize = sizeof(struct oe_flock);
+-            argout = (void*)arg;
+             break;
+ 
+-        case OE_F_SETLKW64:
+-        case OE_F_SETLK64:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
+-            argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
++        // arg: int
++        case OE_F_SETFD:
++        case OE_F_SETFL:
++            argin = arg;
+             break;
+-        }
+ 
++        // arg: struct flock*
++        case OE_F_GETLK:
++        case OE_F_OFD_GETLK:
++        case OE_F_SETLKW:
++        case OE_F_SETLK:
+         case OE_F_OFD_SETLK:
+         case OE_F_OFD_SETLKW:
+-        {
+-            void* srcp = (void*)arg;
+-            argsize = sizeof(struct oe_flock64);
++            argsize = sizeof(struct oe_flock);
+             argout = (void*)arg;
+-            memcpy(argout, srcp, argsize);
+             break;
+-        }
+ 
+         // for sockets
+         default:
+@@ -1057,7 +1077,7 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
+     }
+ 
+     if (oe_syscall_fcntl_ocall(
+-            &ret, file->host_fd, cmd, arg, argsize, argout) != OE_OK)
++            &ret, file->host_fd, cmd, argin, argsize, argout) != OE_OK)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
+ done:
+@@ -1076,7 +1096,7 @@ static oe_fd_t* _hostfs_opendir(oe_device_t* device, const char* name)
      if (!fs || !name)
          OE_RAISE_ERRNO(OE_EINVAL);
  
@@ -1878,7 +2206,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO_MSG(oe_errno, "name=%s", name);
  
      if (!(dir = oe_calloc(1, sizeof(dir_t))))
-@@ -1166,7 +1195,7 @@ done:
+@@ -1166,7 +1186,7 @@ done:
      return ret;
  }
  
@@ -1887,7 +2215,7 @@ index b86f2ab10..8fb04d228 100644
      oe_device_t* device,
      const char* pathname,
      struct oe_stat_t* buf)
-@@ -1182,7 +1211,7 @@ static int _hostfs_stat(
+@@ -1182,7 +1202,7 @@ static int _hostfs_stat(
      if (!fs || !pathname || !buf)
          OE_RAISE_ERRNO(OE_EINVAL);
  
@@ -1896,7 +2224,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_stat_ocall(&retval, host_path, buf) != OE_OK)
-@@ -1217,7 +1246,7 @@ done:
+@@ -1217,7 +1237,7 @@ done:
      return ret;
  }
  
@@ -1905,7 +2233,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1228,7 +1257,7 @@ static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
+@@ -1228,7 +1248,7 @@ static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
      if (!fs || !pathname || ((uint32_t)mode & ~MASK))
          OE_RAISE_ERRNO(OE_EINVAL);
  
@@ -1914,7 +2242,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_access_ocall(&retval, host_path, mode) != OE_OK)
-@@ -1241,10 +1270,7 @@ done:
+@@ -1241,10 +1261,7 @@ done:
      return ret;
  }
  
@@ -1926,7 +2254,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1259,10 +1285,10 @@ static int _hostfs_link(
+@@ -1259,10 +1276,10 @@ static int _hostfs_link(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -1939,7 +2267,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_link_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
-@@ -1275,7 +1301,7 @@ done:
+@@ -1275,7 +1292,7 @@ done:
      return ret;
  }
  
@@ -1948,7 +2276,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1289,7 +1315,7 @@ static int _hostfs_unlink(oe_device_t* device, const char* pathname)
+@@ -1289,7 +1306,7 @@ static int _hostfs_unlink(oe_device_t* device, const char* pathname)
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -1957,7 +2285,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_unlink_ocall(&retval, host_path) != OE_OK)
-@@ -1302,7 +1328,7 @@ done:
+@@ -1302,7 +1319,7 @@ done:
      return ret;
  }
  
@@ -1966,7 +2294,7 @@ index b86f2ab10..8fb04d228 100644
      oe_device_t* device,
      const char* oldpath,
      const char* newpath)
-@@ -1319,10 +1345,10 @@ static int _hostfs_rename(
+@@ -1319,10 +1336,10 @@ static int _hostfs_rename(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -1979,7 +2307,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_rename_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
-@@ -1335,10 +1361,7 @@ done:
+@@ -1335,10 +1352,7 @@ done:
      return ret;
  }
  
@@ -1991,7 +2319,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1351,7 +1374,7 @@ static int _hostfs_truncate(
+@@ -1351,7 +1365,7 @@ static int _hostfs_truncate(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -2000,7 +2328,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_truncate_ocall(&retval, host_path, length) != OE_OK)
-@@ -1382,10 +1405,7 @@ done:
+@@ -1382,10 +1396,7 @@ done:
      return ret;
  }
  
@@ -2012,7 +2340,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1399,7 +1419,7 @@ static int _hostfs_mkdir(
+@@ -1399,7 +1410,7 @@ static int _hostfs_mkdir(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -2021,7 +2349,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_mkdir_ocall(&retval, host_path, mode) != OE_OK)
-@@ -1412,7 +1432,7 @@ done:
+@@ -1412,7 +1423,7 @@ done:
      return ret;
  }
  
@@ -2030,7 +2358,7 @@ index b86f2ab10..8fb04d228 100644
  {
      int ret = -1;
      device_t* fs = _cast_device(device);
-@@ -1426,7 +1446,7 @@ static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
+@@ -1426,7 +1437,7 @@ static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
  
@@ -2039,7 +2367,7 @@ index b86f2ab10..8fb04d228 100644
          OE_RAISE_ERRNO(oe_errno);
  
      if (oe_syscall_rmdir_ocall(&retval, host_path) != OE_OK)
-@@ -1443,6 +1463,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
+@@ -1443,6 +1454,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
  {
      file_t* file = _cast_file(desc);
  
@@ -2050,7 +2378,7 @@ index b86f2ab10..8fb04d228 100644
      return file ? file->host_fd : -1;
  }
  
-@@ -1526,6 +1550,17 @@ oe_result_t oe_load_module_host_file_system(void)
+@@ -1526,6 +1541,17 @@ oe_result_t oe_load_module_host_file_system(void)
              OE_RAISE(OE_FAILURE);
          }
  
@@ -2069,7 +2397,7 @@ index b86f2ab10..8fb04d228 100644
      }
  
 diff --git a/syscall/devices/hostsock/hostsock.c b/syscall/devices/hostsock/hostsock.c
-index 9f2a6f51e..ef6be069e 100644
+index 9f2a6f51e..1b3be5b43 100644
 --- a/syscall/devices/hostsock/hostsock.c
 +++ b/syscall/devices/hostsock/hostsock.c
 @@ -20,6 +20,7 @@
@@ -2154,6 +2482,25 @@ index 9f2a6f51e..ef6be069e 100644
 +
      /* Call the host. */
      if (oe_syscall_bind_ocall(&ret, sock->host_fd, &buf.addr, addrlen) != OE_OK)
+         OE_RAISE_ERRNO(OE_EINVAL);
+@@ -945,6 +965,18 @@ static int _hostsock_ioctl(oe_fd_t* sock_, unsigned long request, uint64_t arg)
+     if (!sock)
+         OE_RAISE_ERRNO(OE_EINVAL);
+ 
++    /*
++     * MUSL uses the TIOCGWINSZ ioctl request to determine whether the file
++     * descriptor refers to a terminal device. This request cannot be handled
++     * by Windows hosts, so the error is handled on the enclave side. This is
++     * the correct behavior since sockets are not terminal devices.
++     */
++    switch (request)
++    {
++        default:
++            OE_RAISE_ERRNO(OE_ENOTTY);
++    }
++
+     if (oe_syscall_ioctl_ocall(&ret, sock->host_fd, request, arg, 0, NULL) !=
+         OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
 diff --git a/syscall/mount.c b/syscall/mount.c
 index 6de079f60..07e1e1c32 100644
