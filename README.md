@@ -25,8 +25,8 @@ If you're on Ubuntu 18.04 or above and don't want to build the SDK yourself, you
 ```bash
 wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
 sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.3.5/edgelessrt_0.3.5_amd64.deb
-sudo apt install ./edgelessrt_0.3.5_amd64.deb build-essential libssl-dev
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.3.6/edgelessrt_0.3.6_amd64.deb
+sudo apt install ./edgelessrt_0.3.6_amd64.deb build-essential libssl-dev
 sudo snap install cmake --classic
 ```
 Then proceed with [Use](#use).
