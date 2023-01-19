@@ -34,7 +34,7 @@ index 510668721..b17909b5b 100644
 @@ -5,7 +5,10 @@
  #include <openenclave/advanced/mallinfo.h>
  #include <openenclave/enclave.h>
- 
+
 -#define HAVE_MMAP 0
 +// EDG: use mmap instead of morecore
 +#define HAVE_MMAP 1
@@ -82,13 +82,13 @@ index 7bd130f2d..2a58c37e8 100644
 +#undef SYS_getdents
 +#define SYS_getdents SYS_getdents64
 +#define SYS_fadvise SYS_fadvise64
- 
+
  // __syscall_cp and syscall_cp function always pass 6 parameters to the
  // underlying syscall implementation. MUSL sometimes calls these macros instead
 @@ -90,10 +90,29 @@ hidden long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
  #define SYSCALL_CP_ARGS_X(a, b, c, d, e, f, ...) SYSCALL_ARGS6(a, b, c, d, e, f)
  #define SYSCALL_CP_ARGS(...) SYSCALL_CP_ARGS_X(__VA_ARGS__, 0, 0, 0, 0, 0, 0)
- 
+
 -#define __syscall_cp(index, ...) \
 -    OE_SYSCALL_NAME(_##index)(SYSCALL_CP_ARGS(__VA_ARGS__))
 -#define syscall_cp(index, ...) \
@@ -116,7 +116,7 @@ index 7bd130f2d..2a58c37e8 100644
 +
 +#define __syscall_cp(...) __SYSCALL_DISP(__syscall_cp, __VA_ARGS__)
 +#define syscall_cp(...) __syscall_ret(__syscall_cp(__VA_ARGS__))
- 
+
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
@@ -124,14 +124,14 @@ index f89f0b315..e645fd376 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -175,7 +175,8 @@ endif ()
- 
+
  if (OE_SGX)
    # Currently we only support OpenSSL on SGX.
 -  set(BUILD_OPENSSL ON)
 +  # EDG: we use mbedtls only
 +  #set(BUILD_OPENSSL ON)
  endif ()
- 
+
  set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
 @@ -292,7 +293,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
@@ -141,7 +141,7 @@ index f89f0b315..e645fd376 100644
 +  # EDG: no support for snmalloc yet
 +  #set(COMPILER_SUPPORTS_SNMALLOC on)
  endif ()
- 
+
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
 @@ -423,9 +425,9 @@ add_subdirectory(tools)
  if (BUILD_ENCLAVES)
@@ -152,7 +152,7 @@ index f89f0b315..e645fd376 100644
    add_subdirectory(syscall)
 +  add_subdirectory(${ERTSRC} ert)
  endif ()
- 
+
  if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
 index 3e46e07db..896111169 100644
@@ -160,7 +160,7 @@ index 3e46e07db..896111169 100644
 +++ b/cmake/compiler_settings.cmake
 @@ -24,7 +24,7 @@ endif ()
  set(CMAKE_C_STANDARD 11)
- 
+
  # Set the default standard to C++14 for all targets.
 -set(CMAKE_CXX_STANDARD 14)
 +set(CMAKE_CXX_STANDARD 17)
@@ -186,11 +186,11 @@ index 47bfc0d10..1ea5f124e 100644
 +++ b/enclave/core/init_fini.c
 @@ -2,6 +2,7 @@
  // Licensed under the MIT License.
- 
+
  #include "init_fini.h"
 +#include <openenclave/ert_args.h>
  #include <openenclave/internal/globals.h>
- 
+
  /*
 @@ -60,11 +61,16 @@ static void _call_init_functions(
      void (**init_array_start)(void),
@@ -203,14 +203,14 @@ index 47bfc0d10..1ea5f124e 100644
 +    const int argc = ert_get_argc();
 +    char** const argv = ert_get_argv();
 +    char** const envp = ert_get_envp();
- 
+
      for (fn = init_array_start; fn < init_array_end; fn++)
      {
 -        (*fn)();
 +        (*fn)(argc, argv, envp);
      }
  }
- 
+
 diff --git a/enclave/core/sgx/backtrace.c b/enclave/core/sgx/backtrace.c
 index 9d55a56e1..04f755c08 100644
 --- a/enclave/core/sgx/backtrace.c
@@ -218,7 +218,7 @@ index 9d55a56e1..04f755c08 100644
 @@ -87,7 +87,28 @@ const void* _check_address(const void* ptr)
      if (!oe_is_within_enclave(ptr, sizeof(uint64_t)))
          return NULL;
- 
+
 -    return ptr;
 +    // EDG: We must also check that ptr is not within a guard page of a thread
 +    // context. See _add_data_pages() in host/sgx/create.c
@@ -243,7 +243,7 @@ index 9d55a56e1..04f755c08 100644
 +
 +    return NULL;
  }
- 
+
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
 index 2b3bd4b82..1e439a66a 100644
@@ -252,7 +252,7 @@ index 2b3bd4b82..1e439a66a 100644
 @@ -50,6 +50,22 @@ void oe_abort_with_td(oe_sgx_td_t* td) OE_NO_RETURN;
  oe_result_t __oe_enclave_status = OE_OK;
  uint8_t __oe_initialized = 0;
- 
+
 +bool ert_exiting;
 +
 +#ifndef NDEBUG
@@ -275,14 +275,14 @@ index 2b3bd4b82..1e439a66a 100644
 @@ -197,14 +213,20 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
              /* Initialize the OE crypto library. */
              oe_crypto_initialize();
- 
+
 -            /* Call global constructors. Now they can safely use simulated
 -             * instructions like CPUID. */
 -            oe_call_init_functions();
 +            /* EDG: Initialize args before calling global constructors. */
 +            oe_result_t ert_init_args(void);
 +            OE_CHECK(ert_init_args());
- 
+
 -            /* DCLP Release barrier. */
 +            /* EDG: DCLP Release barrier and set initialized before calling
 +             * global constructors because they may create threads whose ecall
@@ -295,7 +295,7 @@ index 2b3bd4b82..1e439a66a 100644
 +             * instructions like CPUID. */
 +            oe_call_init_functions();
          }
- 
+
          oe_spin_unlock(&_lock);
 @@ -435,6 +457,9 @@ static void _call_at_exit_functions(void)
      oe_spin_lock(&_lock);
@@ -310,7 +310,7 @@ index 2b3bd4b82..1e439a66a 100644
 @@ -557,6 +582,17 @@ static void _handle_ecall(
          goto done;
      }
- 
+
 +    // EDG: initialize backtrace buffer
 +#ifndef NDEBUG
 +    if (!_backtrace_buffer)
@@ -326,7 +326,7 @@ index 2b3bd4b82..1e439a66a 100644
      switch (func)
      {
 @@ -789,6 +825,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
- 
+
  oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
  {
 +    // EDG: trace ocalls
@@ -343,14 +343,14 @@ index 2b3bd4b82..1e439a66a 100644
 @@ -845,6 +889,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
          }
      }
- 
+
 +    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
 +    // that pthread_cancel works as expected.
 +    void pthread_testcancel();
 +    pthread_testcancel();
 +
      result = OE_OK;
- 
+
  done:
 diff --git a/enclave/core/sgx/exception.c b/enclave/core/sgx/exception.c
 index 15590ff45..6659da71d 100644
@@ -359,7 +359,7 @@ index 15590ff45..6659da71d 100644
 @@ -35,6 +35,9 @@ uint32_t g_current_exception_handler_count = 0;
  oe_vectored_exception_handler_t
      g_exception_handler_arr[MAX_EXCEPTION_HANDLER_COUNT];
- 
+
 +// EDG: enclave dev can enable SIGSEGV by overriding this symbol
 +OE_WEAK bool ert_enable_sigsegv;
 +
@@ -378,7 +378,7 @@ index 15590ff45..6659da71d 100644
 @@ -581,6 +584,16 @@ void oe_virtual_exception_dispatcher(
          }
      }
- 
+
 +    // EDG: allow SIGSEGV
 +    if ((oe_is_enclave_debug_allowed() || ert_enable_sigsegv) &&
 +        !ssa_gpr->exit_info.as_fields.valid && arg_in == MAX_SIGNAL_NUMBER + 1)
@@ -421,13 +421,13 @@ index 28e78c546..e20396153 100644
  #include "asmdefs.h"
  #include "report.h"
 +#include "tracee.h"
- 
+
  OE_STATIC_ASSERT(sizeof(oe_seal_policy_t) == sizeof(unsigned int));
- 
+
 @@ -31,6 +32,22 @@ static oe_result_t _get_key_imp(
      sgx_key_request_t tmp_key_request = *sgx_key_request;
      OE_ALIGNED(SGX_KEY_ALIGNMENT) sgx_key_t tmp_sgx_key;
- 
+
 +    // EDG: return test key in simulation mode
 +    if (oe_sgx_is_in_simulation_mode())
 +    {
@@ -446,19 +446,19 @@ index 28e78c546..e20396153 100644
 +
      // Execute EGETKEY instruction.
      egetkey_result = oe_egetkey(&tmp_key_request, &tmp_sgx_key);
- 
+
 @@ -193,10 +210,11 @@ static oe_result_t _get_default_key_request_attributes(
  {
      sgx_report_t sgx_report = {{{0}}};
- 
+
 -    oe_result_t result;
 +    oe_result_t result = OE_OK;
- 
+
      // Get a local report of current enclave.
 -    result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
 +    if (!oe_sgx_is_in_simulation_mode()) // EDG: skip in simulation mode
 +        result = sgx_create_report(NULL, 0, NULL, 0, &sgx_report);
- 
+
      if (result != OE_OK)
      {
 diff --git a/enclave/core/sgx/threadlocal.c b/enclave/core/sgx/threadlocal.c
@@ -468,7 +468,7 @@ index fb7e1efc7..5178f177c 100644
 @@ -318,6 +318,18 @@ oe_result_t oe_sgx_thread_local_init(oe_sgx_td_t* td)
          // Copy the template
          oe_memcpy_s(tls_start, _tdata_size, tdata, _tdata_size);
- 
+
 +        // EDG: copy payload template
 +        const oe_enclave_module_info_t* const modinfo = oe_get_module_info();
 +        if (modinfo->tdata_size)
@@ -495,11 +495,11 @@ index fb7e1efc7..5178f177c 100644
 +void __cxa_thread_atexit_impl(void (*destructor)(void*), void* object)
  {
      oe_sgx_td_t* td = oe_sgx_get_td();
- 
+
 @@ -397,6 +411,11 @@ void __cxa_thread_atexit(void (*destructor)(void*), void* object)
      td->tls_atexit_functions[td->num_tls_atexit_functions - 1] = item;
  }
- 
+
 +// EDG: stdc++ defines __cxa_thread_atexit which calls
 +// __cxa_thread_atexit_impl. So behavior will be the same whether or not stdc++
 +// is linked.
@@ -518,17 +518,17 @@ index 657993af5..965176cbe 100644
  #include "../common/sgx/quote.h"
 +#include "../core/sgx/tracee.h"
  #include "platform_t.h"
- 
+
  OE_STATIC_ASSERT(OE_REPORT_DATA_SIZE == sizeof(sgx_report_data_t));
 @@ -177,6 +178,9 @@ oe_result_t oe_get_report_v2(
      else
          format_id = &_local_uuid;
- 
+
 +    if (oe_sgx_is_in_simulation_mode())
 +        OE_RAISE_MSG(OE_UNSUPPORTED, "can't get report in simulation mode");
 +
      OE_CHECK(oe_attester_initialize());
- 
+
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
 index dc2d90b02..d782ac0e4 100644
@@ -537,19 +537,19 @@ index dc2d90b02..d782ac0e4 100644
 @@ -359,10 +359,16 @@ list(
    strings.c
    traceh_enclave.c)
- 
+
 +# EDG: add erthost
 +include(${ERTSRC}/host/erthost.cmake)
 +
  # Combine the following common code along with the platform specific code and
  # host verification code to get the full oehost target provided by the OE SDK.
  add_library(oehost STATIC ${PLATFORM_HOST_ONLY_SRC} ${PLATFORM_SDK_ONLY_SRC})
- 
+
 +# EDG: add EDL
 +add_dependencies(oehost ertlibc_untrusted_edl)
 +
  add_library(oehostverify STATIC ${PLATFORM_HOST_ONLY_SRC})
- 
+
  target_link_libraries(oehostverify PUBLIC oe_includes)
 @@ -481,7 +487,8 @@ endif ()
  if (UNIX)
@@ -574,19 +574,19 @@ index e3255a942..77351b2ac 100644
 +    uint64_t* dir)
  {
      errno = 0;
- 
+
 -    return open(pathname, flags, mode);
 +    const int fd = open(pathname, flags, mode);
 +    if (fd >= 0)
 +        *dir = fdopendir(fd);
 +    return fd;
  }
- 
+
  ssize_t oe_syscall_read_ocall(oe_host_fd_t fd, void* buf, size_t count)
 @@ -1270,11 +1274,15 @@ int oe_syscall_poll_ocall(
- 
+
      errno = 0;
- 
+
 +// EDG: poll with nfds=0 can be used as sleep. (Python uses it this way and it
 +// is also documented in the manpage.)
 +#if 0
@@ -596,7 +596,7 @@ index e3255a942..77351b2ac 100644
          goto done;
      }
 +#endif
- 
+
      if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
      {
 diff --git a/host/sgx/calls.c b/host/sgx/calls.c
@@ -606,7 +606,7 @@ index eed0c4dcf..fb791663e 100644
 @@ -36,6 +36,8 @@
  #include "enclave.h"
  #include "ocalls/ocalls.h"
- 
+
 +void ert_trace_ocall(oe_enclave_t* enclave, const void* func);
 +
  /*
@@ -615,7 +615,7 @@ index eed0c4dcf..fb791663e 100644
 @@ -253,6 +255,8 @@ oe_result_t oe_handle_call_host_function(uint64_t arg, oe_enclave_t* enclave)
          goto done;
      }
- 
+
 +    ert_trace_ocall(enclave, func);
 +
      OE_CHECK(oe_safe_add_u64(
@@ -623,42 +623,42 @@ index eed0c4dcf..fb791663e 100644
          args_ptr->output_buffer_size,
 @@ -365,22 +369,27 @@ static oe_result_t _handle_ocall(
              break;
- 
+
          case OE_OCALL_MALLOC:
 +            ert_trace_ocall(enclave, HandleMalloc);
              HandleMalloc(arg_in, arg_out);
              break;
- 
+
          case OE_OCALL_FREE:
 +            ert_trace_ocall(enclave, HandleFree);
              HandleFree(arg_in);
              break;
- 
+
          case OE_OCALL_THREAD_WAIT:
 +            ert_trace_ocall(enclave, HandleThreadWait);
              HandleThreadWait(enclave, arg_in);
              break;
- 
+
          case OE_OCALL_THREAD_WAKE:
 +            ert_trace_ocall(enclave, HandleThreadWake);
              HandleThreadWake(enclave, arg_in);
              break;
- 
+
          case OE_OCALL_GET_TIME:
 +            ert_trace_ocall(enclave, oe_handle_get_time);
              oe_handle_get_time(arg_in, arg_out);
              break;
- 
+
 @@ -391,6 +400,10 @@ static oe_result_t _handle_ocall(
          }
      }
- 
+
 +    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
 +    // that EnclaveThreadManager is able to cancel enclave threads.
 +    pthread_testcancel();
 +
      result = OE_OK;
- 
+
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
 index ba8c398be..f6296ed23 100644
@@ -667,13 +667,13 @@ index ba8c398be..f6296ed23 100644
 @@ -87,9 +87,6 @@ static void _initialize_enclave_host_impl(void)
      oe_is_avx_enabled = ((xfrm & SGX_XFRM_AVX) == SGX_XFRM_AVX) ||
                          ((xfrm & SGX_XFRM_AVX512) == SGX_XFRM_AVX512);
- 
+
 -    if (oe_sgx_initialize_vdso() == OE_OK)
 -        oe_sgx_is_vdso_enabled = true;
 -
      oe_initialize_host_exception();
  }
- 
+
 @@ -137,7 +134,8 @@ static oe_result_t _add_filled_pages(
      uint64_t* vaddr,
      size_t npages,
@@ -687,7 +687,7 @@ index ba8c398be..f6296ed23 100644
 @@ -170,6 +168,10 @@ static oe_result_t _add_filled_pages(
          uint64_t src = (uint64_t)page;
          uint64_t flags = SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W;
- 
+
 +        // EDG: add executable flag
 +        if (executable)
 +            flags |= SGX_SECINFO_X;
@@ -702,7 +702,7 @@ index ba8c398be..f6296ed23 100644
 -        context, enclave, vaddr, npages, 0xcccccccc, extend);
 +        context, enclave, vaddr, npages, 0xcccccccc, extend, false);
  }
- 
+
  static oe_result_t _add_heap_pages(
 @@ -203,7 +205,8 @@ static oe_result_t _add_heap_pages(
  {
@@ -712,15 +712,15 @@ index ba8c398be..f6296ed23 100644
 +    return _add_filled_pages(
 +        context, enclave, vaddr, npages, 0, extend, context->executable_heap);
  }
- 
+
  static oe_result_t _add_control_pages(
 @@ -317,7 +320,7 @@ static oe_result_t _add_control_pages(
      }
- 
+
      /* Add two blank pages */
 -    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 2, 0, true));
 +    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 2, 0, true, false));
- 
+
      /* Skip over guard page */
      (*vaddr) += OE_PAGE_SIZE;
 @@ -325,10 +328,10 @@ static oe_result_t _add_control_pages(
@@ -729,17 +729,17 @@ index ba8c398be..f6296ed23 100644
          OE_CHECK(_add_filled_pages(
 -            context, enclave, vaddr, tls_page_count, 0, true));
 +            context, enclave, vaddr, tls_page_count, 0, true, false));
- 
+
      /* Add one page for thread-specific data (TSD) slots */
 -    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 1, 0, true));
 +    OE_CHECK(_add_filled_pages(context, enclave, vaddr, 1, 0, true, false));
- 
+
      result = OE_OK;
- 
+
 @@ -885,11 +888,76 @@ done:
  }
  #endif
- 
+
 +// EDG: extended oeinfo section
 +typedef struct
 +{
@@ -819,22 +819,22 @@ index ba8c398be..f6296ed23 100644
      oe_sgx_enclave_properties_t props;
      size_t extra_data_size = 0;
 +    uint64_t payload_data_offset = 0;
- 
+
      /* Reject invalid parameters */
      if (!context || !path || !enclave)
 @@ -923,7 +992,7 @@ oe_result_t oe_sgx_build_enclave(
          OE_RAISE(OE_FAILURE);
- 
+
      /* Load the elf object */
 -    if (oe_load_enclave_image(path, &oeimage) != OE_OK)
 +    if (oe_load_enclave_image(path, &oeimage, payload_path) != OE_OK)
          OE_RAISE(OE_FAILURE);
- 
+
      // If the **properties** parameter is non-null, use those properties.
 @@ -947,6 +1016,47 @@ oe_result_t oe_sgx_build_enclave(
              sizeof(props));
      }
- 
+
 +    // EDG: load payload image
 +    if (payload_path)
 +    {
@@ -878,9 +878,9 @@ index ba8c398be..f6296ed23 100644
 +
      /* Validate the enclave prop_override structure */
      OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
- 
+
 @@ -992,7 +1102,9 @@ oe_result_t oe_sgx_build_enclave(
- 
+
      /* Calculate the size of this enclave in memory */
      OE_CHECK(_calculate_enclave_size(
 -        image_size,
@@ -893,7 +893,7 @@ index ba8c398be..f6296ed23 100644
 @@ -1113,6 +1225,22 @@ oe_result_t oe_sgx_build_enclave(
          &vaddr));
  #endif
- 
+
 +    // EDG: Check if the enclave is configured with ExecutableHeap=1
 +    context->executable_heap = props.config.flags.executable_heap;
 +
@@ -916,7 +916,7 @@ index ba8c398be..f6296ed23 100644
 @@ -1341,8 +1469,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
- 
+
 -    /* Build the enclave */
 -    OE_CHECK(oe_sgx_build_enclave(&context, enclave_path, NULL, enclave));
 +    // EDG: split enclave_path which is either "main_image" or
@@ -934,13 +934,13 @@ index ba8c398be..f6296ed23 100644
 +
 +        free(paths);
 +    }
- 
+
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
 @@ -1437,6 +1578,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      if (!enclave || enclave->magic != ENCLAVE_MAGIC)
          OE_RAISE(OE_INVALID_PARAMETER);
- 
+
 +    /* EDG: cancel lingering threads (if any) */
 +    oe_result_t ert_cancel_threads_created_inside_enclave(oe_enclave_t*);
 +    OE_CHECK(ert_cancel_threads_created_inside_enclave(enclave));
@@ -961,7 +961,7 @@ index ff11d460e..b20cd23fa 100644
 +            arg_in = 65;
          else if (signal_number != 0 && signal_number != LINUX_SIGSEGV)
              arg_in = signal_number;
- 
+
 diff --git a/host/sgx/linux/sgxquoteproviderloader.c b/host/sgx/linux/sgxquoteproviderloader.c
 index 970dbe65f..a4e4f0aff 100644
 --- a/host/sgx/linux/sgxquoteproviderloader.c
@@ -986,7 +986,7 @@ index 4ec690dd7..2f5e827b8 100644
 @@ -45,7 +45,10 @@ done:
      return result;
  }
- 
+
 -oe_result_t oe_load_enclave_image(const char* path, oe_enclave_image_t* image)
 +oe_result_t oe_load_enclave_image(
 +    const char* path,
@@ -1011,7 +1011,7 @@ index b4b9eac9d..db87cf8c6 100644
 @@ -945,6 +945,11 @@ done:
      return result;
  }
- 
+
 +static uint64_t _get_aligned_size(uint64_t size, uint64_t align)
 +{
 +    return align ? oe_round_up_to_multiple(size, align) : size;
@@ -1053,10 +1053,10 @@ index b4b9eac9d..db87cf8c6 100644
 +            module_info->tls_size = module_tls_size;
 +        }
      }
- 
+
      /* Clear the hash when taking the measure */
 @@ -1431,8 +1464,12 @@ done:
- 
+
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
 -    oe_enclave_image_t* image)
@@ -1082,14 +1082,14 @@ index b4b9eac9d..db87cf8c6 100644
              (oe_enclave_elf_image_t*)calloc(1, sizeof(*module_image));
          if (!module_image)
              OE_RAISE(OE_OUT_OF_MEMORY);
- 
+
 -        OE_CHECK(_load_elf_image(module_path, module_image));
 +        OE_CHECK(_load_elf_image(payload_path, module_image));
          /* Update the RVA for the module */
          module_image->image_rva = image->elf.image_size;
          image->submodule = module_image;
 @@ -1492,7 +1532,8 @@ done:
- 
+
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
 -    oe_enclave_image_t* image)
@@ -1097,14 +1097,14 @@ index b4b9eac9d..db87cf8c6 100644
 +    const char* payload_path)
  {
      oe_result_t result = OE_UNEXPECTED;
- 
+
 @@ -1502,7 +1543,7 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
- 
+
      /* Load the dependent image into memory */
 -    OE_CHECK(_load_dependent_image(path, image));
 +    OE_CHECK(_load_dependent_image(path, image, payload_path));
- 
+
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
 diff --git a/host/sgx/ocalls/debug.c b/host/sgx/ocalls/debug.c
@@ -1116,13 +1116,13 @@ index 2471fe6f1..f7296ef7d 100644
      oe_result_t result = OE_UNEXPECTED;
      char** strings = NULL;
 +    char** strings_mod = NULL;
- 
+
      oe_log(level, "Backtrace:\n");
- 
+
 @@ -158,9 +159,21 @@ oe_result_t oe_sgx_log_backtrace_ocall(
          OE_RAISE(OE_FAILURE);
      }
- 
+
 +    // EDG: get symbols for payload module
 +    if (oe_enclave->debug_modules)
 +    {
@@ -1140,12 +1140,12 @@ index 2471fe6f1..f7296ef7d 100644
 +            str = strings_mod[i];
 +        oe_log(level, "%s(): %p\n", str, buffer[i]);
      }
- 
+
      result = OE_OK;
 @@ -170,5 +183,7 @@ done:
      if (strings)
          free(strings);
- 
+
 +    free(strings_mod);
 +
      return result;
@@ -1164,7 +1164,7 @@ index f2b02e28f..f72e04746 100644
          OE_LOG_LEVEL_NONE};
 -    const char* dcap_level_strings[] = {"ERROR", "WARN", "INFO", "NONE"};
 +    const char* dcap_level_strings[] = {"ERROR", "", "INFO", "NONE"};
- 
+
      if (level >= SGX_QL_LOG_NONE || level < SGX_QL_LOG_ERROR)
      {
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
@@ -1176,9 +1176,9 @@ index f7220c44f..d3623bfa1 100644
   */
  #define OE_HOST_FILE_SYSTEM "oe_host_file_system"
 +#define OE_HOST_FILE_SYSTEM_MMAP "oe_host_file_system_mmap"
- 
+
  OE_EXTERNC_END
- 
+
 diff --git a/include/openenclave/bits/sgx/sgxproperties.h b/include/openenclave/bits/sgx/sgxproperties.h
 index 5eb12b6e9..40087c299 100644
 --- a/include/openenclave/bits/sgx/sgxproperties.h
@@ -1192,7 +1192,7 @@ index 5eb12b6e9..40087c299 100644
 +    uint32_t executable_heap : 1;
 +    uint32_t reserved : 29;
  } oe_sgx_enclave_flags_t;
- 
+
  typedef struct oe_sgx_enclave_config_t
 diff --git a/include/openenclave/edl/fcntl.edl b/include/openenclave/edl/fcntl.edl
 index 5a28f71af..0547d3100 100644
@@ -1206,7 +1206,7 @@ index 5a28f71af..0547d3100 100644
 +            oe_mode_t mode,
 +            [out] uint64_t* dir)
              propagate_errno;
- 
+
          ssize_t oe_syscall_read_ocall(
 @@ -198,5 +199,29 @@ enclave
              uint64_t argsize,
@@ -1257,7 +1257,7 @@ index af2f301b0..a278851fe 100644
 @@ -17,11 +17,27 @@ enclave
      // intentionally kept in host memory.
      include "openenclave/bits/types.h"
- 
+
 +    struct oe_sgx_thread_timedwait_ocall_timespec
 +    {
 +        time_t tv_sec;
@@ -1305,7 +1305,7 @@ index d0f279ec5..cf32117c2 100644
 @@ -231,6 +231,18 @@ oe_result_t oe_create_enclave(
      uint32_t ecall_count,
      oe_enclave_t** enclave);
- 
+
 +/**
 + * Join all threads that have been created from inside the enclave.
 + *
@@ -1326,48 +1326,48 @@ index 0e94f7237..75e73cb57 100644
 --- a/include/openenclave/internal/globals.h
 +++ b/include/openenclave/internal/globals.h
 @@ -43,6 +43,10 @@ const void* __oe_get_eeid(void);
- 
+
  const oe_enclave_module_info_t* oe_get_module_info(void);
- 
+
 +// EDG
 +uint64_t oe_get_num_tcs(void);
 +size_t oe_get_num_stack_pages(void);
 +
  OE_EXTERNC_END
- 
+
  #endif /* _OE_GLOBALS_H */
 diff --git a/include/openenclave/internal/load.h b/include/openenclave/internal/load.h
 index e8f320492..5ac6b0d80 100644
 --- a/include/openenclave/internal/load.h
 +++ b/include/openenclave/internal/load.h
 @@ -80,6 +80,9 @@ struct _oe_enclave_elf_image
- 
+
      /* Offset of the dynamic section. Needed by submodule allocation */
      uint64_t dynamic_rva;
 +
 +    // EDG: payload properties
 +    uint64_t payload_data_size;
  };
- 
+
  typedef enum _oe_image_type
 @@ -135,11 +138,15 @@ struct _oe_enclave_image
      oe_result_t (*unload)(oe_enclave_image_t* image);
  };
- 
+
 -oe_result_t oe_load_enclave_image(const char* path, oe_enclave_image_t* image);
 +oe_result_t oe_load_enclave_image(
 +    const char* path,
 +    oe_enclave_image_t* image,
 +    const char* payload_path);
- 
+
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
 -    oe_enclave_image_t* image);
 +    oe_enclave_image_t* image,
 +    const char* payload_path);
- 
+
  oe_result_t oe_unload_enclave_image(oe_enclave_image_t* oeimage);
- 
+
 diff --git a/include/openenclave/internal/module.h b/include/openenclave/internal/module.h
 index 2d720612b..e4043f759 100644
 --- a/include/openenclave/internal/module.h
@@ -1383,21 +1383,21 @@ index 2d720612b..e4043f759 100644
 +    uint64_t tdata_size;
 +    uint64_t tls_size;
  } oe_enclave_module_info_t;
- 
+
  OE_EXTERNC_END
 diff --git a/include/openenclave/internal/sgxcreate.h b/include/openenclave/internal/sgxcreate.h
 index 68d59d05d..5ead35968 100644
 --- a/include/openenclave/internal/sgxcreate.h
 +++ b/include/openenclave/internal/sgxcreate.h
 @@ -75,6 +75,9 @@ struct _oe_sgx_load_context
- 
+
      bool create_zero_base_enclave;
      uint64_t start_address; /* Valid only if create_zero_base_enclave is True */
 +
 +    // EDG: additional fields
 +    bool executable_heap;
  };
- 
+
  oe_result_t oe_sgx_initialize_load_context(
 @@ -88,7 +91,8 @@ oe_result_t oe_sgx_build_enclave(
      oe_sgx_load_context_t* context,
@@ -1406,7 +1406,7 @@ index 68d59d05d..5ead35968 100644
 -    oe_enclave_t* enclave);
 +    oe_enclave_t* enclave,
 +    const char* payload_path);
- 
+
  /**
   * Validate certain fields of an SGX enclave properties structure.
 diff --git a/include/openenclave/internal/syscall/device.h b/include/openenclave/internal/syscall/device.h
@@ -1414,7 +1414,7 @@ index 5bed20bf8..1ec1cb5ca 100644
 --- a/include/openenclave/internal/syscall/device.h
 +++ b/include/openenclave/internal/syscall/device.h
 @@ -31,6 +31,12 @@ enum
- 
+
      /* The host epoll device. */
      OE_DEVID_HOST_EPOLL,
 +
@@ -1424,12 +1424,12 @@ index 5bed20bf8..1ec1cb5ca 100644
 +    /* Base id for custom devices. Must be last. */
 +    OE_DEVID_CUSTOM,
  };
- 
+
  /* Device names. */
 @@ -152,6 +158,9 @@ oe_device_t* oe_device_table_find(const char* name, oe_device_type_t type);
  /* Remove the given device from the table and call its release() method. */
  int oe_device_table_remove(uint64_t devid);
- 
+
 +/* Get a unique id for a custom device. */
 +uint64_t oe_device_table_get_custom_devid(void);
 +
@@ -1463,9 +1463,9 @@ index 9beb41c0c..7841c0f46 100644
 --- a/include/openenclave/internal/syscall/sys/ioctl.h
 +++ b/include/openenclave/internal/syscall/sys/ioctl.h
 @@ -10,6 +10,16 @@
- 
+
  OE_EXTERNC_BEGIN
- 
+
 +#define OE_TCGETS 0x5401
 +#define OE_TCSETS 0x5402
 +#define OE_TCSETSW 0x5403
@@ -1477,7 +1477,7 @@ index 9beb41c0c..7841c0f46 100644
 +#define OE_TIOCNXCL 0x540D
 +#define OE_TIOCSCTTY 0x540E
  #define OE_TIOCGWINSZ 0x5413
- 
+
  int __oe_ioctl(int fd, unsigned long request, uint64_t arg);
 diff --git a/include/openenclave/internal/syscall/unistd.h b/include/openenclave/internal/syscall/unistd.h
 index 095a16d1e..e152df4c7 100644
@@ -1489,16 +1489,16 @@ index 095a16d1e..e152df4c7 100644
  #include <openenclave/corelibc/stdarg.h>
 +#include <openenclave/internal/syscall/types.h>
  #include <openenclave/internal/syscall/unistd.h>
- 
+
  OE_EXTERNC_BEGIN
 @@ -74,6 +75,8 @@ int oe_chdir(const char* path);
- 
+
  int oe_close(int fd);
- 
+
 +int oe_close_hostfd(oe_host_fd_t fd);
 +
  int oe_gethostname(char* name, size_t len);
- 
+
  int oe_getdomainname(char* name, size_t len);
 diff --git a/libc/malloc.c b/libc/malloc.c
 index 526ae583f..8198d8da0 100644
@@ -1517,10 +1517,10 @@ index ae0663d31..02cb0ed26 100644
 @@ -89,7 +89,7 @@ set(ENCLAVE_OPENSSL_CRYPTO_WRAPPER_LIBS -loecryptoopenssl -lopensslssl
  set(ENCLAVE_OPENSSL_SYMCRYPT_FIPS_WRAPPER_LIBS
      -loesymcryptengine -loecryptoopenssl -lopensslssl -lopensslcrypto)
- 
+
 -set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loecore)
 +set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loelibc -loecore)
- 
+
  set(ENCLAVE_CLIBS_LIST ${ENCLAVE_CLIBS_1} ${ENCLAVE_CLIBS_2})
  list(JOIN ENCLAVE_CLIBS_LIST " " ENCLAVE_CLIBS)
 diff --git a/samples/apkman/CMakeLists.txt b/samples/apkman/CMakeLists.txt
@@ -1530,10 +1530,10 @@ index b4c85c1ed..0bbf5fe42 100644
 @@ -7,7 +7,7 @@ if (NOT UNIX)
    message(FATAL "oeapkman is currently supported only on Linux.")
  endif ()
- 
+
 -project("OEAPKMAN Sample" LANGUAGES C)
 +project("OEAPKMAN Sample" LANGUAGES C CXX)
- 
+
  # Currently the `OpenEnclave` package depends on `project()`.
  find_package(OpenEnclave CONFIG REQUIRED)
 diff --git a/samples/apkman/host/Makefile b/samples/apkman/host/Makefile
@@ -1546,7 +1546,7 @@ index 410bdd9ae..e7d1e8283 100644
  	$(CC) -g -c $(CFLAGS) sqlite_u.c
 -	$(CC) -o sqlite_host sqlite_u.o host.o $(LDFLAGS)
 +	$(CXX) -o sqlite_host sqlite_u.o host.o $(LDFLAGS)
- 
+
  clean:
  	rm -f sqlite_host host.o sqlite_u.o sqlite_u.c sqlite_u.h sqlite_args.h
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
@@ -1554,12 +1554,12 @@ index 0a6f91c4e..aa850ee17 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
 @@ -40,7 +40,7 @@ build:
- 
+
  	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
  	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
 -	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
 +	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
- 
+
  sign:
  	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
@@ -1567,12 +1567,12 @@ index 03f44fef4..677f7aacc 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
 @@ -42,7 +42,7 @@ build:
- 
+
  	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 ${SRC_FILES}
  	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. tls_server_t.c
 -	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
 +	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
- 
+
  sign:
  	oesign sign -e tls_server_enc -c enc.conf -k private.pem
 diff --git a/samples/debugmalloc/host/Makefile b/samples/debugmalloc/host/Makefile
@@ -1585,7 +1585,7 @@ index 7ea4266a4..b18a70159 100644
  	$(CC) -g -c $(CFLAGS) debugmalloc_u.c
 -	$(CC) -o debugmallochost debugmalloc_u.o host.o $(LDFLAGS)
 +	$(CXX) -o debugmallochost debugmalloc_u.o host.o $(LDFLAGS)
- 
+
  clean:
  	rm -f debugmallochost host.o debugmalloc_u.o debugmalloc_u.c debugmalloc_u.h debugmalloc_args.h
 diff --git a/samples/helloworld/host/Makefile b/samples/helloworld/host/Makefile
@@ -1598,7 +1598,7 @@ index 7b3c2c2ec..29bcd0c44 100644
  	$(CC) -g -c $(CFLAGS) helloworld_u.c
 -	$(CC) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
 +	$(CXX) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
- 
+
  clean:
  	rm -f helloworldhost host.o helloworld_u.o helloworld_u.c helloworld_u.h helloworld_args.h
 diff --git a/samples/log_callback/host/Makefile b/samples/log_callback/host/Makefile
@@ -1611,7 +1611,7 @@ index 3725ed9cc..4b3bdd695 100644
  	$(CC) -g -c $(CFLAGS) log_callback_u.c
 -	$(CC) -o log_callbackhost log_callback_u.o host.o $(LDFLAGS)
 +	$(CXX) -o log_callbackhost log_callback_u.o host.o $(LDFLAGS)
- 
+
  clean:
  	rm -f log_callbackhost host.o log_callback_u.o log_callback_u.c log_callback_u.h log_callback_args.h
 diff --git a/samples/switchless/host/Makefile b/samples/switchless/host/Makefile
@@ -1624,7 +1624,7 @@ index 234aa640b..5e8043871 100644
  	$(CC) -g -c $(CFLAGS) switchless_sample_u.c
 -	$(CC) -o switchlesshost switchless_sample_u.o host.o $(LDFLAGS)
 +	$(CXX) -o switchlesshost switchless_sample_u.o host.o $(LDFLAGS)
- 
+
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
@@ -1660,11 +1660,11 @@ index 17866f5b6..d9747109e 100644
 @@ -66,7 +66,7 @@ enclave_include_directories(
    oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
    ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
- 
+
 -enclave_link_libraries(oesyscall PUBLIC oecore)
 +enclave_link_libraries(oesyscall PUBLIC oecore PRIVATE oelibc)
  enclave_compile_options(oesyscall PRIVATE -ffunction-sections)
- 
+
  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/syscall_t.c
 diff --git a/syscall/consolefs.c b/syscall/consolefs.c
 index 1c1f7b1c2..0b6225296 100644
@@ -1677,10 +1677,10 @@ index 1c1f7b1c2..0b6225296 100644
 +    uint64_t argin = 0;
 +    void* argout = NULL;
 +    uint64_t argsize = 0;
- 
+
      if (!file)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 -    /*
 -     * MUSL uses the TIOCGWINSZ ioctl request to determine whether the file
 -     * descriptor refers to a terminal device (such as stdin, stdout, and
@@ -1739,7 +1739,7 @@ index 1c1f7b1c2..0b6225296 100644
 +        case OE_TIOCEXCL:
 +        case OE_TIOCNXCL:
 +            break;
- 
+
 -        p->ws_row = 24;
 -        p->ws_col = 80;
 -        p->ws_xpixel = 0;
@@ -1751,7 +1751,7 @@ index 1c1f7b1c2..0b6225296 100644
 +        case OE_TIOCSCTTY:
 +            argin = arg;
 +            break;
- 
+
 -        ret = 0;
 -        goto done;
 +        // arg: struct termios*
@@ -1766,13 +1766,13 @@ index 1c1f7b1c2..0b6225296 100644
 +        default:
 +            OE_RAISE_ERRNO(OE_ENOTTY);
      }
- 
+
 -    if (oe_syscall_ioctl_ocall(&ret, file->host_fd, request, arg, 0, NULL) !=
 -        OE_OK)
 +    if (oe_syscall_ioctl_ocall(
 +            &ret, file->host_fd, request, argin, argsize, argout) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
  done:
 @@ -139,6 +170,7 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
  {
@@ -1781,9 +1781,9 @@ index 1c1f7b1c2..0b6225296 100644
 +    uint64_t argin = 0;
      void* argout = NULL;
      uint64_t argsize = 0;
- 
+
 @@ -147,37 +179,27 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
- 
+
      switch (cmd)
      {
 +        // arg: void
@@ -1797,7 +1797,7 @@ index 1c1f7b1c2..0b6225296 100644
          case OE_F_SETFL:
 +            argin = arg;
              break;
- 
+
 +        // arg: struct flock*
          case OE_F_GETLK:
          case OE_F_OFD_GETLK:
@@ -1825,17 +1825,17 @@ index 1c1f7b1c2..0b6225296 100644
 -            memcpy(argout, srcp, argsize);
              break;
 -        }
- 
+
          // for sockets
          default:
 @@ -193,7 +215,7 @@ static int _consolefs_fcntl(oe_fd_t* file_, int cmd, uint64_t arg)
      }
- 
+
      if (oe_syscall_fcntl_ocall(
 -            &ret, file->host_fd, cmd, arg, argsize, argout) != OE_OK)
 +            &ret, file->host_fd, cmd, argin, argsize, argout) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
  done:
 diff --git a/syscall/device.c b/syscall/device.c
 index 1cb00423c..63664a178 100644
@@ -1844,7 +1844,7 @@ index 1cb00423c..63664a178 100644
 @@ -270,6 +270,12 @@ done:
      return ret;
  }
- 
+
 +uint64_t oe_device_table_get_custom_devid(void)
 +{
 +    static uint64_t id;
@@ -1865,9 +1865,9 @@ index 9a2fb4f48..cfbcc5f3a 100644
 +    uint64_t argin = 0;
      void* argout = NULL;
      uint64_t argsize = 0;
- 
+
 @@ -605,37 +606,27 @@ static int _epoll_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
- 
+
      switch (cmd)
      {
 +        // arg: void
@@ -1882,7 +1882,7 @@ index 9a2fb4f48..cfbcc5f3a 100644
 -            argsize = sizeof(struct oe_flock);
 -            argout = (void*)arg;
              break;
- 
+
 -        case OE_F_SETLKW64:
 -        case OE_F_SETLK64:
 -        {
@@ -1896,7 +1896,7 @@ index 9a2fb4f48..cfbcc5f3a 100644
 +            argin = arg;
              break;
 -        }
- 
+
 +        // arg: struct flock*
 +        case OE_F_GETLK:
 +        case OE_F_OFD_GETLK:
@@ -1912,17 +1912,17 @@ index 9a2fb4f48..cfbcc5f3a 100644
 -            memcpy(argout, srcp, argsize);
              break;
 -        }
- 
+
          // for sockets
          default:
 @@ -651,7 +642,7 @@ static int _epoll_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
      }
- 
+
      if (oe_syscall_fcntl_ocall(
 -            &ret, epoll->host_fd, cmd, arg, argsize, argout) != OE_OK)
 +            &ret, epoll->host_fd, cmd, argin, argsize, argout) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
  done:
 diff --git a/syscall/devices/hostfs/hostfs.c b/syscall/devices/hostfs/hostfs.c
 index b86f2ab10..df7923e25 100644
@@ -1931,19 +1931,19 @@ index b86f2ab10..df7923e25 100644
 @@ -21,6 +21,7 @@
  #include <openenclave/enclave.h>
  // clang-format on
- 
+
 +#include <openenclave/internal/ert/hostfs.h>
  #include <openenclave/internal/syscall/device.h>
  #include <openenclave/internal/thread.h>
  #include <openenclave/internal/syscall/dirent.h>
 @@ -38,33 +39,9 @@
- 
+
  #include "syscall_t.h"
- 
+
 -#define FS_MAGIC 0x5f35f964
  #define FILE_MAGIC 0xfe48c6ff
  #define DIR_MAGIC 0x8add1b0b
- 
+
 -/* Mask to extract the access mode: O_RDONLY, O_WRONLY, O_RDWR. */
 -#define ACCESS_MODE_MASK 000000003
 -
@@ -1972,7 +1972,7 @@ index b86f2ab10..df7923e25 100644
  {
 @@ -156,7 +133,7 @@ done:
  }
- 
+
  /* Expand an enclave path to a host path. */
 -static int _make_host_path(
 +int _hostfs_make_host_path(
@@ -1981,7 +1981,7 @@ index b86f2ab10..df7923e25 100644
      char host_path[OE_PATH_MAX])
 @@ -191,7 +168,7 @@ done:
  }
- 
+
  /* Called by oe_mount(). */
 -static int _hostfs_mount(
 +int _hostfs_mount(
@@ -1990,17 +1990,17 @@ index b86f2ab10..df7923e25 100644
      const char* target,
 @@ -211,7 +188,8 @@ static int _hostfs_mount(
          OE_RAISE_ERRNO(OE_EBUSY);
- 
+
      /* Cross check the file system type. */
 -    if (oe_strcmp(filesystemtype, OE_DEVICE_NAME_HOST_FILE_SYSTEM) != 0)
 +    if (oe_strcmp(filesystemtype, OE_DEVICE_NAME_HOST_FILE_SYSTEM) != 0 &&
 +        oe_strcmp(filesystemtype, OE_HOST_FILE_SYSTEM_MMAP) != 0)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
      /* The data parameter is not supported for host file systems. */
 @@ -247,7 +225,7 @@ done:
  }
- 
+
  /* Called by oe_umount2(). */
 -static int _hostfs_umount2(oe_device_t* device, const char* target, int flags)
 +int _hostfs_umount2(oe_device_t* device, const char* target, int flags)
@@ -2009,7 +2009,7 @@ index b86f2ab10..df7923e25 100644
      device_t* fs = _cast_device(device);
 @@ -279,7 +257,7 @@ done:
  }
- 
+
  /* Called by oe_mount() to make a copy of this device. */
 -static int _hostfs_clone(oe_device_t* device, oe_device_t** new_device)
 +int _hostfs_clone(oe_device_t* device, oe_device_t** new_device)
@@ -2018,7 +2018,7 @@ index b86f2ab10..df7923e25 100644
      device_t* fs = _cast_device(device);
 @@ -301,7 +279,7 @@ done:
  }
- 
+
  /* Called by oe_umount() to release this device. */
 -static int _hostfs_release(oe_device_t* device)
 +int _hostfs_release(oe_device_t* device)
@@ -2028,26 +2028,26 @@ index b86f2ab10..df7923e25 100644
 @@ -316,6 +294,7 @@ done:
      return ret;
  }
- 
+
 +#if 0
  static oe_fd_t* _hostfs_open_file(
      oe_device_t* device,
      const char* pathname,
 @@ -348,7 +327,7 @@ static oe_fd_t* _hostfs_open_file(
- 
+
      /* Ask the host to open the file. */
      {
 -        if (_make_host_path(fs, pathname, host_path) != 0)
 +        if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
              OE_RAISE_ERRNO_MSG(oe_errno, "pathname=%s", pathname);
- 
+
          if (oe_syscall_open_ocall(&retval, host_path, flags, mode) != OE_OK)
 @@ -370,8 +349,9 @@ done:
- 
+
      return ret;
  }
 +#endif
- 
+
 -static oe_fd_t* _hostfs_open_directory(
 +oe_fd_t* _hostfs_open_directory(
      oe_device_t* device,
@@ -2055,7 +2055,7 @@ index b86f2ab10..df7923e25 100644
      int flags)
 @@ -421,20 +401,69 @@ done:
  }
- 
+
  static oe_fd_t* _hostfs_open(
 -    oe_device_t* fs,
 +    oe_device_t* device,
@@ -2129,7 +2129,7 @@ index b86f2ab10..df7923e25 100644
 +    oe_free(file);
 +    return NULL;
  }
- 
+
  static int _hostfs_flock(oe_fd_t* desc, int operation)
 @@ -1003,6 +1032,7 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
  {
@@ -2138,9 +2138,9 @@ index b86f2ab10..df7923e25 100644
 +    uint64_t argin = 0;
      void* argout = NULL;
      uint64_t argsize = 0;
- 
+
 @@ -1011,37 +1041,27 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
- 
+
      switch (cmd)
      {
 +        // arg: void
@@ -2155,7 +2155,7 @@ index b86f2ab10..df7923e25 100644
 -            argsize = sizeof(struct oe_flock);
 -            argout = (void*)arg;
              break;
- 
+
 -        case OE_F_SETLKW64:
 -        case OE_F_SETLK64:
 -        {
@@ -2169,7 +2169,7 @@ index b86f2ab10..df7923e25 100644
 +            argin = arg;
              break;
 -        }
- 
+
 +        // arg: struct flock*
 +        case OE_F_GETLK:
 +        case OE_F_OFD_GETLK:
@@ -2185,31 +2185,31 @@ index b86f2ab10..df7923e25 100644
 -            memcpy(argout, srcp, argsize);
              break;
 -        }
- 
+
          // for sockets
          default:
 @@ -1057,7 +1077,7 @@ static int _hostfs_fcntl(oe_fd_t* desc, int cmd, uint64_t arg)
      }
- 
+
      if (oe_syscall_fcntl_ocall(
 -            &ret, file->host_fd, cmd, arg, argsize, argout) != OE_OK)
 +            &ret, file->host_fd, cmd, argin, argsize, argout) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
  done:
 @@ -1076,7 +1096,7 @@ static oe_fd_t* _hostfs_opendir(oe_device_t* device, const char* name)
      if (!fs || !name)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 -    if (_make_host_path(fs, name, host_name) != 0)
 +    if (_hostfs_make_host_path(fs, name, host_name) != 0)
          OE_RAISE_ERRNO_MSG(oe_errno, "name=%s", name);
- 
+
      if (!(dir = oe_calloc(1, sizeof(dir_t))))
 @@ -1166,7 +1186,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_stat(
 +int _hostfs_stat(
      oe_device_t* device,
@@ -2218,16 +2218,16 @@ index b86f2ab10..df7923e25 100644
 @@ -1182,7 +1202,7 @@ static int _hostfs_stat(
      if (!fs || !pathname || !buf)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 -    if (_make_host_path(fs, pathname, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_stat_ocall(&retval, host_path, buf) != OE_OK)
 @@ -1217,7 +1237,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
 +int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
  {
@@ -2236,16 +2236,16 @@ index b86f2ab10..df7923e25 100644
 @@ -1228,7 +1248,7 @@ static int _hostfs_access(oe_device_t* device, const char* pathname, int mode)
      if (!fs || !pathname || ((uint32_t)mode & ~MASK))
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 -    if (_make_host_path(fs, pathname, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_access_ocall(&retval, host_path, mode) != OE_OK)
 @@ -1241,10 +1261,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_link(
 -    oe_device_t* device,
 -    const char* oldpath,
@@ -2257,20 +2257,20 @@ index b86f2ab10..df7923e25 100644
 @@ -1259,10 +1276,10 @@ static int _hostfs_link(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
 +    if (_hostfs_make_host_path(fs, oldpath, host_oldpath) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
 -    if (_make_host_path(fs, newpath, host_newpath) != 0)
 +    if (_hostfs_make_host_path(fs, newpath, host_newpath) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_link_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
 @@ -1275,7 +1292,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_unlink(oe_device_t* device, const char* pathname)
 +int _hostfs_unlink(oe_device_t* device, const char* pathname)
  {
@@ -2279,16 +2279,16 @@ index b86f2ab10..df7923e25 100644
 @@ -1289,7 +1306,7 @@ static int _hostfs_unlink(oe_device_t* device, const char* pathname)
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, pathname, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_unlink_ocall(&retval, host_path) != OE_OK)
 @@ -1302,7 +1319,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_rename(
 +int _hostfs_rename(
      oe_device_t* device,
@@ -2297,20 +2297,20 @@ index b86f2ab10..df7923e25 100644
 @@ -1319,10 +1336,10 @@ static int _hostfs_rename(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, oldpath, host_oldpath) != 0)
 +    if (_hostfs_make_host_path(fs, oldpath, host_oldpath) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
 -    if (_make_host_path(fs, newpath, host_newpath) != 0)
 +    if (_hostfs_make_host_path(fs, newpath, host_newpath) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_rename_ocall(&retval, host_oldpath, host_newpath) != OE_OK)
 @@ -1335,10 +1352,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_truncate(
 -    oe_device_t* device,
 -    const char* path,
@@ -2322,16 +2322,16 @@ index b86f2ab10..df7923e25 100644
 @@ -1351,7 +1365,7 @@ static int _hostfs_truncate(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, path, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, path, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_truncate_ocall(&retval, host_path, length) != OE_OK)
 @@ -1382,10 +1396,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_mkdir(
 -    oe_device_t* device,
 -    const char* pathname,
@@ -2343,16 +2343,16 @@ index b86f2ab10..df7923e25 100644
 @@ -1399,7 +1410,7 @@ static int _hostfs_mkdir(
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, pathname, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_mkdir_ocall(&retval, host_path, mode) != OE_OK)
 @@ -1412,7 +1423,7 @@ done:
      return ret;
  }
- 
+
 -static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
 +int _hostfs_rmdir(oe_device_t* device, const char* pathname)
  {
@@ -2361,27 +2361,27 @@ index b86f2ab10..df7923e25 100644
 @@ -1426,7 +1437,7 @@ static int _hostfs_rmdir(oe_device_t* device, const char* pathname)
      if (_is_read_only(fs))
          OE_RAISE_ERRNO(OE_EPERM);
- 
+
 -    if (_make_host_path(fs, pathname, host_path) != 0)
 +    if (_hostfs_make_host_path(fs, pathname, host_path) != 0)
          OE_RAISE_ERRNO(oe_errno);
- 
+
      if (oe_syscall_rmdir_ocall(&retval, host_path) != OE_OK)
 @@ -1443,6 +1454,10 @@ static oe_host_fd_t _hostfs_get_host_fd(oe_fd_t* desc)
  {
      file_t* file = _cast_file(desc);
- 
+
 +    // EDG: set errno if this is a directory file
 +    if (file && file->host_fd == -1)
 +        oe_errno = OE_EINVAL;
 +
      return file ? file->host_fd : -1;
  }
- 
+
 @@ -1526,6 +1541,17 @@ oe_result_t oe_load_module_host_file_system(void)
              OE_RAISE(OE_FAILURE);
          }
- 
+
 +#if 0 // EDG: Disabled for now. Need to apply mitigation for MMIO vulnerability.
 +        if (oe_device_table_set(
 +                OE_DEVID_HOST_FILE_SYSTEM_MMAP, &oe_hostfs_mmap.base) != 0)
@@ -2395,7 +2395,7 @@ index b86f2ab10..df7923e25 100644
 +
          _loaded = true;
      }
- 
+
 diff --git a/syscall/devices/hostsock/hostsock.c b/syscall/devices/hostsock/hostsock.c
 index 9f2a6f51e..1b3be5b43 100644
 --- a/syscall/devices/hostsock/hostsock.c
@@ -2406,12 +2406,12 @@ index 9f2a6f51e..1b3be5b43 100644
  #include <openenclave/internal/safecrt.h>
 +#include <openenclave/internal/ert/sock.h>
  #include "syscall_t.h"
- 
+
  #define DEVICE_MAGIC 0x536f636b
 @@ -34,13 +35,6 @@ typedef struct _device
      oe_host_fd_t host_fd;
  } device_t;
- 
+
 -typedef struct _sock
 -{
 -    oe_fd_t base;
@@ -2425,7 +2425,7 @@ index 9f2a6f51e..1b3be5b43 100644
 @@ -56,6 +50,11 @@ static sock_t* _new_sock(void)
      return sock;
  }
- 
+
 +sock_t* oe_hostsock_new_sock(void)
 +{
 +    return _new_sock();
@@ -2437,7 +2437,7 @@ index 9f2a6f51e..1b3be5b43 100644
 @@ -100,6 +99,8 @@ static oe_fd_t* _hostsock_device_socket(
      if (!(new_sock = _new_sock()))
          OE_RAISE_ERRNO(OE_ENOMEM);
- 
+
 +    // TODO Do not create host socket here, but in bind or connect.
 +
      /* Call the host. */
@@ -2445,7 +2445,7 @@ index 9f2a6f51e..1b3be5b43 100644
          oe_host_fd_t retval = -1;
 @@ -114,6 +115,11 @@ static oe_fd_t* _hostsock_device_socket(
      }
- 
+
      ret = &new_sock->base;
 +
 +    // EDG: remember flag for internal socket
@@ -2453,12 +2453,12 @@ index 9f2a6f51e..1b3be5b43 100644
 +        new_sock->internal.flags = OE_O_NONBLOCK;
 +
      new_sock = NULL;
- 
+
  done:
 @@ -210,6 +216,13 @@ static int _hostsock_connect(
      if (oe_memcpy_s(&buf, sizeof(buf), addr, addrlen) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 +    // EDG: try internal first
 +    const oe_result_t internal = oe_internalsock_connect(sock, addr);
 +    if (internal == OE_OK)
@@ -2472,7 +2472,7 @@ index 9f2a6f51e..1b3be5b43 100644
 @@ -312,6 +325,13 @@ static int _hostsock_bind(
      if (oe_memcpy_s(&buf, sizeof(buf), addr, addrlen) != OE_OK)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 +    // EDG: try internal first
 +    const oe_result_t internal = oe_internalsock_bind(sock, addr);
 +    if (internal == OE_OK)
@@ -2486,7 +2486,7 @@ index 9f2a6f51e..1b3be5b43 100644
 @@ -945,6 +965,18 @@ static int _hostsock_ioctl(oe_fd_t* sock_, unsigned long request, uint64_t arg)
      if (!sock)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 +    /*
 +     * MUSL uses the TIOCGWINSZ ioctl request to determine whether the file
 +     * descriptor refers to a terminal device. This request cannot be handled
@@ -2509,7 +2509,7 @@ index 6de079f60..07e1e1c32 100644
 @@ -160,6 +160,9 @@ int oe_mount(
      if (!device)
          OE_RAISE_ERRNO_MSG(OE_ENODEV, "filesystemtype=%s", filesystemtype);
- 
+
 +// EDG: disabled because we want to be able to mount anywhere without simulating
 +// a complete root fs.
 +#if 0
@@ -2521,7 +2521,7 @@ index 6de079f60..07e1e1c32 100644
              OE_RAISE_ERRNO(OE_ENOTDIR);
      }
 +#endif
- 
+
      /* Lock the mount table. */
      oe_spin_lock(&_lock);
 diff --git a/syscall/netdb.c b/syscall/netdb.c
@@ -2530,7 +2530,7 @@ index 26d943fdb..2edcb473a 100644
 +++ b/syscall/netdb.c
 @@ -2,6 +2,8 @@
  // Licensed under the MIT License.
- 
+
  #include <openenclave/corelibc/stdlib.h>
 +#include <openenclave/corelibc/string.h>
 +#include <openenclave/internal/syscall/arpa/inet.h>
@@ -2540,7 +2540,7 @@ index 26d943fdb..2edcb473a 100644
 @@ -57,6 +59,360 @@ done:
      return ret;
  }
- 
+
 +#define OE_IN6_IS_ADDR_MULTICAST(a) (((uint8_t*)(a))[0] == 0xff)
 +#define OE_IN6_IS_ADDR_LINKLOCAL(a) \
 +    ((((uint8_t*)(a))[0]) == 0xfe && (((uint8_t*)(a))[1] & 0xc0) == 0x80)
@@ -2901,7 +2901,7 @@ index 26d943fdb..2edcb473a 100644
 @@ -72,6 +428,12 @@ int oe_getaddrinfo(
      else
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
 +    // EDG: Try to resolve internally. This is important for internal sockets
 +    // because the host could otherwise hijack them.
 +    const int ret_getaddrinfo = _getaddrinfo(node, service, hints, res_out);
@@ -2910,11 +2910,11 @@ index 26d943fdb..2edcb473a 100644
 +
      oe_spin_lock(&_lock);
      locked = true;
- 
+
 @@ -94,6 +456,131 @@ done:
      return ret;
  }
- 
+
 +// copied from musl/src/getnameinfo.c
 +static char* itoa(char* p, unsigned x)
 +{
@@ -3046,7 +3046,7 @@ index 26d943fdb..2edcb473a 100644
 @@ -106,6 +593,12 @@ int oe_getnameinfo(
      ssize_t ret = OE_EAI_FAIL;
      bool locked = false;
- 
+
 +    // EDG: Try to resolve internally.
 +    const int ret_getnameinfo =
 +        _getnameinfo(sa, salen, host, hostlen, serv, servlen, flags);
@@ -3055,7 +3055,7 @@ index 26d943fdb..2edcb473a 100644
 +
      oe_spin_lock(&_lock);
      locked = true;
- 
+
 diff --git a/syscall/poll.c b/syscall/poll.c
 index 072e4fec5..a70034931 100644
 --- a/syscall/poll.c
@@ -3063,14 +3063,27 @@ index 072e4fec5..a70034931 100644
 @@ -16,7 +16,9 @@ int oe_poll(struct oe_pollfd* fds, oe_nfds_t nfds, int timeout)
      struct oe_host_pollfd* host_fds = NULL;
      oe_nfds_t i;
- 
+
 -    if (!fds || nfds == 0)
 +    // EDG: poll with nfds=0 can be used as sleep. (Python uses it this way and
 +    // it is also documented in the manpage.)
 +    if (!fds) // || nfds == 0)
          OE_RAISE_ERRNO(OE_EINVAL);
- 
+
      if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
+diff --git a/syscall/stdlib.c b/syscall/stdlib.c
+index 636ed957d..0890b20a5 100644
+--- a/syscall/stdlib.c
++++ b/syscall/stdlib.c
+@@ -26,6 +26,8 @@ char* oe_realpath(const char* path, oe_syscall_path_t* resolved_path)
+
+     if (!path)
+         OE_RAISE_ERRNO(OE_EINVAL);
++    if (path[0] == '\0')
++        OE_RAISE_ERRNO(OE_ENOENT);
+
+     /* Allocate variables on the heap since too big for the stack. */
+     if (!(v = oe_calloc(1, sizeof(variables_t))))
 diff --git a/syscall/syscall.c b/syscall/syscall.c
 index 6c0d99c80..b215f8f04 100644
 --- a/syscall/syscall.c
@@ -3078,7 +3091,7 @@ index 6c0d99c80..b215f8f04 100644
 @@ -209,6 +209,15 @@ OE_WEAK OE_DEFINE_SYSCALL4_M(SYS_epoll_wait)
  }
  #endif
- 
+
 +OE_WEAK OE_DEFINE_SYSCALL2(SYS_eventfd2)
 +{
 +    oe_errno = 0;
@@ -3106,7 +3119,7 @@ index db56a077e..3d9448152 100644
 @@ -299,6 +299,23 @@ done:
      return ret;
  }
- 
+
 +int oe_close_hostfd(oe_host_fd_t fd)
 +{
 +    int ret = -1;
@@ -3152,10 +3165,10 @@ index 8a1389e0e..87767ccf4 100644
 +            return -2;
      }
  }
- 
+
 @@ -190,7 +190,8 @@ static oe_result_t _syscall_hook(
          OE_RAISE(OE_INVALID_PARAMETER);
- 
+
      *ret = _syscall_dispatch(number, arg1, arg2, arg3, arg4, arg5, arg6);
 -    result = OE_OK;
 +    if (*ret != -2)
@@ -3200,7 +3213,7 @@ index 944422b4b..b5bb443ff 100644
 --- a/tests/edl_opt_out/enc/enc.c
 +++ b/tests/edl_opt_out/enc/enc.c
 @@ -97,9 +97,6 @@ void enc_edl_opt_out()
- 
+
      /* sgx/entropy.edl */
      /* Only available with oecryptoopenssl */
 -    OE_TEST(
@@ -3208,7 +3221,7 @@ index 944422b4b..b5bb443ff 100644
 -        OE_UNSUPPORTED);
  #endif
  }
- 
+
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
@@ -3233,23 +3246,23 @@ index 1f1cd729f..86b97ccff 100644
 +    errno = 1; // EDG: we don't accept a return value of -1 with errno=0
      return ret;
  }
- 
+
 diff --git a/tests/mman/enc/enc.c b/tests/mman/enc/enc.c
 index 6c39b1d86..ca4ea042d 100644
 --- a/tests/mman/enc/enc.c
 +++ b/tests/mman/enc/enc.c
 @@ -31,7 +31,6 @@ static void _test_basic()
- 
+
      OE_TEST(munmap(ptr, chunk_size) == 0);
      OE_TEST(errno == 0);
 -    OE_TEST(oe_test_get_mappings() == NULL);
  }
- 
+
  static void _test_partial_unmapping(void)
 @@ -46,10 +45,6 @@ static void _test_partial_unmapping(void)
          0);
      uint64_t p1_end = p1_start + p1_length;
- 
+
 -    oe_mapping_t* m = oe_test_get_mappings();
 -    OE_TEST(m->start == p1_start);
 -    OE_TEST(m->end == p1_end);
@@ -3264,12 +3277,12 @@ index 6c39b1d86..ca4ea042d 100644
 -    m = oe_test_get_mappings();
 -    OE_TEST(m->start == p2_start);
 -    OE_TEST(m->end == p2_end);
- 
+
      // Swap p1 and p2 if p2 lies before p1.
      bool swapped = false;
 @@ -84,52 +76,15 @@ static void _test_partial_unmapping(void)
      OE_TEST(errno == 0);
- 
+
      // Partial unmapping only changes the status vectors and not the bounds.
 -    m = oe_test_get_mappings();
 -    if (swapped)
@@ -3288,7 +3301,7 @@ index 6c39b1d86..ca4ea042d 100644
 -        OE_TEST(m->start == p1_start);
 -        OE_TEST(m->end == p1_end);
 -    }
- 
+
      // Do another partial unmap.
      start -= OE_PAGE_SIZE;
      OE_TEST(munmap((void*)start, end - start) == 0);
@@ -3310,14 +3323,14 @@ index 6c39b1d86..ca4ea042d 100644
 -        OE_TEST(m->start == p1_start);
 -        OE_TEST(m->end == p1_end);
 -    }
- 
+
      // Do an unmap till the start.
      // This ought to delete one mapping completely.
 -    OE_TEST(munmap((void*)OE_PAGE_SIZE, start - OE_PAGE_SIZE) == 0);
      OE_TEST(errno == 0);
 -    m = oe_test_get_mappings();
 -    OE_TEST(m->next == NULL);
- 
+
      // Do another unmapping that spans entire enclave memory.
      // This ought to get rid of all mappings.
 @@ -140,21 +95,15 @@ static void _test_partial_unmapping(void)
@@ -3327,12 +3340,12 @@ index 6c39b1d86..ca4ea042d 100644
 -    OE_TEST(munmap(0, (1L << 62)) == 0);
      OE_TEST(errno == 0);
 -    OE_TEST(oe_test_get_mappings() == NULL);
- 
+
      // Test unmapping a mapping in small chunks.
      start = (uint64_t)mmap(
          NULL, 3 * OE_PAGE_SIZE, PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 -    OE_TEST(oe_test_get_mappings() != NULL);
- 
+
      OE_TEST(munmap((void*)(start + OE_PAGE_SIZE), 1) == 0);
 -    OE_TEST(oe_test_get_mappings() != NULL);
      OE_TEST(munmap((void*)(start + 2 * OE_PAGE_SIZE), 1) == 0);
@@ -3340,7 +3353,7 @@ index 6c39b1d86..ca4ea042d 100644
      OE_TEST(munmap((void*)start, 1) == 0);
 -    OE_TEST(oe_test_get_mappings() == NULL);
  }
- 
+
  static void _test_mmap_params(void)
 @@ -167,8 +116,8 @@ static void _test_mmap_params(void)
              PROT_READ,
@@ -3350,12 +3363,12 @@ index 6c39b1d86..ca4ea042d 100644
 -    OE_TEST(errno == 0);
 +            0) == MAP_FAILED);
 +    OE_TEST(errno == EINVAL);
- 
+
      // Zero length should fail.
      OE_TEST(
 @@ -189,15 +138,16 @@ static void _test_mmap_params(void)
      OE_TEST(errno == ENOMEM);
- 
+
      // Test various prots.
 +    errno = 0;
      OE_TEST(
@@ -3364,37 +3377,37 @@ index 6c39b1d86..ca4ea042d 100644
          MAP_FAILED);
 -    OE_TEST(errno == EINVAL);
 +    OE_TEST(errno == 0);
- 
+
      OE_TEST(
 -        mmap(NULL, chunk_size, PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0) ==
 +        mmap(NULL, chunk_size, PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0) !=
          MAP_FAILED);
 -    OE_TEST(errno == EINVAL);
 +    OE_TEST(errno == 0);
- 
+
      errno = 0;
      OE_TEST(
 @@ -228,8 +178,8 @@ static void _test_mmap_params(void)
- 
+
      // Test various flags.
      OE_TEST(
 -        mmap(NULL, chunk_size, PROT_READ | PROT_WRITE, 0, -1, 0) == MAP_FAILED);
 -    OE_TEST(errno == EINVAL);
 +        mmap(NULL, chunk_size, PROT_READ | PROT_WRITE, 0, -1, 0) != MAP_FAILED);
 +    OE_TEST(errno == 0);
- 
+
      errno = 0;
      // One of MAP_SHARED, MAP_SHARED_VALIDATE, MAP_PRIVATE must be used.
 @@ -254,9 +204,9 @@ static void _test_mmap_params(void)
      OE_TEST(errno == 0);
- 
+
      OE_TEST(
 -        mmap(NULL, chunk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0) ==
 +        mmap(NULL, chunk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0) !=
          MAP_FAILED);
 -    OE_TEST(errno == EINVAL);
 +    OE_TEST(errno == 0);
- 
+
      errno = 0;
      // Test unsupported flags.
 @@ -269,7 +219,6 @@ static void _test_mmap_params(void)
@@ -3412,7 +3425,7 @@ index 6c39b1d86..ca4ea042d 100644
 -        OE_TEST(errno == EINVAL);
 +        OE_TEST(errno == ENOSYS);
      }
- 
+
      int ignored[] = {
 @@ -303,7 +252,8 @@ static void _test_mmap_params(void)
      {
@@ -3434,7 +3447,7 @@ index 6c39b1d86..ca4ea042d 100644
 +            OE_TEST(errno == EINVAL);
          }
      }
- 
+
 diff --git a/tests/module_loading/enc/CMakeLists.txt b/tests/module_loading/enc/CMakeLists.txt
 index 90d0d7e2e..d17c9028c 100644
 --- a/tests/module_loading/enc/CMakeLists.txt
@@ -3447,7 +3460,7 @@ index 90d0d7e2e..d17c9028c 100644
 -                       oe_includes)
 +enclave_link_libraries(module_loading_common oeenclave oelibc oe_includes)
  maybe_build_using_clangw(module_loading_common)
- 
+
  # Add the enclave for postive tests
 diff --git a/tests/module_loading/module/module.c b/tests/module_loading/module/module.c
 index 3fbecd8a5..199a280c9 100644
@@ -3464,7 +3477,7 @@ index 3fbecd8a5..199a280c9 100644
 @@ -73,9 +72,5 @@ int test_libc_symbols()
      if (sizeof(pthread_mutex_t) != 40)
          return 0;
- 
+
 -    uint8_t data[16];
 -    if (!oe_sgx_get_additional_host_entropy(data, 16))
 -        return 0;
@@ -3477,12 +3490,12 @@ index 6d95d6943..abfb269b9 100644
 +++ b/tests/props/host/host.c
 @@ -62,7 +62,7 @@ static oe_result_t _sgx_load_enclave_properties(
          OE_RAISE(OE_INVALID_PARAMETER);
- 
+
      /* Load the ELF image */
 -    if (oe_load_enclave_image(path, &oeimage) != 0)
 +    if (oe_load_enclave_image(path, &oeimage, NULL) != 0)
          OE_RAISE(OE_FAILURE);
- 
+
      /* Load the SGX enclave properties */
 diff --git a/tests/sealKey/host/host.cpp b/tests/sealKey/host/host.cpp
 index 10286da24..db9188cf7 100644
@@ -3490,27 +3503,27 @@ index 10286da24..db9188cf7 100644
 +++ b/tests/sealKey/host/host.cpp
 @@ -156,11 +156,6 @@ int main(int argc, const char* argv[])
      }
- 
+
      const uint32_t flags = oe_get_create_flags();
 -    if ((flags & OE_ENCLAVE_FLAG_SIMULATE) != 0)
 -    {
 -        printf("=== Skipped unsupported test in simulation mode (sealKey)\n");
 -        return SKIP_RETURN_CODE;
 -    }
- 
+
      printf("=== This program is used to test enclave seal key functions.\n");
- 
+
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
 index 20e247eca..eecea0bb5 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
 +++ b/tests/stack_overflow_exception/enc/enc.c
 @@ -33,7 +33,7 @@ uint64_t test_stack_overflow_handler(oe_exception_record_t* exception_record)
      uint64_t stack_base = (uint64_t)tcs - PAGE_SIZE;
- 
+
      /* Verify that the stack is overflowed */
 -    OE_TEST(exception_record->context->rsp < (stack_base - STACK_SIZE));
 +    OE_TEST(exception_record->context->rsp <= (stack_base - STACK_SIZE));
- 
+
      uint64_t stack = (uint64_t)exception_handler_stack;
      uint64_t stack_end = stack + EXCEPTION_HANDLER_STACK_SIZE;
 diff --git a/tests/syscall/fs/enc/enc.cpp b/tests/syscall/fs/enc/enc.cpp
@@ -3525,7 +3538,7 @@ index 0664f845e..75f456101 100644
      OE_TEST(fs.flock(file2, LOCK_EX | LOCK_NB) == -1);
      OE_TEST(errno == EWOULDBLOCK);
 +#endif
- 
+
      /* Closing should unlock the file. */
      OE_TEST(fs.close(file) == 0);
      OE_TEST(fs.flock(file2, LOCK_EX) == 0);
@@ -3539,7 +3552,7 @@ index 0664f845e..75f456101 100644
 +#endif
 +    OE_TEST(fs.close(folder) == 0);
  }
- 
+
  template <class FILE_SYSTEM>
 diff --git a/tests/syscall/getrandom/enc/enc.c b/tests/syscall/getrandom/enc/enc.c
 index 98e48740e..a75ab0ba0 100644
@@ -3547,23 +3560,23 @@ index 98e48740e..a75ab0ba0 100644
 +++ b/tests/syscall/getrandom/enc/enc.c
 @@ -24,10 +24,6 @@ void test_getrandom()
      OE_TEST((size_t)size == sizeof(buflen));
- 
+
      /* Test with unsupported flags */
 -    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_RANDOM) == -1);
 -    OE_TEST(errno == EINVAL);
 -    OE_TEST(getrandom((void*)buf, sizeof(buflen), GRND_NONBLOCK) == -1);
 -    OE_TEST(errno == EINVAL);
  }
- 
+
  OE_SET_ENCLAVE_SGX(
 diff --git a/tests/syscall/poller/client.cpp b/tests/syscall/poller/client.cpp
 index c09560c7f..927be2ded 100644
 --- a/tests/syscall/poller/client.cpp
 +++ b/tests/syscall/poller/client.cpp
 @@ -17,7 +17,7 @@
- 
+
  extern "C" void oe_abort();
- 
+
 -void run_client(uint16_t port)
 +void run_client(uint32_t ipaddr, uint16_t port)
  {
@@ -3576,19 +3589,19 @@ index c09560c7f..927be2ded 100644
 -        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 +        addr.sin_addr.s_addr = htonl(ipaddr);
          addr.sin_port = htons(port);
- 
+
          if (connect(sd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
 diff --git a/tests/syscall/poller/client.h b/tests/syscall/poller/client.h
 index 060657741..a57d92704 100644
 --- a/tests/syscall/poller/client.h
 +++ b/tests/syscall/poller/client.h
 @@ -6,6 +6,6 @@
- 
+
  #include <stdint.h>
- 
+
 -void run_client(uint16_t port);
 +void run_client(uint32_t ipaddr, uint16_t port);
- 
+
  #endif /* _OE_TESTS_LIBCSOCKETS_CLIENT_H */
 diff --git a/tests/syscall/poller/enc/enc.cpp b/tests/syscall/poller/enc/enc.cpp
 index a8ee8b96f..b8bcd22c6 100644
@@ -3596,7 +3609,7 @@ index a8ee8b96f..b8bcd22c6 100644
 +++ b/tests/syscall/poller/enc/enc.cpp
 @@ -22,18 +22,19 @@ static void _init(void)
  }
- 
+
  extern "C" void run_enclave_server(
 +    uint32_t ipaddr,
      uint16_t port,
@@ -3607,7 +3620,7 @@ index a8ee8b96f..b8bcd22c6 100644
 -    run_server(port, num_clients, poller_type_t(poller_type));
 +    run_server(ipaddr, port, num_clients, poller_type_t(poller_type));
  }
- 
+
 -extern "C" void run_enclave_client(uint16_t port)
 +extern "C" void run_enclave_client(uint32_t ipaddr, uint16_t port)
  {
@@ -3615,7 +3628,7 @@ index a8ee8b96f..b8bcd22c6 100644
 -    run_client(port);
 +    run_client(ipaddr, port);
  }
- 
+
  extern "C" void test_fd_set(void)
 diff --git a/tests/syscall/poller/host/host.cpp b/tests/syscall/poller/host/host.cpp
 index 1c4cd0833..a107308ca 100644
@@ -3627,7 +3640,7 @@ index 1c4cd0833..a107308ca 100644
      poller_type_t poller_type;
 +    uint32_t ipaddr;
  } server_arg_t;
- 
+
  static void* _run_host_client(void* arg)
  {
      OE_UNUSED(arg);
@@ -3635,33 +3648,33 @@ index 1c4cd0833..a107308ca 100644
 +    run_client(static_cast<thread_arg*>(arg)->ipaddr, PORT);
      return NULL;
  }
- 
+
 @@ -35,7 +36,7 @@ static void* _run_host_server(void* arg_)
  {
      server_arg_t* arg = (server_arg_t*)arg_;
- 
+
 -    run_server(PORT, NUM_CLIENTS, arg->poller_type);
 +    run_server(arg->ipaddr, PORT, NUM_CLIENTS, arg->poller_type);
- 
+
      return NULL;
  }
 @@ -44,7 +45,8 @@ static void* _run_enclave_server(void* arg_)
  {
      server_arg_t* arg = (server_arg_t*)arg_;
- 
+
 -    run_enclave_server(_enclave, PORT, NUM_CLIENTS, arg->poller_type);
 +    run_enclave_server(
 +        _enclave, arg->ipaddr, PORT, NUM_CLIENTS, arg->poller_type);
- 
+
      return NULL;
  }
 @@ -53,7 +55,7 @@ static void* _run_enclave_client(void* arg)
  {
      OE_UNUSED(arg);
- 
+
 -    run_enclave_client(_enclave, PORT);
 +    run_enclave_client(_enclave, static_cast<thread_arg*>(arg)->ipaddr, PORT);
- 
+
      return NULL;
  }
 @@ -61,11 +63,12 @@ static void* _run_enclave_client(void* arg)
@@ -3676,11 +3689,11 @@ index 1c4cd0833..a107308ca 100644
      thread_t server;
 -    server_arg_t arg = {poller_type};
 +    thread_arg arg = {poller_type, ipaddr};
- 
+
      if (thread_create(&server, server_proc, &arg) != 0)
      {
 @@ -76,7 +79,7 @@ void run_test(
- 
+
      for (size_t i = 0; i < NUM_CLIENTS; i++)
      {
 -        if (thread_create(&clients[i], client_proc, NULL) != 0)
@@ -3691,7 +3704,7 @@ index 1c4cd0833..a107308ca 100644
 @@ -120,6 +123,14 @@ void test_enclave_to_enclave(poller_type_t poller_type)
      fflush(stdout);
  }
- 
+
 +static void test_enclave_to_enclave_internal(poller_type_t poller_type)
 +{
 +    printf("=== start %s(): %s\n", __FUNCTION__, poller::name(poller_type));
@@ -3708,9 +3721,9 @@ index 1c4cd0833..a107308ca 100644
      test_host_to_enclave(poller_type);
      test_enclave_to_enclave(poller_type);
 +    test_enclave_to_enclave_internal(poller_type);
- 
+
      test_fd_set(_enclave);
- 
+
 diff --git a/tests/syscall/poller/poller.edl b/tests/syscall/poller/poller.edl
 index 419c4d27a..52858f4b5 100644
 --- a/tests/syscall/poller/poller.edl
@@ -3720,54 +3733,54 @@ index 419c4d27a..52858f4b5 100644
      from "openenclave/edl/optee/platform.edl" import *;
  #endif
 +    from "openenclave/edl/syscall.edl" import oe_syscall_eventfd_ocall;
- 
+
      trusted {
- 
+
          public void run_enclave_server(
 +            uint32_t ipaddr,
              uint16_t port,
              size_t num_clients,
              uint32_t poller_type);
- 
+
          public void run_enclave_client(
 +            uint32_t ipaddr,
              uint16_t port);
- 
+
          public void test_fd_set();
 diff --git a/tests/syscall/poller/server.cpp b/tests/syscall/poller/server.cpp
 index 8e656ab3e..e1305920c 100644
 --- a/tests/syscall/poller/server.cpp
 +++ b/tests/syscall/poller/server.cpp
 @@ -19,7 +19,7 @@
- 
+
  extern "C" void oe_abort();
- 
+
 -socket_t create_listener_socket(uint16_t port)
 +socket_t create_listener_socket(uint32_t ipaddr, uint16_t port)
  {
      socket_t ret = INVALID_SOCKET;
      socket_t sock = INVALID_SOCKET;
 @@ -36,7 +36,7 @@ socket_t create_listener_socket(uint16_t port)
- 
+
      memset(&addr, 0, sizeof(addr));
      addr.sin_family = AF_INET;
 -    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 +    addr.sin_addr.s_addr = htonl(ipaddr);
      addr.sin_port = htons(port);
- 
+
      if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0)
 @@ -75,6 +75,7 @@ client_t* find_client(std::vector<client_t>& clients, socket_t sock)
  }
- 
+
  extern "C" void run_server(
 +    uint32_t ipaddr,
      uint16_t port,
      size_t num_clients,
      poller_type_t poller_type)
 @@ -89,7 +90,7 @@ extern "C" void run_server(
- 
+
      sock_startup();
- 
+
 -    if ((listener = create_listener_socket(port)) == INVALID_SOCKET)
 +    if ((listener = create_listener_socket(ipaddr, port)) == INVALID_SOCKET)
      {
@@ -3779,7 +3792,7 @@ index 786180db6..d8582b1de 100644
 +++ b/tests/syscall/poller/server.h
 @@ -8,6 +8,7 @@
  #include "poller.h"
- 
+
  extern "C" void run_server(
 +    uint32_t ipaddr,
      uint16_t port,
@@ -3790,9 +3803,9 @@ index 032861859..62ffb759c 100644
 --- a/tests/syscall/resolver/enc/enc.c
 +++ b/tests/syscall/resolver/enc/enc.c
 @@ -18,9 +18,12 @@ size_t oe_debug_malloc_check();
- 
+
  struct addrinfo;
- 
+
 +static bool _initialized;
 +
  int ecall_device_init()
@@ -3801,18 +3814,18 @@ index 032861859..62ffb759c 100644
 +    _initialized = true;
      return 0;
  }
- 
+
 @@ -51,11 +54,35 @@ int ecall_getnameinfo(char* buffer, size_t bufflen)
          0);
- 
+
      OE_TEST(rslt == 0);
 -    OE_TEST(strcmp(host, "") != 0);
 -    OE_TEST(strcmp(serv, "") != 0);
 +    OE_TEST(strcmp(host, "127.0.0.1") == 0);
 +    OE_TEST(strcmp(serv, "23") == 0);
- 
+
      strlcpy(buffer, host, bufflen);
- 
+
 +    *host = 0;
 +    *serv = 0;
 +
@@ -3839,7 +3852,7 @@ index 032861859..62ffb759c 100644
 +
      return 0;
  }
- 
+
 @@ -173,7 +200,8 @@ done:
  int ecall_getaddrinfo(struct oe_addrinfo** res)
  {
@@ -3849,11 +3862,11 @@ index 032861859..62ffb759c 100644
 +        "lOcalhOst"}; // capital letters force external resolution
      const char serv[] = {"telnet"};
      struct oe_addrinfo hints;
- 
+
 @@ -194,6 +222,36 @@ int ecall_getaddrinfo(struct oe_addrinfo** res)
      return 0;
  }
- 
+
 +void ecall_getaddrinfo_internally(void)
 +{
 +    struct oe_addrinfo* ai = NULL;
@@ -3892,26 +3905,26 @@ index e331b4372..5ab91f2a8 100644
 --- a/tests/syscall/resolver/host/host.c
 +++ b/tests/syscall/resolver/host/host.c
 @@ -66,6 +66,11 @@ int main(int argc, const char* argv[])
- 
+
      OE_TEST(result == OE_OK);
- 
+
 +    // test without host resolver loaded
 +    OE_TEST(ecall_getaddrinfo_internally(client_enclave) == OE_OK);
 +    OE_TEST(
 +        ecall_getnameinfo(client_enclave, &ret, host, sizeof(host)) == OE_OK);
 +
      OE_TEST(ecall_device_init(client_enclave, &ret) == OE_OK);
- 
+
      OE_TEST(ecall_getaddrinfo(client_enclave, &ret, &addrinfo) == OE_OK);
 @@ -124,6 +129,9 @@ int main(int argc, const char* argv[])
          printf("host received: host = %s\n", host);
      }
- 
+
 +    // test with host resolver loaded
 +    OE_TEST(ecall_getaddrinfo_internally(client_enclave) == OE_OK);
 +
      OE_TEST(oe_terminate_enclave(client_enclave) == OE_OK);
- 
+
      printf("=== passed all tests (resolver_test)\n");
 diff --git a/tests/syscall/resolver/resolver_test.edl b/tests/syscall/resolver/resolver_test.edl
 index 71cc46369..5cd14e2b4 100644
@@ -3920,7 +3933,7 @@ index 71cc46369..5cd14e2b4 100644
 @@ -18,6 +18,8 @@ enclave {
          public int ecall_getaddrinfo(
              [in,out,count=1] struct oe_addrinfo** res);
- 
+
 +        public void ecall_getaddrinfo_internally();
 +
          public int ecall_getnameinfo(
@@ -3946,7 +3959,7 @@ index 73e81ccf0..6bc91a008 100644
 -    serv_addr.sin_addr.s_addr = oe_htonl(OE_INADDR_LOOPBACK);
 +    serv_addr.sin_addr.s_addr = oe_htonl(ipaddr);
      serv_addr.sin_port = oe_htons(1492);
- 
+
      printf("socket fd = %d\n", sockfd);
 @@ -117,7 +117,7 @@ int ecall_run_client(char* recv_buff, ssize_t* recv_buff_len)
  /* This server acts as an echo server.  It accepts a connection,
@@ -3959,13 +3972,13 @@ index 73e81ccf0..6bc91a008 100644
      int status = OE_FAILURE;
 @@ -136,8 +136,8 @@ int ecall_run_server()
      }
- 
+
      serv_addr.sin_family = OE_AF_INET;
 -    serv_addr.sin_addr.s_addr = oe_htonl(OE_INADDR_LOOPBACK);
 -    serv_addr.sin_port = oe_htons(1493);
 +    serv_addr.sin_addr.s_addr = oe_htonl(ipaddr);
 +    serv_addr.sin_port = oe_htons(1492);
- 
+
      printf("enclave: binding\n");
      rtn = oe_bind(listenfd, (struct oe_sockaddr*)&serv_addr, sizeof(serv_addr));
 @@ -172,7 +172,7 @@ int ecall_run_server()
@@ -3974,7 +3987,7 @@ index 73e81ccf0..6bc91a008 100644
          OE_TEST(oe_ntohs(peer_addr.sin_port) >= 1024);
 -        OE_TEST(oe_ntohl(peer_addr.sin_addr.s_addr) == OE_INADDR_LOOPBACK);
 +        OE_TEST(oe_ntohl(peer_addr.sin_addr.s_addr) == ipaddr);
- 
+
          if (connfd >= 0)
          {
 @@ -225,4 +225,4 @@ OE_SET_ENCLAVE_SGX(
@@ -3990,21 +4003,21 @@ index 05180cb6c..4c4a52fb6 100644
 @@ -32,7 +32,7 @@ void* enclave_server_thread(void* arg)
      r = oe_create_socket_test_enclave(arg, type, flags, NULL, 0, &enclave);
      OE_TEST(r == OE_OK);
- 
+
 -    OE_TEST(ecall_run_server(enclave, &retval) == OE_OK);
 +    OE_TEST(ecall_run_server(enclave, &retval, INADDR_LOOPBACK) == OE_OK);
- 
+
      return NULL;
  }
 @@ -181,7 +181,8 @@ static void _run_host_server_test(const char* path)
- 
+
      test_data_len = 1024;
      OE_TEST(
 -        ecall_run_client(enclave, &ret, test_data_rtn, &test_data_len) ==
 +        ecall_run_client(
 +            enclave, &ret, INADDR_LOOPBACK, test_data_rtn, &test_data_len) ==
          OE_OK);
- 
+
      printf("host received: %.*s\n", (int)test_data_len, test_data_rtn);
 @@ -197,7 +198,7 @@ static void _run_enclave_server_test(const char* path)
  {
@@ -4012,13 +4025,13 @@ index 05180cb6c..4c4a52fb6 100644
      thread_t thread;
 -    const in_port_t PORT = 1493;
 +    const in_port_t PORT = 1492;
- 
+
      // enclave server to host client
      OE_TEST(thread_create(&thread, enclave_server_thread, (void*)path) == 0);
 @@ -217,6 +218,49 @@ static void _run_enclave_server_test(const char* path)
      printf("=== passed %s\n", __FUNCTION__);
  }
- 
+
 +static const uint32_t _internal_ipaddr = 0xFF000001;
 +
 +static void* internal_server_thread(void* arg)
@@ -4066,19 +4079,19 @@ index 05180cb6c..4c4a52fb6 100644
  {
      if (argc != 2)
 @@ -232,6 +276,7 @@ int main(int argc, const char* argv[])
- 
+
      _run_host_server_test(argv[1]);
      _run_enclave_server_test(argv[1]);
 +    _run_internal_server_test(argv[1]);
- 
+
      sock_cleanup();
- 
+
 diff --git a/tests/syscall/socket/socket_test.edl b/tests/syscall/socket/socket_test.edl
 index 7767757c0..ade8012ea 100644
 --- a/tests/syscall/socket/socket_test.edl
 +++ b/tests/syscall/socket/socket_test.edl
 @@ -14,8 +14,8 @@ enclave {
- 
+
      trusted {
          /* define ECALLs here. */
 -        public int ecall_run_client([in, out, count=1024]char *buf, [in, out, count=1]ssize_t *buflen);
@@ -4086,7 +4099,7 @@ index 7767757c0..ade8012ea 100644
 +        public int ecall_run_client(uint32_t ipaddr, [in, out, count=1024]char *buf, [in, out, count=1]ssize_t *buflen);
 +        public int ecall_run_server(uint32_t ipaddr);
      };
- 
+
      untrusted {
 diff --git a/tests/threadcxx/enc/enc.cpp b/tests/threadcxx/enc/enc.cpp
 index f116c9051..6afc87535 100644
@@ -4095,7 +4108,7 @@ index f116c9051..6afc87535 100644
 @@ -1,7 +1,6 @@
  // Copyright (c) Open Enclave SDK contributors.
  // Licensed under the MIT License.
- 
+
 -#include <openenclave/edger8r/enclave.h>
  #include <openenclave/enclave.h>
  #include <openenclave/internal/tests.h>
@@ -4119,7 +4132,7 @@ index b52ce1d24..397975850 100644
 +++ b/tests/tools/oesign/test-enclave/host/host.c
 @@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
      bool is_kss_supported = oe_sgx_is_kss_supported();
- 
+
      /* Load the ELF image */
 -    if ((result = oe_load_enclave_image(argv[1], &oeimage)) != OE_OK)
 +    if ((result = oe_load_enclave_image(argv[1], &oeimage, NULL)) != OE_OK)
@@ -4131,7 +4144,7 @@ index 4ab2d85bb..9167e909e 100644
 --- a/tools/CMakeLists.txt
 +++ b/tools/CMakeLists.txt
 @@ -29,7 +29,9 @@ endif ()
- 
+
  ExternalProject_Add(
    oeedger8r-cpp
 -  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/oeedger8r-cpp
@@ -4158,7 +4171,7 @@ index 97f9c51bc..3d08a949d 100644
      const char* digest_file);
 +int oesignerid(const char* keyfile);
 +int eradump(const char* enc_bin);
- 
+
  static const char _usage_gen[] =
      "Usage: %s <command> [options]\n"
      "\n"
@@ -4174,11 +4187,11 @@ index 97f9c51bc..3d08a949d 100644
 +    "  eradump   -  Generates enclave config in JSON format.\n"
      "\n"
      "For help with a specific command, enter \"%s <command> --help\"\n";
- 
+
 @@ -170,6 +175,24 @@ static const char _usage_dump[] =
      "signature information for the specified enclave.\n"
      "\n";
- 
+
 +static const char _usage_signerid[] =
 +    "Usage: %s signerid -k KEY_FILE\n"
 +    "\n"
@@ -4205,7 +4218,7 @@ index 97f9c51bc..3d08a949d 100644
      const char* engine_load_path = NULL;
      const char* key_id = NULL;
 +    const char* payload_path = NULL;
- 
+
      const struct option long_options[] = {
          {"help", no_argument, NULL, 'h'},
 @@ -332,6 +356,7 @@ int sign_parser(int argc, const char* argv[])
@@ -4234,12 +4247,12 @@ index 97f9c51bc..3d08a949d 100644
 +            key_id,
 +            payload_path);
      }
- 
+
  done:
 @@ -557,6 +586,122 @@ done:
      return ret;
  }
- 
+
 +static int _signerid_parser(int argc, const char* argv[])
 +{
 +    int ret = 0;
@@ -4376,22 +4389,22 @@ index 6e047eef5..c6957ad63 100644
 +++ b/tools/oesign/oeinfo.c
 @@ -24,7 +24,7 @@ oe_result_t oe_read_oeinfo_sgx(
          OE_RAISE(OE_INVALID_PARAMETER);
- 
+
      /* Load the ELF image */
 -    OE_CHECK(oe_load_enclave_image(path, &oeimage));
 +    OE_CHECK(oe_load_enclave_image(path, &oeimage, (void*)1));
- 
+
      /* Load the SGX enclave properties */
      OE_CHECK(oe_sgx_load_enclave_properties(&oeimage, properties));
 @@ -61,7 +61,7 @@ oe_result_t oe_write_oeinfo_sgx(
- 
+
      /* Open ELF file */
      OE_CHECK_ERR(
 -        oe_load_enclave_image(path, &oeimage),
 +        oe_load_enclave_image(path, &oeimage, (void*)1),
          "Cannot load ELF file: %s",
          path);
- 
+
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
 index 752e74ab2..1b4671051 100644
 --- a/tools/oesign/oesign.c
@@ -4403,7 +4416,7 @@ index 752e74ab2..1b4671051 100644
 +    // EDG: additional options
 +    optional_bool_t executable_heap;
  } config_file_options_t;
- 
+
  int uuid_from_string(str_t* str, uint8_t* uuid, size_t expected_size);
 @@ -394,6 +396,33 @@ static int _load_config_file(const char* path, config_file_options_t* options)
              options->start_address.value = n;
@@ -4442,7 +4455,7 @@ index 752e74ab2..1b4671051 100644
 @@ -482,7 +511,7 @@ done:
      return rc;
  }
- 
+
 -static int _load_pem_file(const char* path, void** data, size_t* size)
 +int load_pem_file(const char* path, void** data, size_t* size)
  {
@@ -4458,7 +4471,7 @@ index 752e74ab2..1b4671051 100644
 +        properties->config.flags.executable_heap =
 +            options->executable_heap.value ? 1 : 0;
  }
- 
+
  oe_result_t _initialize_enclave_properties(
 @@ -657,7 +691,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
  oe_result_t _get_sgx_enclave_hash(
@@ -4471,7 +4484,7 @@ index 752e74ab2..1b4671051 100644
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t enc;
 @@ -673,7 +708,7 @@ oe_result_t _get_sgx_enclave_hash(
- 
+
      /* Build an enclave to obtain the MRENCLAVE measurement */
      OE_CHECK_ERR(
 -        oe_sgx_build_enclave(&context, enclave, properties, &enc),
@@ -4492,11 +4505,11 @@ index 752e74ab2..1b4671051 100644
 @@ -744,7 +780,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
- 
+
 -    OE_CHECK_NO_TRACE(_get_sgx_enclave_hash(enclave, &properties, &hash));
 +    OE_CHECK_NO_TRACE(
 +        _get_sgx_enclave_hash(enclave, &properties, &hash, payload_path));
- 
+
      if (engine_id)
      {
 @@ -769,7 +806,7 @@ int oesign(
@@ -4518,7 +4531,7 @@ index 752e74ab2..1b4671051 100644
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
 @@ -846,7 +883,10 @@ int oesign(
- 
+
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
 -        oe_write_oeinfo_sgx(enclave, output_file, &properties),
@@ -4532,10 +4545,10 @@ index 752e74ab2..1b4671051 100644
 @@ -874,7 +914,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
- 
+
 -    OE_CHECK_NO_TRACE(_get_sgx_enclave_hash(enclave, &properties, &mrenclave));
 +    OE_CHECK_NO_TRACE(
 +        _get_sgx_enclave_hash(enclave, &properties, &mrenclave, NULL));
- 
+
      /* Construct the unsigned sigstruct with the MRENCLAVE and get its digest */
      OE_CHECK_ERR(
