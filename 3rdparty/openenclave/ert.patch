@@ -120,7 +120,7 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index f89f0b315..e645fd376 100644
+index 2ce93a340..0e9b71c41 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -175,7 +175,8 @@ endif ()
@@ -963,7 +963,7 @@ index ff11d460e..b20cd23fa 100644
              arg_in = signal_number;
  
 diff --git a/host/sgx/linux/sgxquoteproviderloader.c b/host/sgx/linux/sgxquoteproviderloader.c
-index 970dbe65f..a4e4f0aff 100644
+index 1146f33de..760d99145 100644
 --- a/host/sgx/linux/sgxquoteproviderloader.c
 +++ b/host/sgx/linux/sgxquoteproviderloader.c
 @@ -27,6 +27,12 @@ void oe_load_quote_provider()
@@ -1150,23 +1150,6 @@ index 2471fe6f1..f7296ef7d 100644
 +
      return result;
  }
-diff --git a/host/sgx/sgxquoteprovider.c b/host/sgx/sgxquoteprovider.c
-index f2b02e28f..f72e04746 100644
---- a/host/sgx/sgxquoteprovider.c
-+++ b/host/sgx/sgxquoteprovider.c
-@@ -30,10 +30,10 @@ void oe_quote_provider_log(sgx_ql_log_level_t level, const char* message)
-     char formatted[OE_LOG_MESSAGE_LEN_MAX] = {0};
-     oe_log_level_t oe_log_level[] = {
-         OE_LOG_LEVEL_ERROR,
--        OE_LOG_LEVEL_WARNING,
-+        OE_LOG_LEVEL_INFO, // EDG: was WARN, but default qpl doesn't have WARN
-         OE_LOG_LEVEL_INFO,
-         OE_LOG_LEVEL_NONE};
--    const char* dcap_level_strings[] = {"ERROR", "WARN", "INFO", "NONE"};
-+    const char* dcap_level_strings[] = {"ERROR", "", "INFO", "NONE"};
- 
-     if (level >= SGX_QL_LOG_NONE || level < SGX_QL_LOG_ERROR)
-     {
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
 index f7220c44f..d3623bfa1 100644
 --- a/include/openenclave/bits/fs.h
@@ -1589,18 +1572,18 @@ index 7ea4266a4..b18a70159 100644
  clean:
  	rm -f debugmallochost host.o debugmalloc_u.o debugmalloc_u.c debugmalloc_u.h debugmalloc_args.h
 diff --git a/samples/helloworld/host/Makefile b/samples/helloworld/host/Makefile
-index 7b3c2c2ec..29bcd0c44 100644
+index 6f94d63f4..de6ace783 100644
 --- a/samples/helloworld/host/Makefile
 +++ b/samples/helloworld/host/Makefile
 @@ -14,7 +14,7 @@ build:
  		--search-path $(INCDIR)/openenclave/edl/sgx
  	$(CC) -g -c $(CFLAGS) host.c
  	$(CC) -g -c $(CFLAGS) helloworld_u.c
--	$(CC) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
-+	$(CXX) -o helloworldhost helloworld_u.o host.o $(LDFLAGS)
+-	$(CC) -o helloworld_host helloworld_u.o host.o $(LDFLAGS)
++	$(CXX) -o helloworld_host helloworld_u.o host.o $(LDFLAGS)
  
  clean:
- 	rm -f helloworldhost host.o helloworld_u.o helloworld_u.c helloworld_u.h helloworld_args.h
+ 	rm -f helloworld_host host.o helloworld_u.o helloworld_u.c helloworld_u.h helloworld_args.h
 diff --git a/samples/log_callback/host/Makefile b/samples/log_callback/host/Makefile
 index 3725ed9cc..4b3bdd695 100644
 --- a/samples/log_callback/host/Makefile
@@ -3072,7 +3055,7 @@ index 072e4fec5..a70034931 100644
  
      if (!(host_fds = oe_calloc(nfds, sizeof(struct oe_host_pollfd))))
 diff --git a/syscall/syscall.c b/syscall/syscall.c
-index 6c0d99c80..b215f8f04 100644
+index 59d896bfa..025538965 100644
 --- a/syscall/syscall.c
 +++ b/syscall/syscall.c
 @@ -209,6 +209,15 @@ OE_WEAK OE_DEFINE_SYSCALL4_M(SYS_epoll_wait)
@@ -3501,7 +3484,7 @@ index 10286da24..db9188cf7 100644
      printf("=== This program is used to test enclave seal key functions.\n");
  
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
-index 20e247eca..eecea0bb5 100644
+index c9779537c..8a8f66b7b 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
 +++ b/tests/stack_overflow_exception/enc/enc.c
 @@ -33,7 +33,7 @@ uint64_t test_stack_overflow_handler(oe_exception_record_t* exception_record)
