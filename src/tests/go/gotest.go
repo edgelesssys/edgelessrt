@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"syscall"
 )
 
 func main() {}
@@ -44,6 +45,14 @@ func gotest(simulate bool) int32 {
 
 	if exec.Command("").Run().Error() != "exec not supported" {
 		return -8
+	}
+
+	if _, err := net.LookupCNAME("localhost"); err != nil {
+		return -9
+	}
+
+	if syscall.Getpid() <= 0 {
+		return -10
 	}
 
 	return 42 // success magic

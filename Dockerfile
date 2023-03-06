@@ -45,7 +45,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     vim \
     zlib1g-dev
 # use same Go version as ertgo
-RUN wget -qO- https://go.dev/dl/go1.18.1.linux-amd64.tar.gz | tar -C /usr/local -xz
+RUN wget -qO- https://go.dev/dl/go1.20.1.linux-amd64.tar.gz | tar -C /usr/local -xz
 
 FROM alpine/git:latest AS pull
 RUN git clone --depth=1 https://github.com/edgelesssys/edgelessrt /edgelessrt
