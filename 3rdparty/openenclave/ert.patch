@@ -120,7 +120,7 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 2ce93a340..0e9b71c41 100644
+index 30392eada..80c7c2b5e 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -175,7 +175,8 @@ endif ()
@@ -133,7 +133,7 @@ index 2ce93a340..0e9b71c41 100644
  endif ()
  
  set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
-@@ -292,7 +293,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
+@@ -294,7 +295,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
    set(COMPILER_SUPPORTS_SNMALLOC off)
  else ()
@@ -143,7 +143,7 @@ index 2ce93a340..0e9b71c41 100644
  endif ()
  
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
-@@ -423,9 +425,9 @@ add_subdirectory(tools)
+@@ -425,9 +427,9 @@ add_subdirectory(tools)
  if (BUILD_ENCLAVES)
    add_subdirectory(enclave)
    add_subdirectory(3rdparty)
@@ -531,36 +531,35 @@ index 657993af5..965176cbe 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index dc2d90b02..d782ac0e4 100644
+index f12d8983c..6caeaa53e 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
-@@ -359,10 +359,16 @@ list(
-   strings.c
-   traceh_enclave.c)
+@@ -425,6 +425,9 @@ install(
+   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/host
+           COMPONENT OEHOSTVERIFY)
  
 +# EDG: add erthost
 +include(${ERTSRC}/host/erthost.cmake)
 +
- # Combine the following common code along with the platform specific code and
- # host verification code to get the full oehost target provided by the OE SDK.
- add_library(oehost STATIC ${PLATFORM_HOST_ONLY_SRC} ${PLATFORM_SDK_ONLY_SRC})
- 
+ # Build oehost
+ # Usage:
+ # add_library_oehost_wrapper(<LIB_NAME name of lib> [SKIP_INSTALL])
+@@ -488,7 +491,7 @@ macro (add_library_oehost_wrapper)
+                                Threads::Threads)
+     target_compile_options(
+       ${PARA_LIB_NAME}
+-      PRIVATE -Wno-attributes -Wmissing-prototypes -fPIC ${PLATFORM_FLAGS}
++      PRIVATE -Wno-attributes $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes> -fPIC ${PLATFORM_FLAGS}
+       PUBLIC -fstack-protector-strong)
+     target_compile_definitions(
+       ${PARA_LIB_NAME}
+@@ -573,3 +576,6 @@ add_library_oehost_wrapper(LIB_NAME oehost)
+ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
+ target_compile_definitions(oehost_prerelease_test
+                            PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY)
++
 +# EDG: add EDL
 +add_dependencies(oehost ertlibc_untrusted_edl)
-+
- add_library(oehostverify STATIC ${PLATFORM_HOST_ONLY_SRC})
- 
- target_link_libraries(oehostverify PUBLIC oe_includes)
-@@ -481,7 +487,8 @@ endif ()
- if (UNIX)
-   target_compile_options(
-     oehost
--    PRIVATE -Wno-attributes -Wmissing-prototypes -fPIC ${PLATFORM_FLAGS}
-+    PRIVATE -Wno-attributes $<$<COMPILE_LANGUAGE:C>:-Wmissing-prototypes> -fPIC
-+            ${PLATFORM_FLAGS}
-     PUBLIC -fstack-protector-strong)
-   target_compile_definitions(
-     oehost
 diff --git a/host/linux/syscall.c b/host/linux/syscall.c
 index e3255a942..77351b2ac 100644
 --- a/host/linux/syscall.c
@@ -3111,7 +3110,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 74cc0939d..bb6d4658b 100644
+index 32d790af0..32656986f 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -148,7 +148,7 @@ if (UNIX
@@ -3497,7 +3496,7 @@ index c9779537c..8a8f66b7b 100644
      uint64_t stack = (uint64_t)exception_handler_stack;
      uint64_t stack_end = stack + EXCEPTION_HANDLER_STACK_SIZE;
 diff --git a/tests/syscall/fs/enc/enc.cpp b/tests/syscall/fs/enc/enc.cpp
-index 0664f845e..75f456101 100644
+index 2224750de..146555ba5 100644
 --- a/tests/syscall/fs/enc/enc.cpp
 +++ b/tests/syscall/fs/enc/enc.cpp
 @@ -467,13 +467,23 @@ static void test_flock_file(FILE_SYSTEM& fs, const char* tmp_dir)
