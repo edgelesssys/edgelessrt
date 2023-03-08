@@ -31,11 +31,11 @@ void test_ecall()
         const Memfs memfs(myfs);
         OE_TEST(mount("/", "/", myfs, 0, nullptr) == 0);
         fd_file_system fs;
-        test_common(fs, "");
-        test_pio(fs, "");
+        test_common(fs, "/");
+        test_pio(fs, "/");
         stream_file_system sfs;
-        test_common(sfs, "");
-        test_pio(fs, "");
+        test_common(sfs, "/");
+        test_pio(sfs, "/");
         OE_TEST(umount("/") == 0);
         test_dup_case1("");
     }
