@@ -531,7 +531,7 @@ index 657993af5..965176cbe 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index f12d8983c..6caeaa53e 100644
+index f12d8983c..543ed1d12 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
 @@ -425,6 +425,9 @@ install(
@@ -553,13 +553,14 @@ index f12d8983c..6caeaa53e 100644
        PUBLIC -fstack-protector-strong)
      target_compile_definitions(
        ${PARA_LIB_NAME}
-@@ -573,3 +576,6 @@ add_library_oehost_wrapper(LIB_NAME oehost)
+@@ -573,3 +576,7 @@ add_library_oehost_wrapper(LIB_NAME oehost)
  add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
  target_compile_definitions(oehost_prerelease_test
                             PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY)
 +
 +# EDG: add EDL
 +add_dependencies(oehost ertlibc_untrusted_edl)
++add_dependencies(oehost_prerelease_test ertlibc_untrusted_edl)
 diff --git a/host/linux/syscall.c b/host/linux/syscall.c
 index e3255a942..77351b2ac 100644
 --- a/host/linux/syscall.c
