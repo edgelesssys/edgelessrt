@@ -13,6 +13,7 @@ static oe_once_t _init_clock_once = OE_ONCE_INIT;
 static const volatile uint32_t* _clock_seq;
 static const volatile oe_vdso_timestamp_t* _clock_realtime_coarse;
 static const volatile oe_vdso_timestamp_t* _clock_monotonic_coarse;
+static oe_spinlock_t _monotonic_lock;
 
 static void _init_clock(void)
 {
@@ -37,16 +38,59 @@ static void _init_clock(void)
         oe_abort();
 }
 
+static void _ensure_range(oe_vdso_timestamp_t timestamp)
+{
+    const auto ns = timestamp.nsec;
+    if (!(0 <= ns && ns < 1'000'000'000))
+        oe_abort();
+}
+
+static void _ensure_monotonic_unlocked(oe_vdso_timestamp_t& timestamp)
+{
+    static oe_vdso_timestamp_t last_monotonic;
+
+    // Ensure CLOCK_MONOTONIC can't go backwards.
+    if (timestamp.sec < last_monotonic.sec ||
+        (timestamp.sec == last_monotonic.sec &&
+         timestamp.nsec < last_monotonic.nsec))
+        timestamp = last_monotonic;
+    else
+        last_monotonic = timestamp;
+}
+
 static int _clock_gettime(int clk_id, struct timespec* tp)
 {
     oe_assert(tp);
     OE_TRACE_WARNING("clockid %ld was not served by vDSO", clk_id);
     int ret = -1;
+    oe_vdso_timestamp_t timestamp{};
+
+    const bool monotonic =
+        clk_id == CLOCK_MONOTONIC || clk_id == CLOCK_MONOTONIC_COARSE;
+    if (monotonic)
+        oe_spin_lock(&_monotonic_lock);
+
     if (ert_clock_gettime_ocall(
             &ret,
             clk_id,
-            reinterpret_cast<ert_clock_gettime_ocall_timespec*>(tp)) != OE_OK)
+            reinterpret_cast<ert_clock_gettime_ocall_timespec*>(&timestamp)) !=
+        OE_OK)
+    {
+        if (monotonic)
+            oe_spin_unlock(&_monotonic_lock);
         return -1;
+    }
+
+    _ensure_range(timestamp);
+
+    if (monotonic)
+    {
+        _ensure_monotonic_unlocked(timestamp);
+        oe_spin_unlock(&_monotonic_lock);
+    }
+
+    tp->tv_sec = timestamp.sec;
+    tp->tv_nsec = timestamp.nsec;
     return ret;
 }
 
@@ -86,9 +130,8 @@ int sc::clock_gettime(int clk_id, struct timespec* tp)
     oe_vdso_timestamp_t timestamp;
     uint32_t seq;
 
-    static oe_spinlock_t lock;
     if (monotonic)
-        oe_spin_lock(&lock);
+        oe_spin_lock(&_monotonic_lock);
 
     // The kernel increments *_clock_seq before and after updating the
     // timestamps. seq is odd during the update.
@@ -106,23 +149,12 @@ int sc::clock_gettime(int clk_id, struct timespec* tp)
         // Check that there has not been an update while reading the timestamp.
     } while (__atomic_load_n(_clock_seq, __ATOMIC_SEQ_CST) != seq);
 
+    _ensure_range(timestamp);
+
     if (monotonic)
     {
-        static oe_vdso_timestamp_t last_monotonic;
-
-        // Ensure CLOCK_MONOTONIC can't go backwards.
-        if (timestamp.sec < last_monotonic.sec ||
-            (timestamp.sec == last_monotonic.sec &&
-             timestamp.nsec < last_monotonic.nsec))
-        {
-            timestamp = last_monotonic;
-        }
-        else
-        {
-            last_monotonic = timestamp;
-        }
-
-        oe_spin_unlock(&lock);
+        _ensure_monotonic_unlocked(timestamp);
+        oe_spin_unlock(&_monotonic_lock);
     }
 
     tp->tv_sec = timestamp.sec;
