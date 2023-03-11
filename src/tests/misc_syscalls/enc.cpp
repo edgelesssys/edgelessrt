@@ -228,6 +228,7 @@ static void _test_time()
         timespec t1{};
         timespec t2{};
         OE_TEST(clock_gettime(CLOCK_MONOTONIC, &t1) == 0);
+        OE_TEST(t1.tv_sec > 0);
         OE_TEST(clock_gettime(CLOCK_MONOTONIC, &t2) == 0);
         OE_TEST(
             t1.tv_sec < t2.tv_sec ||
