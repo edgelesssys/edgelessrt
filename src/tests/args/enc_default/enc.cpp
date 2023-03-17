@@ -1,3 +1,4 @@
+#include <elf.h>
 #include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <string>
@@ -27,8 +28,10 @@ void test_ecall()
     OE_TEST(ert_get_envp() == _argv + 1);
     OE_TEST(_argv[1] == "OE_IS_ENCLAVE=1"s); // injected environment variable
     OE_TEST(_argv[2] == NULL);               // envp terminator
-    OE_TEST(_argv[3] == NULL);               // auxv key AT_NULL
-    OE_TEST(_argv[4] == NULL);               // auxv value
+    OE_TEST(reinterpret_cast<long>(_argv[3]) == AT_PAGESZ);
+    OE_TEST(reinterpret_cast<long>(_argv[4]) == OE_PAGE_SIZE);
+    OE_TEST(_argv[5] == AT_NULL);
+    OE_TEST(_argv[6] == NULL);
 }
 
 OE_SET_ENCLAVE_SGX(

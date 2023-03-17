@@ -1,3 +1,4 @@
+#include <elf.h>
 #include <openenclave/ert.h>
 #include <openenclave/internal/tests.h>
 #include <array>
@@ -28,7 +29,7 @@ ert_args_t ert_get_args()
 
     static array<const char*, 2> argv{"argv0", "argv1"};
     static array<const char*, 2> envp{"envp0", "envp1"};
-    static array<long, 4> auxv{2, 3, 4, 5};
+    static array<long, 6> auxv{AT_EXECFD, 2, AT_PAGESZ, 3, AT_PHDR, 4};
 
     ert_args_t args{};
     args.argc = argv.size();
@@ -54,12 +55,14 @@ void test_ecall()
     OE_TEST(_argv[5] == "envp1"s);
     OE_TEST(_argv[6] == NULL); // envp terminator
     const long* const auxv = reinterpret_cast<long*>(_argv + 7);
-    OE_TEST(auxv[0] == 2);
-    OE_TEST(auxv[1] == 3);
-    OE_TEST(auxv[2] == 4);
-    OE_TEST(auxv[3] == 5);
-    OE_TEST(auxv[4] == 0);
-    OE_TEST(auxv[5] == 0);
+    OE_TEST(auxv[0] == AT_EXECFD);
+    OE_TEST(auxv[1] == 2);
+    OE_TEST(auxv[2] == AT_PAGESZ);
+    OE_TEST(auxv[3] == 3);
+    OE_TEST(auxv[4] == AT_PHDR);
+    OE_TEST(auxv[5] == 4);
+    OE_TEST(auxv[6] == AT_NULL);
+    OE_TEST(auxv[7] == 0);
 }
 
 OE_SET_ENCLAVE_SGX(
