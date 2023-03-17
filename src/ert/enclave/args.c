@@ -7,6 +7,8 @@
 #include <openenclave/corelibc/string.h>
 #include <openenclave/ert_args.h>
 
+#define AT_PAGESZ 6
+
 static int _argc;
 static char** _argv;
 
@@ -24,6 +26,12 @@ oe_result_t ert_init_args(void)
     if (args.auxc < 0 || (args.auxc > 0 && !args.auxv))
         return OE_INVALID_PARAMETER;
 
+    // Check if aux contains PAGESZ. Otherwise, we need to inject it.
+    int inject_pagesz = 1;
+    for (int i = 0; i < args.auxc; ++i)
+        if (args.auxv[2 * i] == AT_PAGESZ)
+            inject_pagesz = 0;
+
     //
     // Allocate and arrange argv, envp, and auxv like the ELF loader would do:
     // argv... NULL envp... NULL auxv...
@@ -37,7 +45,9 @@ oe_result_t ert_init_args(void)
     // will never be freed, so use allocator_calloc to exclude it from leak
     // detection
     char** p = oe_allocator_calloc(
-        (size_t)(args.argc + 1 + 1 + args.envc + 1 + 2 * (args.auxc + 1)),
+        (size_t)(
+            args.argc + 1 + 1 + args.envc + 1 +
+            2 * (args.auxc + inject_pagesz + 1)),
         sizeof *p);
 
     if (!p)
@@ -58,6 +68,14 @@ oe_result_t ert_init_args(void)
     p += args.envc + 1;
 
     memcpy(p, args.auxv, 2 * (size_t)args.auxc * sizeof *args.auxv);
+    p += 2 * args.auxc;
+
+    if (inject_pagesz)
+    {
+        long* const pa = (long*)p;
+        pa[0] = AT_PAGESZ;
+        pa[1] = OE_PAGE_SIZE;
+    }
 
     _argc = args.argc;
 
