@@ -33,8 +33,7 @@ FROM sgx AS base-dev
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     cmake \
-    clang-10 \
-    clang-tidy-10 \
+    clang-11 \
     curl \
     gdb \
     git \
