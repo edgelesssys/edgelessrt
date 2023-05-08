@@ -34,6 +34,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     cmake \
     clang-11 \
+    clang-tidy-11 \
     curl \
     gdb \
     git \
