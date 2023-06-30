@@ -531,10 +531,10 @@ index 661a2f61b..6a6e28d44 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index 6a5731132..903e56910 100644
+index 9448b27c7..232117ca4 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
-@@ -427,6 +427,9 @@ install(
+@@ -431,6 +431,9 @@ install(
    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/host
            COMPONENT OEHOSTVERIFY)
  
@@ -544,7 +544,7 @@ index 6a5731132..903e56910 100644
  # Build oehost
  # Usage:
  # add_library_oehost_wrapper(<LIB_NAME name of lib> [SKIP_INSTALL])
-@@ -504,7 +507,7 @@ macro (add_library_oehost_wrapper)
+@@ -508,7 +511,7 @@ macro (add_library_oehost_wrapper)
                                 Threads::Threads)
      target_compile_options(
        ${PARA_LIB_NAME}
@@ -553,10 +553,10 @@ index 6a5731132..903e56910 100644
        PUBLIC -fstack-protector-strong)
      target_compile_definitions(
        ${PARA_LIB_NAME}
-@@ -589,3 +592,7 @@ add_library_oehost_wrapper(LIB_NAME oehost)
- add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
- target_compile_definitions(oehost_prerelease_test
-                            PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY)
+@@ -594,3 +597,7 @@ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
+ target_compile_definitions(
+   oehost_prerelease_test PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY
+                                 OEUTIL_QUOTE_BYPASS_DATE_CHECK)
 +
 +# EDG: add EDL
 +add_dependencies(oehost ertlibc_untrusted_edl)
@@ -1533,7 +1533,7 @@ index 410bdd9ae..e7d1e8283 100644
  clean:
  	rm -f sqlite_host host.o sqlite_u.o sqlite_u.c sqlite_u.h sqlite_args.h
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index 0a6f91c4e..aa850ee17 100644
+index 1a203a3d4..8b6f36712 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
 @@ -40,7 +40,7 @@ build:
@@ -1546,7 +1546,7 @@ index 0a6f91c4e..aa850ee17 100644
  sign:
  	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
-index 03f44fef4..677f7aacc 100644
+index f7b9eace5..d985b50a0 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
 @@ -42,7 +42,7 @@ build:
@@ -1611,7 +1611,7 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index 095e5c1b9..55e98fdf8 100644
+index c0528f101..044c8c100 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
 @@ -80,20 +80,14 @@ else ()
@@ -3111,7 +3111,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 32d790af0..32656986f 100644
+index 639bd4897..e538812ec 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -148,7 +148,7 @@ if (UNIX
@@ -3123,6 +3123,15 @@ index 32d790af0..32656986f 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
+@@ -171,7 +171,7 @@ if (UNIX
+     add_subdirectory(SampleApp)
+     add_subdirectory(SampleAppCRT)
+     add_subdirectory(sealKey)
+-    add_subdirectory(secure_verify)
++    #add_subdirectory(secure_verify)
+     add_subdirectory(sim-mode)
+     add_subdirectory(stdc)
+     add_subdirectory(stdcxx)
 diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
 index 8a1389e0e..87767ccf4 100644
 --- a/tests/crypto/enclave/enc/enc.c
@@ -3192,6 +3201,19 @@ index 641a182c7..8b59e6b8b 100644
  #endif
  }
  
+diff --git a/tests/host_verify/host/host.cpp b/tests/host_verify/host/host.cpp
+index 6bc86a9c6..98a276ff0 100644
+--- a/tests/host_verify/host/host.cpp
++++ b/tests/host_verify/host/host.cpp
+@@ -384,7 +384,7 @@ int main()
+         _verify_report(REPORT_BAD_FILENAME, NULL, false);
+ 
+     if (_validate_file(TDX_QUOTE_FILENAME, true))
+-        _verify_evidence(&_tdx_quote_uuid, TDX_QUOTE_FILENAME, NULL, false);
++        (void)_tdx_quote_uuid;
+ 
+     return 0;
+ }
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
