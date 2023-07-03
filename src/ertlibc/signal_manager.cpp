@@ -1,6 +1,7 @@
 #include "signal_manager.h"
 #include <openenclave/internal/sgx/td.h>
 #include <mutex>
+#include "signal.h"
 
 using namespace std;
 using namespace ert;
@@ -132,7 +133,7 @@ void SignalManager::set_stack(StackBuffer buffer)
 
     // This should actually be MINSIGSTKSZ, but it's too small for the enclave
     // exception handling.
-    if (size < SIGSTKSZ)
+    if (size < ERT_SIGSTKSZ)
         throw system_error(
             ENOMEM, system_category(), "sigaltstack: buffer too small");
 
