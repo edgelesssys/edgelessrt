@@ -11,7 +11,8 @@
 int oe_sgx_thread_timedwait_ocall(
     oe_enclave_t* enclave,
     uint64_t tcs,
-    const struct oe_sgx_thread_timedwait_ocall_timespec* timeout)
+    const struct oe_sgx_thread_timedwait_ocall_timespec* timeout,
+    bool timeout_absolute)
 {
     EnclaveEvent* event = GetEnclaveEvent(enclave, tcs);
     assert(event);
@@ -23,11 +24,12 @@ int oe_sgx_thread_timedwait_ocall(
             const long res = syscall(
                 __NR_futex,
                 &event->value,
-                FUTEX_WAIT_PRIVATE,
+                timeout_absolute ? FUTEX_WAIT_BITSET_PRIVATE
+                                 : FUTEX_WAIT_PRIVATE,
                 -1,
                 timeout,
                 NULL,
-                0);
+                FUTEX_BITSET_MATCH_ANY);
 
             if (res == -1 && errno == ETIMEDOUT)
             {

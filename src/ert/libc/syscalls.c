@@ -26,7 +26,8 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     switch (n)
     {
         case OE_SYS_futex:
-            return ert_futex((int*)x1, x2, x3, (struct timespec*)x4, (int*)x5);
+            return ert_futex(
+                (int*)x1, x2, x3, (struct timespec*)x4, (int*)x5, x6);
         case OE_SYS_set_thread_area:
             // Called by __init_tp (see pthread.c). Can be a noop as TLS is
             // handled by OE.

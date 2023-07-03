@@ -1234,10 +1234,10 @@ index c59fdf194..7037ce788 100644
      };
  };
 diff --git a/include/openenclave/edl/sgx/thread.edl b/include/openenclave/edl/sgx/thread.edl
-index af2f301b0..a278851fe 100644
+index af2f301b0..10d258373 100644
 --- a/include/openenclave/edl/sgx/thread.edl
 +++ b/include/openenclave/edl/sgx/thread.edl
-@@ -17,11 +17,27 @@ enclave
+@@ -17,11 +17,28 @@ enclave
      // intentionally kept in host memory.
      include "openenclave/bits/types.h"
  
@@ -1257,7 +1257,8 @@ index af2f301b0..a278851fe 100644
 +        int oe_sgx_thread_timedwait_ocall(
 +            [user_check] oe_enclave_t* oe_enclave,
 +            uint64_t tcs,
-+            [in] const struct oe_sgx_thread_timedwait_ocall_timespec* timeout);
++            [in] const struct oe_sgx_thread_timedwait_ocall_timespec* timeout,
++            bool timeout_absolute);
 +
 +        void oe_sgx_thread_wake_multiple_ocall(
 +            [user_check] oe_enclave_t* oe_enclave,
