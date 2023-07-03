@@ -2,6 +2,7 @@
 #include <array>
 #include <cerrno>
 #include <csignal>
+#include "../../ertlibc/signal.h"
 #include "test_t.h"
 
 using namespace std;
@@ -14,7 +15,7 @@ static constexpr uint64_t _guard = 0xED6E1E55ED6E1E55;
 static struct
 {
     uint64_t guard0 = _guard;
-    array<uint8_t, SIGSTKSZ> stack;
+    array<uint8_t, ERT_SIGSTKSZ> stack;
     uint64_t guard1 = _guard;
 } _signalstack;
 
@@ -84,7 +85,7 @@ void test_ecall()
     errno = 0;
     OE_TEST(sigaltstack(&st, nullptr) == -1 && errno == EINVAL);
     st.ss_flags = 0;
-    st.ss_size = MINSIGSTKSZ - 1;
+    st.ss_size = ERT_MINSIGSTKSZ - 1;
     errno = 0;
     OE_TEST(sigaltstack(&st, nullptr) == -1 && errno == ENOMEM);
 
