@@ -22,6 +22,9 @@ using namespace std;
 // defined in enclave/core/sgx/calls.c
 extern "C" bool ert_exiting;
 
+// stdc++ of Ubuntu 22.04 needs this symbol
+char __libc_single_threaded;
+
 static ert_thread_t* _to_ert_thread(pthread_t thread) noexcept
 {
     assert(thread);
