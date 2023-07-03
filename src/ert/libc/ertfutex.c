@@ -10,11 +10,14 @@
 #include "../enclave/core/sgx/td.h"
 #include "futex.h"
 
+#define FUTEX_BITSET_MATCH_ANY 0xffffffff
+
 oe_result_t oe_sgx_thread_timedwait_ocall(
     int* retval,
     oe_enclave_t* enclave,
     uint64_t tcs,
-    const struct timespec* timeout);
+    const struct timespec* timeout,
+    bool timeout_absolute);
 
 oe_result_t oe_sgx_thread_wake_multiple_ocall(
     oe_enclave_t* enclave,
@@ -25,7 +28,8 @@ static oe_result_t _oe_sgx_thread_timedwait_ocall(
     int* retval,
     oe_enclave_t* enclave,
     uint64_t tcs,
-    const struct timespec* timeout)
+    const struct timespec* timeout,
+    bool timeout_absolute)
 {
     (void)retval;
     (void)enclave;
@@ -166,7 +170,11 @@ static void _list_replace(const int* uaddr, const int* uaddr2)
     }
 }
 
-static int _wait(const int* uaddr, int val, const struct timespec* timeout)
+static int _wait(
+    const int* uaddr,
+    int val,
+    const struct timespec* timeout,
+    bool timeout_absolute)
 {
     assert(uaddr);
     assert(!_thread.uaddr);
@@ -195,7 +203,8 @@ static int _wait(const int* uaddr, int val, const struct timespec* timeout)
         int ret = -1;
         const bool timedout =
             oe_sgx_thread_timedwait_ocall(
-                &ret, oe_get_enclave(), tcs, timeout) == OE_OK &&
+                &ret, oe_get_enclave(), tcs, timeout, timeout_absolute) ==
+                OE_OK &&
             ret == ETIMEDOUT;
 
         oe_spin_lock(&_lock);
@@ -261,7 +270,8 @@ int ert_futex(
     int op,
     int val,
     const struct timespec* timeout,
-    const int* uaddr2)
+    const int* uaddr2,
+    int val3)
 {
     if (!uaddr)
         return -EFAULT;
@@ -269,11 +279,13 @@ int ert_futex(
     op &= ~FUTEX_PRIVATE;
 
     if (op == FUTEX_WAIT)
-        return _wait(uaddr, val, timeout);
+        return _wait(uaddr, val, timeout, false);
     if (op == FUTEX_WAKE && val)
         return _wake(uaddr, val, NULL);
     if (op == FUTEX_REQUEUE && uaddr2)
         return _wake(uaddr, val, uaddr2);
+    if (op == FUTEX_WAIT_BITSET && val3 == FUTEX_BITSET_MATCH_ANY)
+        return _wait(uaddr, val, timeout, true);
 
     OE_TRACE_FATAL("unsupported futex operation %d", op);
     abort();

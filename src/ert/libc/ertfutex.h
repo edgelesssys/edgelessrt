@@ -13,7 +13,8 @@ int ert_futex(
     int op,
     int val,
     const struct timespec* timeout,
-    const int* uaddr2);
+    const int* uaddr2,
+    int val3);
 
 void ert_futex_remove_tcs(const void* tcs);
 void ert_futex_wake_tcs(const void* tcs);
