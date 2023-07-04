@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.3.9 AS build
+FROM ghcr.io/edgelesssys/edgelessrt/build-base-focal:v0.4.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -11,15 +11,17 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.3.9
+ARG erttag=v0.4.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && mkdir build
 
 RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /build \
   && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessrt \
-  && ninja && cpack -G DEB \
+  && ninja \
+  && cpack -G DEB \
+  && DEBNAME=$(ls edgelessrt_*_amd64.deb) \
   # the md5sums file is randomly sorted, which affects the hash of the package. To achieve reproducible build, we have to unpack the package, sort md5sums (in any consistent way) and pack it again.
-  && mkdir tmp && dpkg-deb -R edgelessrt_*_amd64.deb tmp && sort tmp/DEBIAN/md5sums >tmp/DEBIAN/md5sums && dpkg-deb -b tmp edgelessrt_*_amd64.deb
+  && mkdir tmp && dpkg-deb -R $DEBNAME tmp && sort tmp/DEBIAN/md5sums >tmp/DEBIAN/md5sums && dpkg-deb -b tmp ${DEBNAME%.*}_ubuntu-20.04.deb
 
 FROM scratch AS export
-COPY --from=build /build/edgelessrt_*_amd64.deb /
+COPY --from=build /build/edgelessrt_*_amd64_ubuntu-20.04.deb /

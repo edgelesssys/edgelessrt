@@ -54,6 +54,7 @@ jobs:
                               "imagename":"edgelessrt-dev",
                               "tag":"nightly",
                               "file": "dockerfiles/Dockerfile",
+                              "args": "--build-arg erttag=master",
                               "target":"release_develop"}}' \
         https://api.github.com/repos/edgelesssys/deployment/dispatches
 
@@ -69,5 +70,6 @@ jobs:
                               "imagename":"edgelessrt-deploy",
                               "tag":"nightly",
                               "file": "dockerfiles/Dockerfile",
+                              "args": "--build-arg erttag=master",
                               "target":"release_deploy"}}' \
         https://api.github.com/repos/edgelesssys/deployment/dispatches
