@@ -1495,10 +1495,10 @@ index 526ae583f..8198d8da0 100644
 +
 +OE_WEAK_ALIAS(calloc, __libc_calloc);
 diff --git a/pkgconfig/CMakeLists.txt b/pkgconfig/CMakeLists.txt
-index 41719a696..dc1e19371 100644
+index 6be178acd..7bb94b19e 100644
 --- a/pkgconfig/CMakeLists.txt
 +++ b/pkgconfig/CMakeLists.txt
-@@ -98,7 +98,7 @@ set(ENCLAVE_OPENSSL_CRYPTO_WRAPPER_LIBS -loecryptoopenssl -lopensslssl
+@@ -104,7 +104,7 @@ set(ENCLAVE_OPENSSL_3_CRYPTO_WRAPPER_LIBS -loecryptoopenssl_3 -lopensslssl_3
  set(ENCLAVE_OPENSSL_SYMCRYPT_FIPS_WRAPPER_LIBS
      -loesymcryptengine -loecryptoopenssl -lopensslssl -lopensslcrypto)
  
@@ -1534,10 +1534,10 @@ index 410bdd9ae..e7d1e8283 100644
  clean:
  	rm -f sqlite_host host.o sqlite_u.o sqlite_u.c sqlite_u.h sqlite_args.h
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index 1a203a3d4..8b6f36712 100644
+index 654b9a18e..5f66d8c96 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
-@@ -40,7 +40,7 @@ build:
+@@ -45,7 +45,7 @@ build:
  
  	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
  	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
@@ -1547,10 +1547,10 @@ index 1a203a3d4..8b6f36712 100644
  sign:
  	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
-index f7b9eace5..d985b50a0 100644
+index d86614e2a..da1686d7c 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
-@@ -42,7 +42,7 @@ build:
+@@ -47,7 +47,7 @@ build:
  
  	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 ${SRC_FILES}
  	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. tls_server_t.c
@@ -1612,16 +1612,18 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index c0528f101..044c8c100 100644
+index 10ebab6c2..2ae0ac648 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
-@@ -80,20 +80,14 @@ else ()
+@@ -80,24 +80,14 @@ else ()
          APPEND
          SAMPLES_LIST
          attested_tls
 -        attested_tls
 -        attested_tls
+-        attested_tls
          attestation
+-        file-encryptor
 -        file-encryptor
          file-encryptor)
        list(
@@ -1630,9 +1632,11 @@ index c0528f101..044c8c100 100644
          mbedtls
 -        openssl
 -        openssl_symcrypt_fips
+-        openssl_3
 -        mbedtls
          mbedtls
--        openssl)
+-        openssl
+-        openssl_3)
 +        mbedtls)
      endif ()
    endif ()
@@ -3112,7 +3116,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 639bd4897..e538812ec 100644
+index 7dbe08967..578987fe3 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -148,7 +148,7 @@ if (UNIX
@@ -3124,17 +3128,19 @@ index 639bd4897..e538812ec 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -171,7 +171,7 @@ if (UNIX
+@@ -171,8 +171,8 @@ if (UNIX
      add_subdirectory(SampleApp)
      add_subdirectory(SampleAppCRT)
      add_subdirectory(sealKey)
 -    add_subdirectory(secure_verify)
+-    add_subdirectory(intel_qve_thread_test)
 +    #add_subdirectory(secure_verify)
++    #add_subdirectory(intel_qve_thread_test)
      add_subdirectory(sim-mode)
      add_subdirectory(stdc)
      add_subdirectory(stdcxx)
 diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
-index 8a1389e0e..87767ccf4 100644
+index 67f426bca..26769f115 100644
 --- a/tests/crypto/enclave/enc/enc.c
 +++ b/tests/crypto/enclave/enc/enc.c
 @@ -168,7 +168,7 @@ static long _syscall_dispatch(
@@ -3507,7 +3513,7 @@ index 10286da24..db9188cf7 100644
      printf("=== This program is used to test enclave seal key functions.\n");
  
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
-index c9779537c..8a8f66b7b 100644
+index aef0e74b9..a0606fa31 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
 +++ b/tests/stack_overflow_exception/enc/enc.c
 @@ -33,7 +33,7 @@ uint64_t test_stack_overflow_handler(oe_exception_record_t* exception_record)
