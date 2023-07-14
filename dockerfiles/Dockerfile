@@ -26,7 +26,7 @@ FROM scratch AS export
 COPY --from=build /build/edgelessrt_*_amd64_ubuntu-22.04.deb /
 
 
-FROM ubuntu:jammy-20230605 AS release_deploy
+FROM ubuntu:jammy-20230624 AS release_deploy
 LABEL description="Containerized SGX for release"
 
 ARG PSW_VERSION=2.19.100.3-jammy1
