@@ -1,4 +1,5 @@
 # Edgeless RT
+
 ![ERT logo](docs/ert_logo.svg)
 
 [![Unit Tests][unit-tests-badge]][unit-tests]
@@ -9,6 +10,7 @@
 Currently, hardware-wise, Edgeless RT focuses on [Intel SGX](https://software.intel.com/en-us/sgx). Support for other TEEs will follow as it becomes available in Open Enclave.
 
 Key features of Edgeless RT are:
+
 * Comprehensive support for Go, most existing code runs without changes
   * Preferably use [EGo](https://github.com/edgelesssys/ego) to build confidential Go apps.
   * Use Edgeless RT if you need more control, e.g., you may want to link some Go code to your C++ app.
@@ -21,36 +23,49 @@ Key features of Edgeless RT are:
 * Experimental support for Rust
 
 ## Quick Start
-If you're on Ubuntu 18.04 or above and don't want to build the SDK yourself, you can install the binary release:
+
+If you're on Ubuntu 20.04 or 22.04 and don't want to build the SDK yourself, you can install the binary release:
+
 ```bash
-wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
-sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.3.9/edgelessrt_0.3.9_amd64.deb
-sudo apt install ./edgelessrt_0.3.9_amd64.deb build-essential libssl-dev
-sudo snap install cmake --classic
+sudo mkdir -p /etc/apt/keyrings
+wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+sudo apt update
+ERT_DEB=edgelessrt_0.4.0_amd64_ubuntu-$(lsb_release -rs).deb
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.4.0/$ERT_DEB
+sudo apt install ./$ERT_DEB build-essential cmake libssl-dev
 ```
+
 Then proceed with [Use](#use).
 
 ## Build
-On Ubuntu 20.04 build with:
+
+On Ubuntu 20.04 or 22.04, build with:
+
 ```bash
-sudo apt install build-essential clang-11 cmake gdb libssl-dev ninja-build python3
+sudo apt install build-essential clang-11 cmake gdb libssl-dev ninja-build
 mkdir build
 cd build
 cmake -GNinja ..
 ninja
 ```
+
 To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
 
 ## SGX packages
+
 To run your applications in SGX mode, install these packages:
+
 ```bash
-wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add
-sudo add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
+sudo mkdir -p /etc/apt/keyrings
+wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+sudo apt update
 sudo apt install libsgx-dcap-ql libsgx-enclave-common libsgx-launch
 ```
 
 ## Test
+
 After building, run the following command in the build directory to confirm everything works as expected:
 
 ```bash
@@ -58,22 +73,29 @@ ctest
 ```
 
 In simulation mode run this command instead:
+
 ```bash
 OE_SIMULATION=1 ctest
 ```
 
 ## Install
+
 From the build directory run:
+
 ```bash
 ninja install
 ```
+
 Or if you do not have write permissions for the installation path:
+
 ```bash
 sudo ninja install
 ```
 
 ## Use
+
 To use the SDK you need to source the `openenclaverc` file to setup environment variables:
+
 ```bash
 . /opt/edgelessrt/share/openenclave/openenclaverc
 ```
@@ -85,9 +107,11 @@ Also see the [C API documentation](https://edgelesssys.github.io/edgelessrt) and
 ## Debug
 
 ### Logging
+
 Set the environment variable `OE_LOG_LEVEL` to `NONE`, `FATAL`, `ERROR` (default), `WARNING`, `INFO`, or `VERBOSE` to increase or decrease the log level. Set `OE_LOG_DETAILED=1` to enrich the log output with timestamps, thread ids, and stacktrace-like error propagations.
 
 ### gdb
+
 ![debugging with vscode](docs/go_debugging_vscode.gif)
 
 You can use Open Enclave's `oegdb` to debug enclave code built with Edgeless RT. `oegdb` is automatically installed with Edgeless RT. It also supports Go enclaves.
