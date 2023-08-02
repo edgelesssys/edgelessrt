@@ -33,10 +33,15 @@ void test_ecall()
 
     thread([] {}).detach();
 
-    this_thread::sleep_for(100ms);
+    this_thread::sleep_for(10ms);
 
     // The actual test happens when the host calls oe_terminate_enclave().
     // Threads are expected to be successfully canceled.
+}
+
+void test_child_of_child_ecall()
+{
+    thread([] { thread([] {}).detach(); }).detach();
 }
 
 OE_SET_ENCLAVE_SGX(

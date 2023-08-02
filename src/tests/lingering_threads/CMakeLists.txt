@@ -1,8 +1,14 @@
 add_custom_command(
   OUTPUT test_t.c test_u.c
   DEPENDS ../test.edl
-  COMMAND openenclave::oeedger8r ${CMAKE_CURRENT_SOURCE_DIR}/../test.edl
+  COMMAND openenclave::oeedger8r ${CMAKE_CURRENT_SOURCE_DIR}/test.edl
           ${DEFINE_OE_SGX})
+
+add_executable(erttest_lingering_threads_host host.cpp test_u.c)
+target_include_directories(erttest_lingering_threads_host
+                           PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(erttest_lingering_threads_host openenclave::oehost
+                      oe_includes)
 
 add_enclave_library(erttest_lingering_threads_lib OBJECT enc.cpp test_t.c)
 enclave_compile_definitions(erttest_lingering_threads_lib PRIVATE
@@ -17,7 +23,7 @@ add_enclave(TARGET erttest_lingering_threads SOURCES ../empty.c)
 enclave_link_libraries(erttest_lingering_threads erttest_lingering_threads_lib
                        ertlibc)
 
-add_test(NAME tests/ert/lingering_threads COMMAND erttest_host
+add_test(NAME tests/ert/lingering_threads COMMAND erttest_lingering_threads_host
                                                   erttest_lingering_threads)
 
 #
