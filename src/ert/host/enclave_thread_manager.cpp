@@ -14,6 +14,8 @@ extern "C" void HandleThreadWake(oe_enclave_t* enclave, uint64_t arg);
 
 namespace ert::host
 {
+thread_local EnclaveThreadManager::Thread* EnclaveThreadManager::self;
+
 EnclaveThreadManager::~EnclaveThreadManager()
 {
     // Process is exiting. If any enclave has not been terminated, detach its
@@ -58,7 +60,8 @@ void EnclaveThreadManager::create_thread(
         new_thread = &threads.emplace_back();
     }
 
-    new_thread->thread = thread([=, &finished = new_thread->finished] {
+    new_thread->thread = thread([=] {
+        self = new_thread;
         try
         {
             func(enclave);
@@ -67,8 +70,26 @@ void EnclaveThreadManager::create_thread(
         {
             OE_TRACE_ERROR("%s", e.what());
         }
-        finished = true;
+        new_thread->finished = true;
     });
+}
+
+void EnclaveThreadManager::set_cancelable(bool cancelable)
+{
+    // self may be null if thread is not created by
+    // EnclaveThreadManager::create_thread (e.g., the main thread)
+    if (!self)
+        return;
+
+    unsigned int cancel_state = 0;
+    if (cancelable)
+        cancel_state = self->cancel_state |= Cancelable;
+    else
+        cancel_state = self->cancel_state &= ~Cancelable;
+
+    // this function is always a cancelation point
+    if (cancel_state & Canceling)
+        pthread_exit(PTHREAD_CANCELED);
 }
 
 void EnclaveThreadManager::join_all_threads(const oe_enclave_t* enclave)
@@ -120,11 +141,15 @@ void EnclaveThreadManager::cancel_all_threads(oe_enclave_t* enclave)
     {
         if (!t.finished)
         {
-            const auto handle = t.thread.native_handle();
-            if (pthread_cancel(handle) == 0)
-                // Thread may be waiting in HandleThreadWait which is not a
-                // cancellation point, so wake the thread.
-                _wake_thread(*enclave, handle);
+            const auto cancel_state = t.cancel_state |= Canceling;
+            if (cancel_state & Cancelable)
+            {
+                const auto handle = t.thread.native_handle();
+                if (pthread_cancel(handle) == 0)
+                    // Thread may be waiting in HandleThreadWait which is not a
+                    // cancellation point, so wake the thread.
+                    _wake_thread(*enclave, handle);
+            }
         }
         t.thread.join();
     }

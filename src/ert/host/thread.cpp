@@ -12,6 +12,18 @@
 using namespace std;
 using namespace ert;
 
+extern "C" void ert_set_cancelable(bool cancelable)
+{
+    try
+    {
+        host::EnclaveThreadManager::get_instance().set_cancelable(cancelable);
+    }
+    catch (const exception& e)
+    {
+        OE_TRACE_ERROR("%s", e.what());
+    }
+}
+
 extern "C" oe_result_t ert_join_threads_created_inside_enclave(
     oe_enclave_t* enclave)
 {

@@ -600,7 +600,7 @@ index e3255a942..77351b2ac 100644
      if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
      {
 diff --git a/host/sgx/calls.c b/host/sgx/calls.c
-index eed0c4dcf..fb791663e 100644
+index eed0c4dcf..7874c3585 100644
 --- a/host/sgx/calls.c
 +++ b/host/sgx/calls.c
 @@ -36,6 +36,8 @@
@@ -621,7 +621,19 @@ index eed0c4dcf..fb791663e 100644
      OE_CHECK(oe_safe_add_u64(
          args_ptr->input_buffer_size,
          args_ptr->output_buffer_size,
-@@ -365,22 +369,27 @@ static oe_result_t _handle_ocall(
+@@ -358,6 +362,11 @@ static oe_result_t _handle_ocall(
+         func == OE_OCALL_CALL_HOST_FUNCTION ? "EDL_OCALL" : "OE_OCALL",
+         oe_ocall_str(func));
+ 
++    // EDG: During an ocall, allow cancelation by the EnclaveThreadManager
++    // because this thread may block in a syscall.
++    void ert_set_cancelable(bool);
++    ert_set_cancelable(true);
++
+     switch ((oe_func_t)func)
+     {
+         case OE_OCALL_CALL_HOST_FUNCTION:
+@@ -365,22 +374,27 @@ static oe_result_t _handle_ocall(
              break;
  
          case OE_OCALL_MALLOC:
@@ -649,13 +661,14 @@ index eed0c4dcf..fb791663e 100644
              oe_handle_get_time(arg_in, arg_out);
              break;
  
-@@ -391,6 +400,10 @@ static oe_result_t _handle_ocall(
+@@ -391,6 +405,11 @@ static oe_result_t _handle_ocall(
          }
      }
  
-+    // EDG: Insert cancellation point after ocall (esp. after THREAD_WAIT) so
-+    // that EnclaveThreadManager is able to cancel enclave threads.
-+    pthread_testcancel();
++    // EDG: Disable cancelation before returning from ocall because the thread
++    // context will be swapped to the enclave values and canceling would cause a
++    // segfault then.
++    ert_set_cancelable(false);
 +
      result = OE_OK;
  
