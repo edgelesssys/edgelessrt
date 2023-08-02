@@ -39,9 +39,11 @@ void EnclaveThreadManager::create_thread(
     Thread* new_thread;
 
     {
-        if (exit_)
-            pthread_exit(nullptr);
-        const lock_guard lock(mutex_);
+        // this avoids a deadlock where this thread is joined in
+        // cancel_all_threads
+        unique_lock lock(mutex_, defer_lock);
+        while (!lock.try_lock())
+            this_thread::sleep_for(1ms); // sleep is a cancelation point
 
         auto& threads = threads_[enclave];
 
@@ -110,7 +112,6 @@ void EnclaveThreadManager::cancel_all_threads(oe_enclave_t* enclave)
 {
     assert(enclave);
 
-    exit_ = true;
     const lock_guard lock(mutex_);
 
     auto& threads = threads_[enclave];
