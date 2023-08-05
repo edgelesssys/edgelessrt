@@ -246,7 +246,7 @@ index 9d55a56e1..04f755c08 100644
  
  /* Safe implementation of backtrace.
 diff --git a/enclave/core/sgx/calls.c b/enclave/core/sgx/calls.c
-index 2b3bd4b82..1e439a66a 100644
+index d248d0cc9..cd8fcd2ba 100644
 --- a/enclave/core/sgx/calls.c
 +++ b/enclave/core/sgx/calls.c
 @@ -50,6 +50,22 @@ void oe_abort_with_td(oe_sgx_td_t* td) OE_NO_RETURN;
@@ -325,7 +325,7 @@ index 2b3bd4b82..1e439a66a 100644
      /* Dispatch the ECALL */
      switch (func)
      {
-@@ -789,6 +825,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
+@@ -791,6 +827,14 @@ void oe_exit_enclave(uint64_t arg1, uint64_t arg2)
  
  oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
  {
@@ -340,7 +340,7 @@ index 2b3bd4b82..1e439a66a 100644
      oe_result_t result = OE_UNEXPECTED;
      oe_sgx_td_t* td = oe_sgx_get_td();
      oe_callsite_t* callsite = td->callsites;
-@@ -845,6 +889,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
+@@ -847,6 +891,11 @@ oe_result_t oe_ocall(uint16_t func, uint64_t arg_in, uint64_t* arg_out)
          }
      }
  
