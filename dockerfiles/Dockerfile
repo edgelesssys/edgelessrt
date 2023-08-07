@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.4.0 AS build
+FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.4.1 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.0
+ARG erttag=v0.4.1
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && mkdir build
 
@@ -29,8 +29,8 @@ COPY --from=build /build/edgelessrt_*_amd64_ubuntu-22.04.deb /
 FROM ubuntu:jammy-20230624 AS release_deploy
 LABEL description="Containerized SGX for release"
 
-ARG PSW_VERSION=2.19.100.3-jammy1
-ARG DCAP_VERSION=1.16.100.2-jammy1
+ARG PSW_VERSION=2.20.100.4-jammy1
+ARG DCAP_VERSION=1.17.100.4-jammy1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
   && wget -qO /etc/apt/keyrings/intel-sgx-keyring.asc https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
   && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' > /etc/apt/sources.list.d/intel-sgx.list \
