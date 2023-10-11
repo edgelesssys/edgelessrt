@@ -3222,18 +3222,34 @@ index 641a182c7..8b59e6b8b 100644
  }
  
 diff --git a/tests/host_verify/host/host.cpp b/tests/host_verify/host/host.cpp
-index 6bc86a9c6..98a276ff0 100644
+index 752a1e7f0..3b17f2146 100644
 --- a/tests/host_verify/host/host.cpp
 +++ b/tests/host_verify/host/host.cpp
-@@ -384,7 +384,7 @@ int main()
+@@ -393,23 +393,8 @@ int main()
+     if (_validate_file(REPORT_BAD_FILENAME, true))
          _verify_report(REPORT_BAD_FILENAME, NULL, false);
  
-     if (_validate_file(TDX_QUOTE_FILENAME, true))
--        _verify_evidence(&_tdx_quote_uuid, TDX_QUOTE_FILENAME, NULL, false);
-+        (void)_tdx_quote_uuid;
+-    if (_validate_file(TDX_QUOTE_FILENAME, true))
+-        _verify_evidence(
+-            &_tdx_quote_uuid,
+-            TDX_QUOTE_FILENAME,
+-            NULL,
+-            &tdx_v4_claim_count,
+-            false);
+-
+-    if (_validate_file(TDX_QUOTE_v5_FILENAME, true))
+-        _verify_evidence(
+-            &_tdx_quote_uuid,
+-            TDX_QUOTE_v5_FILENAME,
+-            NULL,
+-            &tdx_v5_claim_count,
+-            false);
++    (void)_tdx_quote_uuid;
  
-     return 0;
- }
+-    OE_TEST(tdx_v5_claim_count - tdx_v4_claim_count == 2);
+     OE_TRACE_INFO(
+         "TDX V4 quote contains %zu claims. TDX V5 quote contains %zu "
+         "claims\n\n",
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
