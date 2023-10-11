@@ -3259,18 +3259,6 @@ index 1f1cd729f..86b97ccff 100644
      return ret;
  }
  
-diff --git a/tests/mbed/tests.supported b/tests/mbed/tests.supported
-index 7ec2e9c20..566a19723 100644
---- a/tests/mbed/tests.supported
-+++ b/tests/mbed/tests.supported
-@@ -48,7 +48,6 @@ pk
- pkparse
- random
- shax
--ssl
- rsa
- version
- x509parse
 diff --git a/tests/mman/enc/enc.c b/tests/mman/enc/enc.c
 index 6c39b1d86..ca4ea042d 100644
 --- a/tests/mman/enc/enc.c
