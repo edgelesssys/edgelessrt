@@ -241,6 +241,11 @@ extern "C" locale_t __newlocale(int mask, const char* locale, locale_t loc)
     return const_cast<locale_t>(&c_locale);
 }
 
+extern "C" int __res_init()
+{
+    return 0; // success
+}
+
 // The debug malloc check runs on enclave termination and prints errors for heap
 // memory that has not been freed. As some global objects in (std)c++ use heap
 // memory and don't free it by design, we cannot use this feature.
