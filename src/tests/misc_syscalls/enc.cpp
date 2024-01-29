@@ -225,6 +225,13 @@ static void _test_syconf()
 static void _test_time()
 {
     {
+        OE_TEST(clock_getres(CLOCK_MONOTONIC, nullptr) == 0);
+        timespec t{};
+        OE_TEST(clock_getres(CLOCK_MONOTONIC, &t) == 0);
+        OE_TEST(t.tv_sec == 0);
+        OE_TEST(t.tv_nsec == 4'000'000);
+    }
+    {
         timespec t1{};
         timespec t2{};
         OE_TEST(clock_gettime(CLOCK_MONOTONIC, &t1) == 0);
