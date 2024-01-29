@@ -162,3 +162,14 @@ int sc::clock_gettime(int clk_id, struct timespec* tp)
 
     return 0;
 }
+
+int sc::clock_getres(int /*clk_id*/, struct timespec* tp)
+{
+    if (tp)
+    {
+        // only coarse resolution is supported
+        tp->tv_sec = 0;
+        tp->tv_nsec = 4'000'000;
+    }
+    return 0;
+}

@@ -15,6 +15,7 @@ struct k_sigaction;
 namespace ert::sc
 {
 int clock_gettime(clockid_t clk_id, struct timespec* tp);
+int clock_getres(clockid_t clk_id, struct timespec* tp);
 void exit_group(int status);
 int fstatfs(int fd, struct statfs* buf);
 int prlimit(

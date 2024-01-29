@@ -39,6 +39,8 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             case SYS_clock_gettime:
                 return sc::clock_gettime(
                     static_cast<int>(x1), reinterpret_cast<timespec*>(x2));
+            case SYS_clock_getres:
+                return sc::clock_getres(x1, reinterpret_cast<timespec*>(x2));
             case SYS_gettid:
                 return ert_thread_self()->tid;
 
