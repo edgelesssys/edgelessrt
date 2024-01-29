@@ -4,6 +4,11 @@
 int main()
 {
     puts("hello from payload");
+
+    // test that ertlibc contains this symbol
+    void __res_init();
+    __res_init();
+
     return 2;
 }
 
