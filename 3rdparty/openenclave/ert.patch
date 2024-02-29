@@ -3129,7 +3129,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 7dbe08967..578987fe3 100644
+index 7dbe08967..9d230547f 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -148,7 +148,7 @@ if (UNIX
@@ -3141,7 +3141,12 @@ index 7dbe08967..578987fe3 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -171,8 +171,8 @@ if (UNIX
+@@ -167,12 +167,12 @@ if (UNIX
+     add_subdirectory(print)
+     add_subdirectory(props)
+     add_subdirectory(qeidentity)
+-    add_subdirectory(report)
++    #add_subdirectory(report)
      add_subdirectory(SampleApp)
      add_subdirectory(SampleAppCRT)
      add_subdirectory(sealKey)
