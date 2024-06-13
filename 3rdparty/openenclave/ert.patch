@@ -3152,29 +3152,6 @@ index 7dbe08967..578987fe3 100644
      add_subdirectory(sim-mode)
      add_subdirectory(stdc)
      add_subdirectory(stdcxx)
-diff --git a/tests/crypto/enclave/enc/enc.c b/tests/crypto/enclave/enc/enc.c
-index 67f426bca..26769f115 100644
---- a/tests/crypto/enclave/enc/enc.c
-+++ b/tests/crypto/enclave/enc/enc.c
-@@ -168,7 +168,7 @@ static long _syscall_dispatch(
-         OE_SYSCALL_DISPATCH(SYS_readv, arg1, arg2, arg3);
-         OE_SYSCALL_DISPATCH(SYS_close, arg1);
-         default:
--            return -1;
-+            return -2;
-     }
- }
- 
-@@ -190,7 +190,8 @@ static oe_result_t _syscall_hook(
-         OE_RAISE(OE_INVALID_PARAMETER);
- 
-     *ret = _syscall_dispatch(number, arg1, arg2, arg3, arg4, arg5, arg6);
--    result = OE_OK;
-+    if (*ret != -2)
-+        result = OE_OK;
- done:
-     return result;
- }
 diff --git a/tests/debugger/non_debug/CMakeLists.txt b/tests/debugger/non_debug/CMakeLists.txt
 index 26364240b..ecdb261fb 100644
 --- a/tests/debugger/non_debug/CMakeLists.txt
@@ -3491,7 +3468,7 @@ index 90d0d7e2e..d17c9028c 100644
  
  # Add the enclave for postive tests
 diff --git a/tests/module_loading/module/module.c b/tests/module_loading/module/module.c
-index 3fbecd8a5..199a280c9 100644
+index 0cd2fda46..bf5cc35da 100644
 --- a/tests/module_loading/module/module.c
 +++ b/tests/module_loading/module/module.c
 @@ -59,7 +59,6 @@ int test_libc_symbols()
@@ -3502,7 +3479,7 @@ index 3fbecd8a5..199a280c9 100644
      TEST_SYMBOL(pthread_mutex_destroy);
      TEST_SYMBOL(pthread_mutex_init);
      TEST_SYMBOL(pthread_mutex_lock);
-@@ -73,9 +72,5 @@ int test_libc_symbols()
+@@ -74,9 +73,5 @@ int test_libc_symbols()
      if (sizeof(pthread_mutex_t) != 40)
          return 0;
  
