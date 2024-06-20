@@ -32,6 +32,7 @@ LABEL description="Containerized SGX for release"
 ARG PSW_VERSION=2.24.100.3-jammy1
 ARG DCAP_VERSION=1.21.100.3-jammy1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 wget \
+  && wget -Petc https://github.com/intel/SGXDataCenterAttestationPrimitives/raw/DCAP_1.21/QuoteGeneration/qcnl/linux/sgx_default_qcnl_azure.conf \
   && wget -qO /etc/apt/keyrings/intel-sgx-keyring.asc https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
   && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' > /etc/apt/sources.list.d/intel-sgx.list \
   && apt-get update && apt-get install -y --no-install-recommends \
