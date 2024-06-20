@@ -5,12 +5,10 @@ if [ -n "${PCCS_ADDR}" ]; then
 	PCCS_URL=https://${PCCS_ADDR}/sgx/certification/v4/
 fi
 
-# if PCCS_URL isn't set and we're on Azure, use Azure PCCS
+# if PCCS_URL isn't set and we're on Azure, use config with Azure PCCS and local PCK URL
 if [ -z "${PCCS_URL}" ] && [ "$(cat /sys/devices/virtual/dmi/id/chassis_asset_tag)" = 7783-7084-3265-9085-8269-3286-77 ]; then
-	PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/
-	if [ -z "${PCCS_USE_SECURE_CERT}" ]; then
-		PCCS_USE_SECURE_CERT=true
-	fi
+	mv /etc/sgx_default_qcnl_azure.conf /etc/sgx_default_qcnl.conf
+	exit
 fi
 
 if [ -z "${PCCS_USE_SECURE_CERT}" ]; then
