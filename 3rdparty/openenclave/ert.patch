@@ -167,6 +167,58 @@ index 0f97c1c6f..fd5ad7d6c 100644
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
+diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
+index 127f313ad..9b4bcd984 100644
+--- a/common/sgx/tcbinfo.c
++++ b/common/sgx/tcbinfo.c
+@@ -1715,26 +1715,41 @@ oe_result_t oe_parse_qe_identity_info_json(
+     itr = _skip_ws(itr, end);
+     OE_CHECK(_read('{', &itr, end));
+ 
++    // EDG: workaround until
++    // https://github.com/openenclave/openenclave/issues/5013 is properly fixed
++    int signature_read = 0;
++    if (OE_JSON_INFO_PARSE_ERROR !=
++        _read_property_name_and_colon("signature", &itr, end))
++    {
++        OE_TRACE_VERBOSE("Reading signature");
++        OE_CHECK(_read_hex_string(
++            &itr, end, parsed_info->signature, sizeof(parsed_info->signature)));
++        OE_CHECK(_read(',', &itr, end));
++        signature_read = 1;
++    }
++
+     if (OE_JSON_INFO_PARSE_ERROR !=
+         _read_property_name_and_colon("enclaveIdentity", &itr, end))
+     {
+         OE_TRACE_VERBOSE("Reading enclaveIdentity");
+         OE_CHECK(_read_qe_identity_info_v2(
+             info_json, &itr, end, platform_tcb_level, parsed_info));
+-        OE_CHECK(_read(',', &itr, end));
+     }
+     else
+     {
+         OE_TRACE_VERBOSE("Reading qeIdentity");
+         OE_CHECK(_read_property_name_and_colon("qeIdentity", &itr, end));
+         OE_CHECK(_read_qe_identity_info_v1(&itr, end, parsed_info));
+-        OE_CHECK(_read(',', &itr, end));
+     }
+ 
+-    OE_TRACE_VERBOSE("Reading signature");
+-    OE_CHECK(_read_property_name_and_colon("signature", &itr, end));
+-    OE_CHECK(_read_hex_string(
+-        &itr, end, parsed_info->signature, sizeof(parsed_info->signature)));
++    if (!signature_read)
++    {
++        OE_CHECK(_read(',', &itr, end));
++        OE_TRACE_VERBOSE("Reading signature");
++        OE_CHECK(_read_property_name_and_colon("signature", &itr, end));
++        OE_CHECK(_read_hex_string(
++            &itr, end, parsed_info->signature, sizeof(parsed_info->signature)));
++    }
+     OE_CHECK(_read('}', &itr, end));
+ 
+     if (itr == end)
 diff --git a/debugger/gdb-extension/load_symbol_cmd.py b/debugger/gdb-extension/load_symbol_cmd.py
 index ca0e0f893..ea04aa53b 100644
 --- a/debugger/gdb-extension/load_symbol_cmd.py
