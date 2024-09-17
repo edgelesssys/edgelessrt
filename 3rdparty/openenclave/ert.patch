@@ -168,10 +168,18 @@ index 0f97c1c6f..fd5ad7d6c 100644
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
-index 127f313ad..9b4bcd984 100644
+index 127f313ad..c9a7beb87 100644
 --- a/common/sgx/tcbinfo.c
 +++ b/common/sgx/tcbinfo.c
-@@ -1715,26 +1715,41 @@ oe_result_t oe_parse_qe_identity_info_json(
+@@ -781,6 +781,7 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
+         if (*itr < end && **itr == ']')
+             break;
+         OE_CHECK(_read(',', itr, end));
++        ++platform_tcb_level->index;
+     }
+ 
+     OE_CHECK(_read(']', itr, end));
+@@ -1715,26 +1716,41 @@ oe_result_t oe_parse_qe_identity_info_json(
      itr = _skip_ws(itr, end);
      OE_CHECK(_read('{', &itr, end));
  
@@ -219,6 +227,38 @@ index 127f313ad..9b4bcd984 100644
      OE_CHECK(_read('}', &itr, end));
  
      if (itr == end)
+diff --git a/common/sgx/tcbinfo.h b/common/sgx/tcbinfo.h
+index ae1508d45..9b6fdf0dc 100644
+--- a/common/sgx/tcbinfo.h
++++ b/common/sgx/tcbinfo.h
+@@ -89,6 +89,8 @@ typedef struct _oe_tcb_info_tcb_level
+ 
+     //! Total size of all the advisoryIDs.
+     size_t advisory_ids_size;
++
++    uint32_t index;
+ } oe_tcb_info_tcb_level_t;
+ 
+ #define OE_SGX_FMSPC_SIZE 6
+diff --git a/common/sgx/verifier.c b/common/sgx/verifier.c
+index ae4e42357..a9d6ae625 100644
+--- a/common/sgx/verifier.c
++++ b/common/sgx/verifier.c
+@@ -476,6 +476,14 @@ static oe_result_t _fill_with_known_claims(
+                 sgx_endorsements->items[OE_SGX_ENDORSEMENT_FIELD_TCB_INFO]
+                     .size));
+ 
++            // TCB info index
++            OE_CHECK(oe_sgx_add_claim(
++                &claims[claims_index++],
++                OE_CLAIM_SGX_TCB_INFO_INDEX,
++                sizeof(OE_CLAIM_SGX_TCB_INFO_INDEX),
++                &local_platform_tcb_level.index,
++                sizeof(local_platform_tcb_level.index)));
++
+             // TCB issuer chain
+             OE_CHECK(oe_sgx_add_claim(
+                 &claims[claims_index++],
 diff --git a/debugger/gdb-extension/load_symbol_cmd.py b/debugger/gdb-extension/load_symbol_cmd.py
 index ca0e0f893..ea04aa53b 100644
 --- a/debugger/gdb-extension/load_symbol_cmd.py
@@ -1215,6 +1255,31 @@ index 2471fe6f1..f7296ef7d 100644
 +
      return result;
  }
+diff --git a/include/openenclave/attestation/sgx/evidence.h b/include/openenclave/attestation/sgx/evidence.h
+index 4a19d4187..f0246300a 100644
+--- a/include/openenclave/attestation/sgx/evidence.h
++++ b/include/openenclave/attestation/sgx/evidence.h
+@@ -145,16 +145,18 @@ OE_EXTERNC_BEGIN
+  */
+ // SQX quote verification collaterals.
+ #define OE_CLAIM_SGX_TCB_INFO "sgx_tcb_info"
++#define OE_CLAIM_SGX_TCB_INFO_INDEX "sgx_tcb_info_index"
+ #define OE_CLAIM_SGX_TCB_ISSUER_CHAIN "sgx_tcb_issuer_chain"
+ #define OE_CLAIM_SGX_PCK_CRL "sgx_pck_crl"
+ #define OE_CLAIM_SGX_ROOT_CA_CRL "sgx_root_ca_crl"
+ #define OE_CLAIM_SGX_CRL_ISSUER_CHAIN "sgx_crl_issuer_chain"
+ #define OE_CLAIM_SGX_QE_ID_INFO "sgx_qe_id_info"
+ #define OE_CLAIM_SGX_QE_ID_ISSUER_CHAIN "sgx_qe_id_issuer_chain"
+-#define OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT 7
++#define OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT 8
+ // SGX PCESVN.
+ #define OE_CLAIM_SGX_PCE_SVN "sgx_pce_svn"
+-#define OE_SGX_OPTIONAL_CLAIMS_COUNT 8
++#define OE_SGX_OPTIONAL_CLAIMS_COUNT \
++    (OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT + 1)
+ 
+ // Additional SGX specific claim: for the report data embedded in the SGX quote.
+ 
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
 index f7220c44f..d3623bfa1 100644
 --- a/include/openenclave/bits/fs.h
