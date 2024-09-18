@@ -243,24 +243,24 @@ index ae1508d45..38e6b62b7 100644
  
  #define OE_SGX_FMSPC_SIZE 6
 diff --git a/common/sgx/verifier.c b/common/sgx/verifier.c
-index ae4e42357..af7389642 100644
+index ae4e42357..65a83a983 100644
 --- a/common/sgx/verifier.c
 +++ b/common/sgx/verifier.c
-@@ -476,6 +476,14 @@ static oe_result_t _fill_with_known_claims(
-                 sgx_endorsements->items[OE_SGX_ENDORSEMENT_FIELD_TCB_INFO]
-                     .size));
- 
-+            // EDG: TCB info index
-+            OE_CHECK(oe_sgx_add_claim(
-+                &claims[claims_index++],
-+                OE_CLAIM_SGX_TCB_INFO_INDEX,
-+                sizeof(OE_CLAIM_SGX_TCB_INFO_INDEX),
-+                &local_platform_tcb_level.index,
-+                sizeof(local_platform_tcb_level.index)));
+@@ -552,6 +552,14 @@ static oe_result_t _fill_with_known_claims(
+             sizeof(OE_CLAIM_SGX_PCE_SVN),
+             &sgx_quote->pce_svn,
+             sizeof(sgx_quote->pce_svn)));
 +
-             // TCB issuer chain
-             OE_CHECK(oe_sgx_add_claim(
-                 &claims[claims_index++],
++        // EDG: TCB info index
++        OE_CHECK(oe_sgx_add_claim(
++            &claims[claims_index++],
++            OE_CLAIM_SGX_TCB_INFO_INDEX,
++            sizeof(OE_CLAIM_SGX_TCB_INFO_INDEX),
++            &local_platform_tcb_level.index,
++            sizeof(local_platform_tcb_level.index)));
+     }
+ 
+     *claims_added = claims_index;
 diff --git a/debugger/gdb-extension/load_symbol_cmd.py b/debugger/gdb-extension/load_symbol_cmd.py
 index ca0e0f893..ea04aa53b 100644
 --- a/debugger/gdb-extension/load_symbol_cmd.py
@@ -1258,27 +1258,17 @@ index 2471fe6f1..f7296ef7d 100644
      return result;
  }
 diff --git a/include/openenclave/attestation/sgx/evidence.h b/include/openenclave/attestation/sgx/evidence.h
-index 4a19d4187..f0246300a 100644
+index 4a19d4187..33b458429 100644
 --- a/include/openenclave/attestation/sgx/evidence.h
 +++ b/include/openenclave/attestation/sgx/evidence.h
-@@ -145,16 +145,18 @@ OE_EXTERNC_BEGIN
-  */
- // SQX quote verification collaterals.
- #define OE_CLAIM_SGX_TCB_INFO "sgx_tcb_info"
-+#define OE_CLAIM_SGX_TCB_INFO_INDEX "sgx_tcb_info_index"
- #define OE_CLAIM_SGX_TCB_ISSUER_CHAIN "sgx_tcb_issuer_chain"
- #define OE_CLAIM_SGX_PCK_CRL "sgx_pck_crl"
- #define OE_CLAIM_SGX_ROOT_CA_CRL "sgx_root_ca_crl"
- #define OE_CLAIM_SGX_CRL_ISSUER_CHAIN "sgx_crl_issuer_chain"
- #define OE_CLAIM_SGX_QE_ID_INFO "sgx_qe_id_info"
- #define OE_CLAIM_SGX_QE_ID_ISSUER_CHAIN "sgx_qe_id_issuer_chain"
--#define OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT 7
-+#define OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT 8
+@@ -154,7 +154,9 @@ OE_EXTERNC_BEGIN
+ #define OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT 7
  // SGX PCESVN.
  #define OE_CLAIM_SGX_PCE_SVN "sgx_pce_svn"
 -#define OE_SGX_OPTIONAL_CLAIMS_COUNT 8
++#define OE_CLAIM_SGX_TCB_INFO_INDEX "sgx_tcb_info_index"
 +#define OE_SGX_OPTIONAL_CLAIMS_COUNT \
-+    (OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT + 1)
++    (OE_SGX_OPTIONAL_CLAIMS_SGX_COLLATERALS_COUNT + 2)
  
  // Additional SGX specific claim: for the report data embedded in the SGX quote.
  
