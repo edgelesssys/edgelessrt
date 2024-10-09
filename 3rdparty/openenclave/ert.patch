@@ -1617,12 +1617,12 @@ index 526ae583f..8198d8da0 100644
 +
 +OE_WEAK_ALIAS(calloc, __libc_calloc);
 diff --git a/pkgconfig/CMakeLists.txt b/pkgconfig/CMakeLists.txt
-index 6be178acd..7bb94b19e 100644
+index 28fd6e8b5..16379ab61 100644
 --- a/pkgconfig/CMakeLists.txt
 +++ b/pkgconfig/CMakeLists.txt
-@@ -104,7 +104,7 @@ set(ENCLAVE_OPENSSL_3_CRYPTO_WRAPPER_LIBS -loecryptoopenssl_3 -lopensslssl_3
- set(ENCLAVE_OPENSSL_SYMCRYPT_FIPS_WRAPPER_LIBS
-     -loesymcryptengine -loecryptoopenssl -lopensslssl -lopensslcrypto)
+@@ -107,7 +107,7 @@ set(ENCLAVE_OPENSSL_SYMCRYPT_FIPS_WRAPPER_LIBS
+ set(ENCLAVE_OPENSSL_3_SYMCRYPT_FIPS_WRAPPER_LIBS
+     -loesymcryptprovider -loecryptoopenssl_3 -lopensslssl_3 -lopensslcrypto_3)
  
 -set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loecore)
 +set(ENCLAVE_CLIBS_2 -loelibc -loesyscall -loelibc -loecore)
@@ -1656,26 +1656,26 @@ index 410bdd9ae..e7d1e8283 100644
  clean:
  	rm -f sqlite_host host.o sqlite_u.o sqlite_u.c sqlite_u.h sqlite_args.h
 diff --git a/samples/attested_tls/client/enc/Makefile b/samples/attested_tls/client/enc/Makefile
-index 654b9a18e..5f66d8c96 100644
+index 18f2b6b23..8c12cc3b1 100644
 --- a/samples/attested_tls/client/enc/Makefile
 +++ b/samples/attested_tls/client/enc/Makefile
 @@ -45,7 +45,7 @@ build:
  
- 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 $(SRC_FILES)
- 	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. ./tls_client_t.c
+ 	$(CXX) -g -c $(CXXFLAGS) -I. -std=c++11 $(SRC_FILES)
+ 	$(CC) -c $(CFLAGS) -I. ./tls_client_t.c
 -	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
 +	$(CXX) -o tls_client_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
  
  sign:
  	oesign sign -e tls_client_enc -c  enc.conf -k private.pem
 diff --git a/samples/attested_tls/server/enc/Makefile b/samples/attested_tls/server/enc/Makefile
-index d86614e2a..da1686d7c 100644
+index 23c6459e0..4cd7f4398 100644
 --- a/samples/attested_tls/server/enc/Makefile
 +++ b/samples/attested_tls/server/enc/Makefile
 @@ -47,7 +47,7 @@ build:
  
- 	$(CXX) -g -c $(CXXFLAGS) $(INCLUDES) -I. -std=c++11 ${SRC_FILES}
- 	$(CC) -c $(CFLAGS) $(CINCLUDES) -I. tls_server_t.c
+ 	$(CXX) -g -c $(CXXFLAGS) -I. -std=c++11 ${SRC_FILES}
+ 	$(CC) -c $(CFLAGS) -I. tls_server_t.c
 -	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver
 +	$(CXX) -o tls_server_enc $(OBJ_FILES) $(LDFLAGS) $(CRYPTO_LDFLAGS) -loehostsock -loehostresolver -loecore
  
@@ -1734,13 +1734,14 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index 10ebab6c2..2ae0ac648 100644
+index c04280f23..206afb27d 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
-@@ -80,24 +80,14 @@ else ()
+@@ -80,26 +80,14 @@ else ()
          APPEND
          SAMPLES_LIST
          attested_tls
+-        attested_tls
 -        attested_tls
 -        attested_tls
 -        attested_tls
@@ -1755,6 +1756,7 @@ index 10ebab6c2..2ae0ac648 100644
 -        openssl
 -        openssl_symcrypt_fips
 -        openssl_3
+-        openssl_3_symcrypt_prov_fips
 -        mbedtls
          mbedtls
 -        openssl
@@ -3238,10 +3240,10 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index 7dbe08967..578987fe3 100644
+index fc215ce48..4e0a24073 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
-@@ -148,7 +148,7 @@ if (UNIX
+@@ -149,7 +149,7 @@ if (UNIX
      add_subdirectory(custom_claims)
      add_subdirectory(debug-mode)
      add_subdirectory(ecall)
@@ -3250,7 +3252,7 @@ index 7dbe08967..578987fe3 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -171,8 +171,8 @@ if (UNIX
+@@ -172,8 +172,8 @@ if (UNIX
      add_subdirectory(SampleApp)
      add_subdirectory(SampleAppCRT)
      add_subdirectory(sealKey)
