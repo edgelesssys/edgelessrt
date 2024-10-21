@@ -1,6 +1,7 @@
 #include "signal_manager.h"
 #include <openenclave/internal/sgx/td.h>
 #include <mutex>
+#include <system_error>
 #include "signal.h"
 
 using namespace std;

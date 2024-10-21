@@ -1,6 +1,7 @@
 #include <openenclave/enclave.h>
 #include <cassert>
 #include <mutex>
+#include <system_error>
 #include "signal_manager.h"
 #include "syscalls.h"
 

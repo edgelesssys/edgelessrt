@@ -64,4 +64,8 @@ Memfs::~Memfs()
     const auto fs = static_cast<myst_fs_t*>(fs_);
     res = fs->fs_release(fs);
     assert(res == 0);
+
+#ifndef _NDEBUG
+    (void)res;
+#endif
 }

@@ -1,5 +1,6 @@
 // reuse existing test from OE
 
+#include <features.h>
 #include <sys/syscall.h>
 
 // existing test mounts hostfs, we want our memfs named myfs
@@ -9,9 +10,10 @@
 
 #define ERT_TEST_MEMFS
 
-// existing test links against musl which has strlc??, but we link against glibc
+#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 38
 #define strlcat strncat
 #define strlcpy strncpy
+#endif
 #include "../tests/syscall/fs/enc/enc.cpp"
 #undef strlcat
 #undef strlcpy

@@ -255,3 +255,12 @@ static int _init = [] {
     oe_disable_debug_malloc_check = true;
     return 0;
 }();
+
+// When using ertlibc, we want GNU strerror_r. This overrides the weak one in
+// oelibc.
+extern "C" char* strerror_r(int errnum, char* buf, size_t buflen)
+{
+    (void)buf;
+    (void)buflen;
+    return strerror(errnum);
+}
