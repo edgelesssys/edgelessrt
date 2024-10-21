@@ -52,6 +52,19 @@ index 510668721..b17909b5b 100644
  #define USE_LOCKS 1
  #define fprintf _dlmalloc_stats_fprintf
  #define NO_MALLOC_STATS 1
+diff --git a/3rdparty/mbedtls/CMakeLists.txt b/3rdparty/mbedtls/CMakeLists.txt
+index de75189b7..fa02e4014 100644
+--- a/3rdparty/mbedtls/CMakeLists.txt
++++ b/3rdparty/mbedtls/CMakeLists.txt
+@@ -30,7 +30,7 @@ endif ()
+ # mbedtls/library/CMakeLists.txt files, so that we can compile with the same warnings.
+ 
+ set(MBEDTLS_COMPILE_OPTS
+-    -W -Wdeclaration-after-statement -Wwrite-strings -Wshadow
++    -W -Wwrite-strings -Wshadow
+     # Disable conversion warnings inherited from OE.
+     -Wno-sign-conversion -Wno-conversion)
+ 
 diff --git a/3rdparty/musl/CMakeLists.txt b/3rdparty/musl/CMakeLists.txt
 index 548542535..eab29690d 100644
 --- a/3rdparty/musl/CMakeLists.txt
@@ -155,7 +168,7 @@ index b65fea498..f03c2fc78 100644
  
  if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
-index 0f97c1c6f..fd5ad7d6c 100644
+index 0f97c1c6f..5d5d86331 100644
 --- a/cmake/compiler_settings.cmake
 +++ b/cmake/compiler_settings.cmake
 @@ -24,7 +24,7 @@ endif ()
@@ -167,6 +180,19 @@ index 0f97c1c6f..fd5ad7d6c 100644
  set(CMAKE_CXX_STANDARD_REQUIRED ON)
  # Do not use, for example, `-std=gnu++14`.
  set(CMAKE_CXX_EXTENSIONS OFF)
+@@ -80,7 +80,11 @@ if (NOT CODE_COVERAGE)
+       # TODO: We really should specify this only on the `oecore` target;
+       # however, the third-party Mbed TLS build needs it too, so we have
+       # to keep this here for now.
+-      add_compile_options(${OE_SPECTRE_MITIGATION_FLAGS})
++      if (CMAKE_C_COMPILER MATCHES clang-14 AND CMAKE_BUILD_TYPE STREQUAL Debug)
++        message(WARNING "Spectre 1 mitigation disabled for Debug build")
++      else ()
++        add_compile_options(${OE_SPECTRE_MITIGATION_FLAGS})
++      endif ()
+     else ()
+       message(WARNING "Spectre 1 mitigation NOT supported.")
+     endif ()
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
 index 127f313ad..da070fc2e 100644
 --- a/common/sgx/tcbinfo.c
@@ -1257,6 +1283,19 @@ index 2471fe6f1..f7296ef7d 100644
 +
      return result;
  }
+diff --git a/host/sgx/sgxload.c b/host/sgx/sgxload.c
+index 9011bfe61..3fc5df59f 100644
+--- a/host/sgx/sgxload.c
++++ b/host/sgx/sgxload.c
+@@ -470,6 +470,8 @@ oe_result_t oe_sgx_create_enclave(
+         else
+             secs->base = (uint64_t)image_base;
+     }
++#else
++    OE_UNUSED(ex_features);
+ #endif // !defined(OEHOSTMR)
+     *enclave_addr = image_base ? (uint64_t)image_base : secs->base;
+     context->state = OE_SGX_LOAD_STATE_ENCLAVE_CREATED;
 diff --git a/include/openenclave/attestation/sgx/evidence.h b/include/openenclave/attestation/sgx/evidence.h
 index 4a19d4187..33b458429 100644
 --- a/include/openenclave/attestation/sgx/evidence.h
@@ -1629,6 +1668,18 @@ index 28fd6e8b5..16379ab61 100644
  
  set(ENCLAVE_CLIBS_LIST ${ENCLAVE_CLIBS_1} ${ENCLAVE_CLIBS_2})
  list(JOIN ENCLAVE_CLIBS_LIST " " ENCLAVE_CLIBS)
+diff --git a/samples/CMakeLists.txt b/samples/CMakeLists.txt
+index 7da7f1b66..81cbb27dd 100644
+--- a/samples/CMakeLists.txt
++++ b/samples/CMakeLists.txt
+@@ -77,6 +77,7 @@ else ()
+       -DBUILD_ENCLAVES=${BUILD_ENCLAVES} -DBUILD_DIR=${PROJECT_BINARY_DIR}
+       -DPREFIX_DIR=${CMAKE_INSTALL_PREFIX}
+       -DCOMPILER_SUPPORTS_SNMALLOC=${COMPILER_SUPPORTS_SNMALLOC}
++      -DEDG_C_COMPILER=${CMAKE_C_COMPILER}
+       -DUSE_DEBUG_MALLOC=${USE_DEBUG_MALLOC} -P
+       ${CMAKE_CURRENT_SOURCE_DIR}/test-samples.cmake)
+ endif ()
 diff --git a/samples/apkman/CMakeLists.txt b/samples/apkman/CMakeLists.txt
 index b4c85c1ed..0bbf5fe42 100644
 --- a/samples/apkman/CMakeLists.txt
@@ -1734,7 +1785,7 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index c04280f23..206afb27d 100644
+index c04280f23..7b2ed2558 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
 @@ -80,26 +80,14 @@ else ()
@@ -1757,14 +1808,27 @@ index c04280f23..206afb27d 100644
 -        openssl_symcrypt_fips
 -        openssl_3
 -        openssl_3_symcrypt_prov_fips
--        mbedtls
          mbedtls
+-        mbedtls
 -        openssl
 -        openssl_3)
 +        mbedtls)
      endif ()
    endif ()
  endif ()
+@@ -181,6 +169,12 @@ foreach (i RANGE ${len})
+   execute_process(COMMAND ${CMAKE_COMMAND} --build ${SOURCE_DIR}/${SAMPLE}
+                   WORKING_DIRECTORY ${SAMPLE_BUILD_DIR})
+ 
++  # EDG: samples using oelibcxx don't compile on 24.04
++  if (EDG_C_COMPILER MATCHES clang-14
++      AND SAMPLE MATCHES attestation|attested_tls|data-sealing|file-encryptor)
++    continue()
++  endif ()
++
+   if (NOT SIMULATION)
+     # Build with the CMake package
+     message(
 diff --git a/syscall/CMakeLists.txt b/syscall/CMakeLists.txt
 index 17866f5b6..d9747109e 100644
 --- a/syscall/CMakeLists.txt
@@ -3338,6 +3402,16 @@ index 752a1e7f0..3b17f2146 100644
      OE_TRACE_INFO(
          "TDX V4 quote contains %zu claims. TDX V5 quote contains %zu "
          "claims\n\n",
+diff --git a/tests/invalid_image/CMakeLists.txt b/tests/invalid_image/CMakeLists.txt
+index 28a19d9fc..d483644e9 100644
+--- a/tests/invalid_image/CMakeLists.txt
++++ b/tests/invalid_image/CMakeLists.txt
+@@ -4,4 +4,5 @@
+ add_executable(invalid_image main.cpp)
+ target_link_libraries(invalid_image oehost)
+ set_property(TARGET invalid_image PROPERTY POSITION_INDEPENDENT_CODE OFF)
++target_link_options(invalid_image PRIVATE -no-pie)
+ add_test(tests/invalid_image invalid_image)
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
@@ -3364,7 +3438,7 @@ index 1f1cd729f..86b97ccff 100644
  }
  
 diff --git a/tests/mman/enc/enc.c b/tests/mman/enc/enc.c
-index 6c39b1d86..ca4ea042d 100644
+index 6c39b1d86..1aaad294c 100644
 --- a/tests/mman/enc/enc.c
 +++ b/tests/mman/enc/enc.c
 @@ -31,7 +31,6 @@ static void _test_basic()
@@ -3386,7 +3460,7 @@ index 6c39b1d86..ca4ea042d 100644
      uint64_t p2_length = 3 * OE_PAGE_SIZE;
      uint64_t p2_start = (uint64_t)mmap(
          NULL,
-@@ -59,9 +54,6 @@ static void _test_partial_unmapping(void)
+@@ -59,12 +54,8 @@ static void _test_partial_unmapping(void)
          -1,
          0);
      uint64_t p2_end = p2_start + p2_length;
@@ -3395,8 +3469,19 @@ index 6c39b1d86..ca4ea042d 100644
 -    OE_TEST(m->end == p2_end);
  
      // Swap p1 and p2 if p2 lies before p1.
-     bool swapped = false;
-@@ -84,52 +76,15 @@ static void _test_partial_unmapping(void)
+-    bool swapped = false;
+     if (p2_start < p1_start)
+     {
+         uint64_t t = p1_start;
+@@ -74,7 +65,6 @@ static void _test_partial_unmapping(void)
+         t = p1_end;
+         p1_end = p2_end;
+         p2_end = t;
+-        swapped = true;
+     }
+ 
+     // Do an unmap that starts within p1 and ends within p2.
+@@ -84,52 +74,15 @@ static void _test_partial_unmapping(void)
      OE_TEST(errno == 0);
  
      // Partial unmapping only changes the status vectors and not the bounds.
@@ -3449,7 +3534,7 @@ index 6c39b1d86..ca4ea042d 100644
  
      // Do another unmapping that spans entire enclave memory.
      // This ought to get rid of all mappings.
-@@ -140,21 +95,15 @@ static void _test_partial_unmapping(void)
+@@ -140,21 +93,15 @@ static void _test_partial_unmapping(void)
              MAP_FAILED);
          OE_TEST(errno == 0);
      }
@@ -3471,7 +3556,7 @@ index 6c39b1d86..ca4ea042d 100644
  }
  
  static void _test_mmap_params(void)
-@@ -167,8 +116,8 @@ static void _test_mmap_params(void)
+@@ -167,8 +114,8 @@ static void _test_mmap_params(void)
              PROT_READ,
              MAP_ANONYMOUS | MAP_PRIVATE,
              -1,
@@ -3482,7 +3567,7 @@ index 6c39b1d86..ca4ea042d 100644
  
      // Zero length should fail.
      OE_TEST(
-@@ -189,15 +138,16 @@ static void _test_mmap_params(void)
+@@ -189,15 +136,16 @@ static void _test_mmap_params(void)
      OE_TEST(errno == ENOMEM);
  
      // Test various prots.
@@ -3503,7 +3588,7 @@ index 6c39b1d86..ca4ea042d 100644
  
      errno = 0;
      OE_TEST(
-@@ -228,8 +178,8 @@ static void _test_mmap_params(void)
+@@ -228,8 +176,8 @@ static void _test_mmap_params(void)
  
      // Test various flags.
      OE_TEST(
@@ -3514,7 +3599,7 @@ index 6c39b1d86..ca4ea042d 100644
  
      errno = 0;
      // One of MAP_SHARED, MAP_SHARED_VALIDATE, MAP_PRIVATE must be used.
-@@ -254,9 +204,9 @@ static void _test_mmap_params(void)
+@@ -254,9 +202,9 @@ static void _test_mmap_params(void)
      OE_TEST(errno == 0);
  
      OE_TEST(
@@ -3526,7 +3611,7 @@ index 6c39b1d86..ca4ea042d 100644
  
      errno = 0;
      // Test unsupported flags.
-@@ -269,7 +219,6 @@ static void _test_mmap_params(void)
+@@ -269,7 +217,6 @@ static void _test_mmap_params(void)
  #ifdef MAP_32BIT
          MAP_32BIT,
  #endif
@@ -3534,7 +3619,7 @@ index 6c39b1d86..ca4ea042d 100644
          MAP_FIXED_NOREPLACE,
          MAP_GROWSDOWN,
          MAP_HUGETLB,
-@@ -287,7 +236,7 @@ static void _test_mmap_params(void)
+@@ -287,7 +234,7 @@ static void _test_mmap_params(void)
                  unsupported[i] | MAP_PRIVATE,
                  0,
                  0) == MAP_FAILED);
@@ -3543,7 +3628,7 @@ index 6c39b1d86..ca4ea042d 100644
      }
  
      int ignored[] = {
-@@ -303,7 +252,8 @@ static void _test_mmap_params(void)
+@@ -303,7 +250,8 @@ static void _test_mmap_params(void)
      {
          errno = 0;
          OE_TEST(
@@ -3553,7 +3638,7 @@ index 6c39b1d86..ca4ea042d 100644
              MAP_FAILED);
          OE_TEST(errno == 0);
      }
-@@ -354,8 +304,8 @@ static void _test_unmap_params(void)
+@@ -354,8 +302,8 @@ static void _test_unmap_params(void)
          for (size_t j = 0; j < OE_COUNTOF(lengths); ++j)
          {
              errno = -1;
@@ -3629,6 +3714,18 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
+diff --git a/tests/sgx_zerobase/enc/enc.cpp b/tests/sgx_zerobase/enc/enc.cpp
+index e28a84eec..23df44d80 100644
+--- a/tests/sgx_zerobase/enc/enc.cpp
++++ b/tests/sgx_zerobase/enc/enc.cpp
+@@ -36,6 +36,7 @@ void _initialize_exception_handler(void)
+ {
+     oe_result_t result;
+     result = oe_add_vectored_exception_handler(false, test_pfgp_handler);
++    OE_UNUSED(result);
+ }
+ 
+ int test_enclave_memory_access(uint64_t address, bool* exception)
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
 index aef0e74b9..a0606fa31 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
@@ -4242,6 +4339,24 @@ index 8663be27f..0aa6e579f 100644
    SOURCES
    enc.c
    ${CMAKE_CURRENT_BINARY_DIR}/oeseal_t.c)
+diff --git a/tests/tools/oesign/test-enclave/enclave/enc.c b/tests/tools/oesign/test-enclave/enclave/enc.c
+index be4a084b8..e3bd8e690 100644
+--- a/tests/tools/oesign/test-enclave/enclave/enc.c
++++ b/tests/tools/oesign/test-enclave/enclave/enc.c
+@@ -13,11 +13,10 @@
+ #include "oesign_test_t.h"
+ 
+ /* Null-terminated hex string buffer size with 2 char per byte */
+-const size_t OE_KSS_ID_HEX_BUFFER_SIZE = sizeof(oe_uuid_t) * 2 + 1;
++#define OE_KSS_ID_HEX_BUFFER_SIZE (sizeof(oe_uuid_t) * 2 + 1)
+ /* Null-terminated hex string buffer size with 2 char per byte and 4 formatting
+  * chars */
+-const size_t FORMATTED_OE_KSS_ID_HEX_BUFFER_SIZE =
+-    OE_KSS_ID_HEX_BUFFER_SIZE + 4;
++#define FORMATTED_OE_KSS_ID_HEX_BUFFER_SIZE (OE_KSS_ID_HEX_BUFFER_SIZE + 4)
+ 
+ static const oe_uuid_t _ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
+ 
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
 index b52ce1d24..397975850 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c

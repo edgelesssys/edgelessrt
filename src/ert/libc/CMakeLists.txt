@@ -796,7 +796,7 @@ add_enclave_library(
   ${MUSLSRC}/string/strcpy.c
   ${MUSLSRC}/string/strcspn.c
   ${MUSLSRC}/string/strdup.c
-  ${MUSLSRC}/string/strerror_r.c
+  strerror_r.c
   ${MUSLSRC}/string/strlcat.c
   ${MUSLSRC}/string/strlcpy.c
   ${MUSLSRC}/string/strlen.c
@@ -1464,6 +1464,9 @@ elseif (CMAKE_C_COMPILER_ID MATCHES Clang OR USE_CLANGW)
     -Wno-string-plus-int
     -Wno-typedef-redefinition
     -Wno-unneeded-internal-declaration)
+  if (CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
+    enclave_compile_options(oelibc PRIVATE -Wno-unused-but-set-variable)
+  endif ()
 endif ()
 
 # Disable optimizations for twalk.c to avoid Clang speculative load hardening flag compiler bug, see #2556

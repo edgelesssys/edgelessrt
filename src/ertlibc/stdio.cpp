@@ -15,3 +15,12 @@ extern "C" size_t __fread_chk(
         abort();
     return fread(buffer, size, count, stream);
 }
+
+extern "C" int __isoc23_fscanf(FILE* stream, const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    const int ret = vfscanf(stream, format, ap);
+    va_end(ap);
+    return ret;
+}
