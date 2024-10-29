@@ -24,15 +24,15 @@ Key features of Edgeless RT are:
 
 ## Quick Start
 
-If you're on Ubuntu 20.04 or 22.04 and don't want to build the SDK yourself, you can install the binary release:
+If you're on Ubuntu 20.04, 22.04, or 24.04 (experimental) and don't want to build the SDK yourself, you can install the binary release:
 
 ```bash
 sudo mkdir -p /etc/apt/keyrings
 wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
 echo "deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/intel-sgx.list
 sudo apt update
-ERT_DEB=edgelessrt_0.4.6_amd64_ubuntu-$(lsb_release -rs).deb
-wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.4.6/$ERT_DEB
+ERT_DEB=edgelessrt_0.4.7_amd64_ubuntu-$(lsb_release -rs).deb
+wget https://github.com/edgelesssys/edgelessrt/releases/download/v0.4.7/$ERT_DEB
 sudo apt install ./$ERT_DEB build-essential cmake libssl-dev
 ```
 
@@ -49,6 +49,8 @@ cd build
 cmake -GNinja ..
 ninja
 ```
+
+On Ubuntu 24.04 (experimental), use `clang-14` instead of `clang-11`.
 
 To set a custom installation path (default: `/opt/edgelessrt`), add, e.g., `-DCMAKE_INSTALL_PREFIX=~/edgelessrt-install`.
 
