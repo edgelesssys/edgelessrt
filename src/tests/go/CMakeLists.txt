@@ -6,10 +6,10 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT gotest.a
-  DEPENDS gotest.go
+  DEPENDS gotest.go removeall.go
   COMMAND
     sh -c
-    "GOROOT='${CMAKE_SOURCE_DIR}/../3rdparty/go' '${CMAKE_SOURCE_DIR}/../3rdparty/go/bin/go' build -buildmode=c-archive ${CMAKE_CURRENT_SOURCE_DIR}/gotest.go"
+    "GOROOT='${CMAKE_SOURCE_DIR}/../3rdparty/go' '${CMAKE_SOURCE_DIR}/../3rdparty/go/bin/go' build -buildmode=c-archive -o gotest.a ${CMAKE_CURRENT_SOURCE_DIR}/gotest.go ${CMAKE_CURRENT_SOURCE_DIR}/removeall.go"
 )
 add_custom_target(gotestlib DEPENDS gotest.a)
 

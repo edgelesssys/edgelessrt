@@ -55,6 +55,11 @@ func gotest(simulate bool) int32 {
 		return -10
 	}
 
+	if err := testRemoveAll(); err != nil {
+		fmt.Println(err)
+		return -11
+	}
+
 	return 42 // success magic
 }
 
