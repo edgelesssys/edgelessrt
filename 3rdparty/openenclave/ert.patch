@@ -1283,19 +1283,6 @@ index 2471fe6f1..f7296ef7d 100644
 +
      return result;
  }
-diff --git a/host/sgx/sgxload.c b/host/sgx/sgxload.c
-index 9011bfe61..3fc5df59f 100644
---- a/host/sgx/sgxload.c
-+++ b/host/sgx/sgxload.c
-@@ -470,6 +470,8 @@ oe_result_t oe_sgx_create_enclave(
-         else
-             secs->base = (uint64_t)image_base;
-     }
-+#else
-+    OE_UNUSED(ex_features);
- #endif // !defined(OEHOSTMR)
-     *enclave_addr = image_base ? (uint64_t)image_base : secs->base;
-     context->state = OE_SGX_LOAD_STATE_ENCLAVE_CREATED;
 diff --git a/include/openenclave/attestation/sgx/evidence.h b/include/openenclave/attestation/sgx/evidence.h
 index 4a19d4187..33b458429 100644
 --- a/include/openenclave/attestation/sgx/evidence.h
@@ -3402,16 +3389,6 @@ index 752a1e7f0..3b17f2146 100644
      OE_TRACE_INFO(
          "TDX V4 quote contains %zu claims. TDX V5 quote contains %zu "
          "claims\n\n",
-diff --git a/tests/invalid_image/CMakeLists.txt b/tests/invalid_image/CMakeLists.txt
-index 28a19d9fc..d483644e9 100644
---- a/tests/invalid_image/CMakeLists.txt
-+++ b/tests/invalid_image/CMakeLists.txt
-@@ -4,4 +4,5 @@
- add_executable(invalid_image main.cpp)
- target_link_libraries(invalid_image oehost)
- set_property(TARGET invalid_image PROPERTY POSITION_INDEPENDENT_CODE OFF)
-+target_link_options(invalid_image PRIVATE -no-pie)
- add_test(tests/invalid_image invalid_image)
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
@@ -3714,18 +3691,6 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
-diff --git a/tests/sgx_zerobase/enc/enc.cpp b/tests/sgx_zerobase/enc/enc.cpp
-index e28a84eec..23df44d80 100644
---- a/tests/sgx_zerobase/enc/enc.cpp
-+++ b/tests/sgx_zerobase/enc/enc.cpp
-@@ -36,6 +36,7 @@ void _initialize_exception_handler(void)
- {
-     oe_result_t result;
-     result = oe_add_vectored_exception_handler(false, test_pfgp_handler);
-+    OE_UNUSED(result);
- }
- 
- int test_enclave_memory_access(uint64_t address, bool* exception)
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
 index aef0e74b9..a0606fa31 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
@@ -4339,24 +4304,6 @@ index 8663be27f..0aa6e579f 100644
    SOURCES
    enc.c
    ${CMAKE_CURRENT_BINARY_DIR}/oeseal_t.c)
-diff --git a/tests/tools/oesign/test-enclave/enclave/enc.c b/tests/tools/oesign/test-enclave/enclave/enc.c
-index be4a084b8..e3bd8e690 100644
---- a/tests/tools/oesign/test-enclave/enclave/enc.c
-+++ b/tests/tools/oesign/test-enclave/enclave/enc.c
-@@ -13,11 +13,10 @@
- #include "oesign_test_t.h"
- 
- /* Null-terminated hex string buffer size with 2 char per byte */
--const size_t OE_KSS_ID_HEX_BUFFER_SIZE = sizeof(oe_uuid_t) * 2 + 1;
-+#define OE_KSS_ID_HEX_BUFFER_SIZE (sizeof(oe_uuid_t) * 2 + 1)
- /* Null-terminated hex string buffer size with 2 char per byte and 4 formatting
-  * chars */
--const size_t FORMATTED_OE_KSS_ID_HEX_BUFFER_SIZE =
--    OE_KSS_ID_HEX_BUFFER_SIZE + 4;
-+#define FORMATTED_OE_KSS_ID_HEX_BUFFER_SIZE (OE_KSS_ID_HEX_BUFFER_SIZE + 4)
- 
- static const oe_uuid_t _ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
- 
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
 index b52ce1d24..397975850 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
