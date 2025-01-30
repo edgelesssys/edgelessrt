@@ -628,6 +628,24 @@ index fb7e1efc7..5178f177c 100644
  /**
   * Cleanup the thread-local section for a given thread.
   * This must be called *before* the td itself is cleaned up.
+diff --git a/enclave/core/tracee.c b/enclave/core/tracee.c
+index 8e058fed6..251558cc3 100644
+--- a/enclave/core/tracee.c
++++ b/enclave/core/tracee.c
+@@ -189,7 +189,12 @@ oe_result_t oe_log(oe_log_level_t level, const char* fmt, ...)
+     }
+ 
+     // Take the log file lock.
+-    OE_CHECK_NO_TRACE(oe_mutex_lock(&_log_lock));
++    // EDG: on exit, another thread holding this lock may have been canceled
++    extern bool ert_exiting;
++    if (ert_exiting)
++        OE_CHECK_NO_TRACE(oe_mutex_trylock(&_log_lock));
++    else
++        OE_CHECK_NO_TRACE(oe_mutex_lock(&_log_lock));
+     locked = true;
+ 
+     bytes_written = oe_snprintf(
 diff --git a/enclave/sgx/report.c b/enclave/sgx/report.c
 index 661a2f61b..6a6e28d44 100644
 --- a/enclave/sgx/report.c
@@ -720,7 +738,7 @@ index e3255a942..77351b2ac 100644
      if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
      {
 diff --git a/host/sgx/calls.c b/host/sgx/calls.c
-index eed0c4dcf..7874c3585 100644
+index eed0c4dcf..7a0908a23 100644
 --- a/host/sgx/calls.c
 +++ b/host/sgx/calls.c
 @@ -36,6 +36,8 @@
@@ -741,19 +759,58 @@ index eed0c4dcf..7874c3585 100644
      OE_CHECK(oe_safe_add_u64(
          args_ptr->input_buffer_size,
          args_ptr->output_buffer_size,
-@@ -358,6 +362,11 @@ static oe_result_t _handle_ocall(
+@@ -335,6 +339,22 @@ static const char* oe_ecall_str(oe_func_t ecall)
+ **==============================================================================
+ */
+ 
++static void _ocall_func(
++    const uint8_t* input_buffer,
++    size_t input_buffer_size,
++    uint8_t* output_buffer,
++    size_t output_buffer_size,
++    size_t* output_bytes_written)
++{
++    OE_UNUSED(input_buffer);
++    OE_UNUSED(input_buffer_size);
++    OE_UNUSED(output_buffer);
++    OE_UNUSED(output_buffer_size);
++    OE_UNUSED(output_bytes_written);
++}
++OE_WEAK_ALIAS(_ocall_func, ocall_oe_log_ocall);
++OE_WEAK_ALIAS(_ocall_func, ocall_ert_clock_gettime_ocall);
++
+ static oe_result_t _handle_ocall(
+     oe_enclave_t* enclave,
+     void* tcs,
+@@ -358,6 +378,27 @@ static oe_result_t _handle_ocall(
          func == OE_OCALL_CALL_HOST_FUNCTION ? "EDL_OCALL" : "OE_OCALL",
          oe_ocall_str(func));
  
++    // EDG: Exclude some ocalls from cancelation because they hold locks.
++    bool cancelable = true;
++    if (func == OE_OCALL_CALL_HOST_FUNCTION)
++    {
++        const oe_call_host_function_args_t* const args_ptr =
++            (oe_call_host_function_args_t*)arg_in;
++        if (args_ptr && args_ptr->function_id < enclave->num_ocalls)
++        {
++            const oe_ocall_func_t func = enclave->ocalls[args_ptr->function_id];
++            if (func == ocall_oe_log_ocall ||
++                func == ocall_ert_clock_gettime_ocall)
++                cancelable = false;
++        }
++    }
++
 +    // EDG: During an ocall, allow cancelation by the EnclaveThreadManager
 +    // because this thread may block in a syscall.
 +    void ert_set_cancelable(bool);
-+    ert_set_cancelable(true);
++    if (cancelable)
++        ert_set_cancelable(true);
 +
      switch ((oe_func_t)func)
      {
          case OE_OCALL_CALL_HOST_FUNCTION:
-@@ -365,22 +374,27 @@ static oe_result_t _handle_ocall(
+@@ -365,22 +406,27 @@ static oe_result_t _handle_ocall(
              break;
  
          case OE_OCALL_MALLOC:
@@ -781,14 +838,15 @@ index eed0c4dcf..7874c3585 100644
              oe_handle_get_time(arg_in, arg_out);
              break;
  
-@@ -391,6 +405,11 @@ static oe_result_t _handle_ocall(
+@@ -391,6 +437,12 @@ static oe_result_t _handle_ocall(
          }
      }
  
 +    // EDG: Disable cancelation before returning from ocall because the thread
 +    // context will be swapped to the enclave values and canceling would cause a
 +    // segfault then.
-+    ert_set_cancelable(false);
++    if (cancelable) //|| func == OE_OCALL_THREAD_WAIT)
++        ert_set_cancelable(false);
 +
      result = OE_OK;
  
