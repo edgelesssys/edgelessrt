@@ -20,6 +20,8 @@ EnclaveThreadManager::~EnclaveThreadManager()
 {
     // Process is exiting. If any enclave has not been terminated, detach its
     // lingering threads (if any) so that the process can exit without an error.
+    const lock_guard lock(destructor_mutex_);
+    destructor_called_ = true;
     for (auto& enclaveAndThreads : threads_)
         for (auto& t : enclaveAndThreads.second)
             t.thread.detach();
@@ -37,6 +39,10 @@ void EnclaveThreadManager::create_thread(
 {
     assert(enclave);
     assert(func);
+
+    const lock_guard lock(destructor_mutex_);
+    if (destructor_called_)
+        return;
 
     Thread* new_thread;
 
