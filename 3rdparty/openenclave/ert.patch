@@ -1356,6 +1356,19 @@ index 4a19d4187..33b458429 100644
  
  // Additional SGX specific claim: for the report data embedded in the SGX quote.
  
+diff --git a/include/openenclave/bits/attestation.h b/include/openenclave/bits/attestation.h
+index dc429603e..3758896ff 100644
+--- a/include/openenclave/bits/attestation.h
++++ b/include/openenclave/bits/attestation.h
+@@ -14,7 +14,7 @@
+ #include <openenclave/bits/types.h>
+ 
+ /*! Limit the size of the endorsements */
+-#define OE_ATTESTATION_ENDORSEMENT_MAX_SIZE (20 * 1024)
++#define OE_ATTESTATION_ENDORSEMENT_MAX_SIZE (2000 * 1024)
+ 
+ /*! Endorsement structure version */
+ #define OE_ATTESTATION_ENDORSEMENT_VERSION (1)
 diff --git a/include/openenclave/bits/fs.h b/include/openenclave/bits/fs.h
 index f7220c44f..d3623bfa1 100644
 --- a/include/openenclave/bits/fs.h
