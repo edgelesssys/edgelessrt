@@ -223,7 +223,7 @@ static void _log(
 
     _trim_space(msg);
     cout << level_string << ": " << msg << " [" << path << ':' << func_and_line
-         << "]\n";
+         << ']' << endl;
 }
 
 int main(int argc, char* argv[], char* envp[])
