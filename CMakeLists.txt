@@ -49,23 +49,6 @@ execute_process(
           3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
 
-# mbedtls 2.28.10
-execute_process(
-  COMMAND git remote add upstream https://github.com/mbed-tls/mbedtls
-  WORKING_DIRECTORY
-    ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave/3rdparty/mbedtls/mbedtls
-)
-execute_process(
-  COMMAND git fetch upstream 2fc8413bfcb51354c8e679141b17b3f1a5942561
-  WORKING_DIRECTORY
-    ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave/3rdparty/mbedtls/mbedtls
-)
-execute_process(
-  COMMAND git reset --hard 2fc8413bfcb51354c8e679141b17b3f1a5942561
-  WORKING_DIRECTORY
-    ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave/3rdparty/mbedtls/mbedtls
-)
-
 add_subdirectory(3rdparty/openenclave)
 add_subdirectory(docs/refman)
 
