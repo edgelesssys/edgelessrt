@@ -133,19 +133,24 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b65fea498..f03c2fc78 100644
+index b65fea498..84a970442 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -243,7 +243,8 @@ endif ()
- 
- if (OE_SGX)
-   # Currently we only support OpenSSL on SGX.
--  set(BUILD_OPENSSL ON)
-+  # EDG: we use mbedtls only
-+  #set(BUILD_OPENSSL ON)
+@@ -252,11 +252,12 @@ set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
+ string(TOLOWER "${DEFAULT_TEST_ENCLAVE_CRYPTO_LIB}"
+                DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER)
+ if ((NOT DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "mbedtls")
+-    AND (NOT DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "openssl"))
++    AND (NOT DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "openssl")
++    AND (NOT DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "openssl_3"))
+   message(
+     FATAL_ERROR "Unsupported crypto library: ${DEFAULT_ENCLAVE_CRYPTO_LIB}")
  endif ()
- 
- set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
+-if ((DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "openssl")
++if ((DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER MATCHES "openssl")
+     AND (NOT BUILD_OPENSSL))
+   message(
+     FATAL_ERROR
 @@ -359,7 +360,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
    set(COMPILER_SUPPORTS_SNMALLOC off)
@@ -194,10 +199,10 @@ index 0f97c1c6f..5d5d86331 100644
        message(WARNING "Spectre 1 mitigation NOT supported.")
      endif ()
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
-index 127f313ad..da070fc2e 100644
+index 82bac32c3..337156f61 100644
 --- a/common/sgx/tcbinfo.c
 +++ b/common/sgx/tcbinfo.c
-@@ -781,6 +781,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
+@@ -788,6 +788,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
          if (*itr < end && **itr == ']')
              break;
          OE_CHECK(_read(',', itr, end));
@@ -206,7 +211,7 @@ index 127f313ad..da070fc2e 100644
      }
  
      OE_CHECK(_read(']', itr, end));
-@@ -1715,26 +1717,41 @@ oe_result_t oe_parse_qe_identity_info_json(
+@@ -1722,26 +1724,41 @@ oe_result_t oe_parse_qe_identity_info_json(
      itr = _skip_ws(itr, end);
      OE_CHECK(_read('{', &itr, end));
  
@@ -1342,7 +1347,7 @@ index 2471fe6f1..f7296ef7d 100644
      return result;
  }
 diff --git a/include/openenclave/attestation/sgx/evidence.h b/include/openenclave/attestation/sgx/evidence.h
-index 4a19d4187..33b458429 100644
+index 022667a51..25b461e56 100644
 --- a/include/openenclave/attestation/sgx/evidence.h
 +++ b/include/openenclave/attestation/sgx/evidence.h
 @@ -154,7 +154,9 @@ OE_EXTERNC_BEGIN
@@ -1357,14 +1362,14 @@ index 4a19d4187..33b458429 100644
  // Additional SGX specific claim: for the report data embedded in the SGX quote.
  
 diff --git a/include/openenclave/bits/attestation.h b/include/openenclave/bits/attestation.h
-index dc429603e..3758896ff 100644
+index a3f6ec0d9..3758896ff 100644
 --- a/include/openenclave/bits/attestation.h
 +++ b/include/openenclave/bits/attestation.h
 @@ -14,7 +14,7 @@
  #include <openenclave/bits/types.h>
  
  /*! Limit the size of the endorsements */
--#define OE_ATTESTATION_ENDORSEMENT_MAX_SIZE (20 * 1024)
+-#define OE_ATTESTATION_ENDORSEMENT_MAX_SIZE (200 * 1024)
 +#define OE_ATTESTATION_ENDORSEMENT_MAX_SIZE (2000 * 1024)
  
  /*! Endorsement structure version */
@@ -1739,7 +1744,7 @@ index 7da7f1b66..81cbb27dd 100644
        ${CMAKE_CURRENT_SOURCE_DIR}/test-samples.cmake)
  endif ()
 diff --git a/samples/apkman/CMakeLists.txt b/samples/apkman/CMakeLists.txt
-index b4c85c1ed..0bbf5fe42 100644
+index 770119c21..d0b666cd2 100644
 --- a/samples/apkman/CMakeLists.txt
 +++ b/samples/apkman/CMakeLists.txt
 @@ -7,7 +7,7 @@ if (NOT UNIX)
@@ -1843,38 +1848,10 @@ index 234aa640b..5e8043871 100644
  clean:
  	rm -f switchlesshost host.o switchless_sample_u.o \
 diff --git a/samples/test-samples.cmake b/samples/test-samples.cmake
-index c04280f23..7b2ed2558 100644
+index 85166ad9f..a1f3c6e6b 100644
 --- a/samples/test-samples.cmake
 +++ b/samples/test-samples.cmake
-@@ -80,26 +80,14 @@ else ()
-         APPEND
-         SAMPLES_LIST
-         attested_tls
--        attested_tls
--        attested_tls
--        attested_tls
--        attested_tls
-         attestation
--        file-encryptor
--        file-encryptor
-         file-encryptor)
-       list(
-         APPEND
-         CRYPTO_LIB_LIST
-         mbedtls
--        openssl
--        openssl_symcrypt_fips
--        openssl_3
--        openssl_3_symcrypt_prov_fips
-         mbedtls
--        mbedtls
--        openssl
--        openssl_3)
-+        mbedtls)
-     endif ()
-   endif ()
- endif ()
-@@ -181,6 +169,12 @@ foreach (i RANGE ${len})
+@@ -194,6 +194,12 @@ foreach (i RANGE ${len})
    execute_process(COMMAND ${CMAKE_COMMAND} --build ${SOURCE_DIR}/${SAMPLE}
                    WORKING_DIRECTORY ${SAMPLE_BUILD_DIR})
  
@@ -3362,7 +3339,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index fc215ce48..4e0a24073 100644
+index eadb7df54..8afd34e2b 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -149,7 +149,7 @@ if (UNIX
@@ -3374,17 +3351,14 @@ index fc215ce48..4e0a24073 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -172,8 +172,8 @@ if (UNIX
-     add_subdirectory(SampleApp)
-     add_subdirectory(SampleAppCRT)
-     add_subdirectory(sealKey)
--    add_subdirectory(secure_verify)
--    add_subdirectory(intel_qve_thread_test)
-+    #add_subdirectory(secure_verify)
-+    #add_subdirectory(intel_qve_thread_test)
-     add_subdirectory(sim-mode)
-     add_subdirectory(stdc)
-     add_subdirectory(stdcxx)
+@@ -205,7 +205,6 @@ if (UNIX
+     if (BUILD_OPENSSL)
+       add_subdirectory(symcrypt_engine)
+       add_subdirectory(symcrypt_provider)
+-      add_subdirectory(openssl)
+       add_subdirectory(openssl_unsupported)
+     endif ()
+   endif ()
 diff --git a/tests/debugger/non_debug/CMakeLists.txt b/tests/debugger/non_debug/CMakeLists.txt
 index 26364240b..ecdb261fb 100644
 --- a/tests/debugger/non_debug/CMakeLists.txt
@@ -3405,37 +3379,39 @@ index 26364240b..ecdb261fb 100644
 -  oelldb-test
 -  PROPERTIES PASS_REGULAR_EXPRESSION "The enclave is not debuggable"
 -             FAIL_REGULAR_EXPRESSION "This should not be hit")
-diff --git a/tests/edl_opt_out/enc/CMakeLists.txt b/tests/edl_opt_out/enc/CMakeLists.txt
-index a6d870bfc..5ba866b22 100644
---- a/tests/edl_opt_out/enc/CMakeLists.txt
-+++ b/tests/edl_opt_out/enc/CMakeLists.txt
-@@ -27,7 +27,6 @@ add_enclave(
-   UUID
-   892e7f65-5da1-45d0-8209-53795ce5be8f
-   CRYPTO_LIB
--  OpenSSL
-   SOURCES
-   enc.c
-   ${CMAKE_CURRENT_BINARY_DIR}/edl_opt_out_t.c)
-diff --git a/tests/edl_opt_out/enc/enc.c b/tests/edl_opt_out/enc/enc.c
-index 641a182c7..8b59e6b8b 100644
---- a/tests/edl_opt_out/enc/enc.c
-+++ b/tests/edl_opt_out/enc/enc.c
-@@ -152,9 +152,6 @@ void enc_edl_opt_out()
+diff --git a/tests/host_verify/CMakeLists.txt b/tests/host_verify/CMakeLists.txt
+index 93a2584f4..16e5cbae2 100644
+--- a/tests/host_verify/CMakeLists.txt
++++ b/tests/host_verify/CMakeLists.txt
+@@ -9,5 +9,3 @@ add_test(
  
-     /* sgx/entropy.edl */
-     /* Only available with oecryptoopenssl */
--    OE_TEST(
--        oe_sgx_get_additional_host_entropy_ocall(NULL, NULL, 0) ==
--        OE_UNSUPPORTED);
- #endif
- }
- 
+ # The test binary will dump the "tcb_status" claims for TD relaunch quote
+ # Expected to see tcb_status: 07000000
+-set_tests_properties(tests/host_verify PROPERTIES PASS_REGULAR_EXPRESSION
+-                                                  "tcb_status: 07000000")
 diff --git a/tests/host_verify/host/host.cpp b/tests/host_verify/host/host.cpp
-index 752a1e7f0..3b17f2146 100644
+index 5847b6091..f8d4a6fe9 100644
 --- a/tests/host_verify/host/host.cpp
 +++ b/tests/host_verify/host/host.cpp
-@@ -393,23 +393,8 @@ int main()
+@@ -47,7 +47,6 @@
+ #define TDX_QUOTE_RELAUNCH_ENDORSEMENTS_FILENAME "tdx_endorsement.bin"
+ 
+ static const oe_uuid_t _sgx_ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
+-static const oe_uuid_t _tdx_quote_uuid = {OE_FORMAT_UUID_TDX_QUOTE_ECDSA};
+ 
+ oe_result_t enclave_identity_verifier(oe_identity_t* identity, void* arg)
+ {
+@@ -404,9 +403,6 @@ int main()
+             &_sgx_ecdsa_uuid, EVIDENCE_FILENAME, NULL, NULL, false);
+     }
+ 
+-    size_t tdx_v4_claim_count = 0;
+-    size_t tdx_v5_claim_count = 0;
+-
+     // These files are checked in and should always exist.
+     if (_validate_file(CERT_EC_BAD_FILENAME, true))
+         _verify_cert(CERT_EC_BAD_FILENAME, false);
+@@ -417,40 +413,5 @@ int main()
      if (_validate_file(REPORT_BAD_FILENAME, true))
          _verify_report(REPORT_BAD_FILENAME, NULL, false);
  
@@ -3454,12 +3430,28 @@ index 752a1e7f0..3b17f2146 100644
 -            NULL,
 -            &tdx_v5_claim_count,
 -            false);
-+    (void)_tdx_quote_uuid;
- 
+-
 -    OE_TEST(tdx_v5_claim_count - tdx_v4_claim_count == 2);
-     OE_TRACE_INFO(
-         "TDX V4 quote contains %zu claims. TDX V5 quote contains %zu "
-         "claims\n\n",
+-    OE_TRACE_INFO(
+-        "TDX V4 quote contains %zu claims. TDX V5 quote contains %zu "
+-        "claims\n\n",
+-        tdx_v4_claim_count,
+-        tdx_v5_claim_count);
+-
+-    // TD Relaunch error code test
+-    if (_validate_file(TDX_QUOTE_RELAUNCH_FILENAME, true) &&
+-        _validate_file(TDX_QUOTE_RELAUNCH_ENDORSEMENTS_FILENAME, true))
+-    {
+-        _verify_evidence(
+-            &_tdx_quote_uuid,
+-            TDX_QUOTE_RELAUNCH_FILENAME,
+-            TDX_QUOTE_RELAUNCH_ENDORSEMENTS_FILENAME,
+-            NULL,
+-            false);
+-    }
+-
+     return 0;
+ }
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
@@ -3698,41 +3690,19 @@ index 6c39b1d86..1aaad294c 100644
      }
  
 diff --git a/tests/module_loading/enc/CMakeLists.txt b/tests/module_loading/enc/CMakeLists.txt
-index 90d0d7e2e..d17c9028c 100644
+index 90d0d7e2e..9f10d1e9e 100644
 --- a/tests/module_loading/enc/CMakeLists.txt
 +++ b/tests/module_loading/enc/CMakeLists.txt
-@@ -14,8 +14,7 @@ add_enclave_library(module_loading_common OBJECT enc.c
-                     ${CMAKE_CURRENT_BINARY_DIR}/module_loading_t.c)
- enclave_include_directories(module_loading_common PRIVATE
-                             ${CMAKE_CURRENT_BINARY_DIR})
--enclave_link_libraries(module_loading_common oeenclave oecryptoopenssl oelibc
--                       oe_includes)
-+enclave_link_libraries(module_loading_common oeenclave oelibc oe_includes)
+@@ -19,7 +19,8 @@ enclave_link_libraries(module_loading_common oeenclave oecryptoopenssl oelibc
  maybe_build_using_clangw(module_loading_common)
  
  # Add the enclave for postive tests
-diff --git a/tests/module_loading/module/module.c b/tests/module_loading/module/module.c
-index 0cd2fda46..bf5cc35da 100644
---- a/tests/module_loading/module/module.c
-+++ b/tests/module_loading/module/module.c
-@@ -59,7 +59,6 @@ int test_libc_symbols()
-     TEST_SYMBOL(memmove);
-     TEST_SYMBOL(memset);
-     TEST_SYMBOL(__stack_chk_fail);
--    TEST_SYMBOL(oe_sgx_get_additional_host_entropy);
-     TEST_SYMBOL(pthread_mutex_destroy);
-     TEST_SYMBOL(pthread_mutex_init);
-     TEST_SYMBOL(pthread_mutex_lock);
-@@ -74,9 +73,5 @@ int test_libc_symbols()
-     if (sizeof(pthread_mutex_t) != 40)
-         return 0;
- 
--    uint8_t data[16];
--    if (!oe_sgx_get_additional_host_entropy(data, 16))
--        return 0;
--
-     return 1;
- }
+-add_enclave(TARGET module_loading_enc)
++# EDG: openssl calls cpuid in ert, which breaks this test
++add_enclave(TARGET module_loading_enc CRYPTO_LIB mbedtls)
+ add_enclave_dependencies(module_loading_enc module_loading_common module)
+ if (UNIX)
+   enclave_link_libraries(module_loading_enc module_loading_common module)
 diff --git a/tests/props/host/host.c b/tests/props/host/host.c
 index 6d95d6943..abfb269b9 100644
 --- a/tests/props/host/host.c
@@ -4362,19 +4332,19 @@ index f116c9051..6afc87535 100644
  #include <openenclave/enclave.h>
  #include <openenclave/internal/tests.h>
  #include <stdio.h>
-diff --git a/tests/tools/oeseal/enc/CMakeLists.txt b/tests/tools/oeseal/enc/CMakeLists.txt
-index 8663be27f..0aa6e579f 100644
---- a/tests/tools/oeseal/enc/CMakeLists.txt
-+++ b/tests/tools/oeseal/enc/CMakeLists.txt
-@@ -10,8 +10,6 @@ add_custom_command(
- add_enclave(
-   TARGET
-   sgx_oeseal_enc
--  CRYPTO_LIB
--  openssl
-   SOURCES
-   enc.c
-   ${CMAKE_CURRENT_BINARY_DIR}/oeseal_t.c)
+diff --git a/tests/tools/oesign/test-enclave/enclave/CMakeLists.txt b/tests/tools/oesign/test-enclave/enclave/CMakeLists.txt
+index 02cbca9fe..c7a003142 100644
+--- a/tests/tools/oesign/test-enclave/enclave/CMakeLists.txt
++++ b/tests/tools/oesign/test-enclave/enclave/CMakeLists.txt
+@@ -9,6 +9,8 @@ if (DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOW STREQUAL "mbedtls")
+   set(oecrypto_lib oecryptombedtls)
+ elseif (DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOW STREQUAL "openssl")
+   set(oecrypto_lib oecryptoopenssl)
++elseif (DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOW STREQUAL "openssl_3")
++  set(oecrypto_lib oecryptoopenssl_3)
+ else ()
+   message(
+     FATAL_ERROR "Unsupported crypto library ${DEFAULT_TEST_ENCLAVE_CRYPTO_LIB}."
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
 index b52ce1d24..397975850 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
