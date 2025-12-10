@@ -22,6 +22,7 @@ target_include_directories(
                         ${OEBUILDDIR}/openenclave/output/include)
 
 set(TTLS_NOTEST True)
+set(TTLS_OPENSSL True)
 add_subdirectory(../3rdparty/ttls ttls)
 target_include_directories(
   ttlsobj PUBLIC ${OEBUILDDIR}/openenclave-install/include/openenclave/3rdparty)

@@ -26,7 +26,7 @@ target_compile_definitions(ertlibc PRIVATE OE_BUILD_ENCLAVE)
 target_link_libraries(
   ertlibc
   INTERFACE -static -Wl,--eh-frame-hdr -Wl,-u,ert_syscall stdc++
-            openenclave::ertlibunwind openenclave::oecryptombedtls
+            openenclave::ertlibunwind openenclave::oecryptoopenssl_3
   PRIVATE $<BUILD_INTERFACE:oe_includes> $<BUILD_INTERFACE:mystikos_ramfs>)
 
 set(EDL_FILE ${CMAKE_SOURCE_DIR}/ert/include/openenclave/edl/ertlibc.edl)
