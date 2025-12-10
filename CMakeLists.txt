@@ -45,8 +45,12 @@ if (NOT OEDEV OR NOT EXISTS
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif ()
 execute_process(
-  COMMAND git submodule update --init tools/oeedger8r-cpp
-          3rdparty/mbedtls/mbedtls 3rdparty/musl/musl 3rdparty/musl/libc-test
+  COMMAND
+    git submodule update --init tools/oeedger8r-cpp 3rdparty/mbedtls/mbedtls
+    3rdparty/musl/musl 3rdparty/musl/libc-test 3rdparty/openssl/openssl
+    3rdparty/openssl/openssl_3 3rdparty/openssl/intel-sgx-ssl
+    3rdparty/openssl/intel-sgx-ssl-3 3rdparty/symcrypt_engine/SymCrypt-OpenSSL
+    3rdparty/symcrypt_provider/SymCrypt-OpenSSL
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/openenclave/openenclave)
 
 add_subdirectory(3rdparty/openenclave)

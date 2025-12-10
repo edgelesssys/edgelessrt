@@ -11,6 +11,7 @@ enclave_link_libraries(erttest_ttls_lib PRIVATE oe_includes ttls)
 set_property(TARGET erttest_ttls_lib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_enclave(TARGET erttest_ttls SOURCES ../empty.c)
-enclave_link_libraries(erttest_ttls erttest_ttls_lib ertttls ertlibc)
+enclave_link_libraries(erttest_ttls erttest_ttls_lib ertttls ertlibc
+                       openenclave::mbedtls)
 
 add_test(NAME tests/ert/ttls COMMAND erttest_host erttest_ttls)

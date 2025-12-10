@@ -100,6 +100,11 @@ int pthread_mutex_timedlock(pthread_mutex_t* m, const struct timespec* t)
     return __pthread_mutex_timedlock(m, t);
 }
 
+int pthread_mutex_unlock(pthread_mutex_t* m)
+{
+    return __pthread_mutex_unlock(m);
+}
+
 int pthread_mutexattr_settype(pthread_mutexattr_t* a, int type)
 {
     // Handle glibc extension. It's just a performance optimization, so we can
