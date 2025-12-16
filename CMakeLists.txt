@@ -91,6 +91,11 @@ install(FILES ${CMAKE_BINARY_DIR}/openenclaverc
         DESTINATION ${CMAKE_INSTALL_DATADIR}/openenclave)
 
 install(
+  FILES
+    ${CMAKE_BINARY_DIR}/3rdparty/openenclave/openenclave/3rdparty/symcrypt_provider/SymCrypt/lib/libsymcrypt.so.103.8.0
+  RENAME libsymcrypt.so.103
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/enclave)
+install(
   DIRECTORY samples
   DESTINATION ${CMAKE_INSTALL_DATADIR}/openenclave
   PATTERN build EXCLUDE)
