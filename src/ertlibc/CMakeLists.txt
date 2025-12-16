@@ -25,7 +25,7 @@ target_include_directories(ertlibc PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(ertlibc PRIVATE OE_BUILD_ENCLAVE)
 target_link_libraries(
   ertlibc
-  INTERFACE -static -Wl,--eh-frame-hdr -Wl,-u,ert_syscall stdc++
+  INTERFACE -Wl,-Bstatic -Wl,--eh-frame-hdr -Wl,-u,ert_syscall stdc++
             openenclave::ertlibunwind openenclave::oecryptoopenssl_3
   PRIVATE $<BUILD_INTERFACE:oe_includes> $<BUILD_INTERFACE:mystikos_ramfs>)
 
