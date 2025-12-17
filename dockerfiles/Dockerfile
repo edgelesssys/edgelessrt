@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.4.13 AS build
+FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.5.0 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.4.13
+ARG erttag=v0.5.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && mkdir build
 
@@ -26,13 +26,13 @@ FROM scratch AS export
 COPY --from=build /build/edgelessrt_*_amd64_ubuntu-22.04.deb /
 
 
-FROM ubuntu:jammy-20250819 AS release_deploy
+FROM ubuntu:jammy-20251013 AS release_deploy
 LABEL description="Containerized SGX for release"
 
 ARG PSW_VERSION=2.26.100.0-jammy1
 ARG DCAP_VERSION=1.23.100.0-jammy1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 wget \
-  && wget -Petc https://github.com/intel/SGXDataCenterAttestationPrimitives/raw/DCAP_1.23/QuoteGeneration/qcnl/linux/sgx_default_qcnl_azure.conf \
+  && wget -Petc https://github.com/intel/confidential-computing.tee.dcap/raw/DCAP_1.23/QuoteGeneration/qcnl/linux/sgx_default_qcnl_azure.conf \
   && wget -qO /etc/apt/keyrings/intel-sgx-keyring.asc https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key \
   && echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' > /etc/apt/sources.list.d/intel-sgx.list \
   && apt-get update && apt-get install -y --no-install-recommends \
