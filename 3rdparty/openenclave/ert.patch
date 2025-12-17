@@ -651,6 +651,29 @@ index 8e058fed6..251558cc3 100644
      locked = true;
  
      bytes_written = oe_snprintf(
+diff --git a/enclave/crypto/openssl/init.c b/enclave/crypto/openssl/init.c
+index c8685b44d..86fe91b46 100644
+--- a/enclave/crypto/openssl/init.c
++++ b/enclave/crypto/openssl/init.c
+@@ -31,7 +31,8 @@ static int _initialize_symcrypt_engine()
+     int result;
+ 
+     result = SCOSSL_ENGINE_Initialize();
+-    if (result != OE_SYMCRYPT_ENGINE_SUCCESS)
++    if (result != OE_SYMCRYPT_ENGINE_SUCCESS &&
++        result != OE_SYMCRYPT_ENGINE_NOT_LINKED)
+         OE_TRACE_ERROR("SymCrypt engine initialization failed");
+ 
+     return (result == OE_SYMCRYPT_ENGINE_SUCCESS) ? 1 : 0;
+@@ -87,7 +88,7 @@ static int _initialize_symcrypt_provider()
+ 
+ done:
+     if (result == 0)
+-        OE_TRACE_ERROR("OpenSSL provider initialization failed");
++        OE_TRACE_WARNING("OpenSSL provider initialization failed");
+ 
+     return result;
+ }
 diff --git a/enclave/sgx/report.c b/enclave/sgx/report.c
 index 661a2f61b..6a6e28d44 100644
 --- a/enclave/sgx/report.c
