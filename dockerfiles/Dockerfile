@@ -68,7 +68,7 @@ RUN apt-get update && apt-get install -y \
   vim \
   zlib1g-dev \
   # use same Go version as ertgo
-  && wget -qO- https://go.dev/dl/go1.25.1.linux-amd64.tar.gz | tar -C /usr/local -xz
+  && wget -qO- https://go.dev/dl/go1.25.6.linux-amd64.tar.gz | tar -C /usr/local -xz
 COPY --from=build /opt/edgelessrt /opt/edgelessrt
 ENV PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/opt/edgelessrt/share/pkgconfig
 ENV CMAKE_PREFIX_PATH=/opt/edgelessrt/lib/openenclave/cmake
