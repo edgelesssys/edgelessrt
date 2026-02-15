@@ -306,7 +306,7 @@ index ca0e0f893..ea04aa53b 100644
                  gdbcmd += Out[j][0] + " " + Out[j][1] + " " + '%(Location)#08x' % {'Location' : int(Out[j][2])} + " " + Out[j][3]
          else:
 diff --git a/enclave/core/init_fini.c b/enclave/core/init_fini.c
-index 47bfc0d10..1ea5f124e 100644
+index 47bfc0d10..82a081976 100644
 --- a/enclave/core/init_fini.c
 +++ b/enclave/core/init_fini.c
 @@ -2,6 +2,7 @@
@@ -336,6 +336,64 @@ index 47bfc0d10..1ea5f124e 100644
      }
  }
  
+@@ -75,16 +81,19 @@ void oe_call_init_functions(void)
+     const uint64_t start_address = (uint64_t)__oe_get_enclave_start_address();
+     const oe_enclave_module_info_t* module_info = oe_get_module_info();
+ 
+-    if (module_info && module_info->base_rva && module_info->init_array_rva &&
+-        module_info->init_array_size)
+-    {
+-        uint64_t init_array_start = start_address + module_info->init_array_rva;
+-        uint64_t init_array_end = start_address + module_info->init_array_rva +
+-                                  module_info->init_array_size;
+-        _call_init_functions(
+-            (void (**)(void))(init_array_start),
+-            (void (**)(void))(init_array_end));
+-    }
++    for (int i = 0; i < OE_ENCLAVE_MODULE_INFO_COUNT; ++i, ++module_info)
++        if (module_info && module_info->base_rva &&
++            module_info->init_array_rva && module_info->init_array_size)
++        {
++            uint64_t init_array_start =
++                start_address + module_info->init_array_rva;
++            uint64_t init_array_end = start_address +
++                                      module_info->init_array_rva +
++                                      module_info->init_array_size;
++            _call_init_functions(
++                (void (**)(void))(init_array_start),
++                (void (**)(void))(init_array_end));
++        }
+ 
+     _call_init_functions(&__init_array_start, &__init_array_end);
+ }
+@@ -154,14 +163,17 @@ void oe_call_fini_functions(void)
+ 
+     _call_fini_functions(&__fini_array_start, &__fini_array_end);
+ 
+-    if (module_info && module_info->base_rva && module_info->fini_array_rva &&
+-        module_info->fini_array_size)
+-    {
+-        uint64_t fini_array_start = start_address + module_info->fini_array_rva;
+-        uint64_t fini_array_end = start_address + module_info->fini_array_rva +
+-                                  module_info->fini_array_size;
+-        _call_fini_functions(
+-            (void (**)(void))(fini_array_start),
+-            (void (**)(void))(fini_array_end));
+-    }
++    for (int i = 0; i < OE_ENCLAVE_MODULE_INFO_COUNT; ++i, ++module_info)
++        if (module_info && module_info->base_rva &&
++            module_info->fini_array_rva && module_info->fini_array_size)
++        {
++            uint64_t fini_array_start =
++                start_address + module_info->fini_array_rva;
++            uint64_t fini_array_end = start_address +
++                                      module_info->fini_array_rva +
++                                      module_info->fini_array_size;
++            _call_fini_functions(
++                (void (**)(void))(fini_array_start),
++                (void (**)(void))(fini_array_end));
++        }
+ }
 diff --git a/enclave/core/sgx/backtrace.c b/enclave/core/sgx/backtrace.c
 index 9d55a56e1..04f755c08 100644
 --- a/enclave/core/sgx/backtrace.c
@@ -518,10 +576,19 @@ index 15590ff45..6659da71d 100644
       * is recognized by the SGX hardware */
      if (ssa_gpr->exit_info.as_fields.valid)
 diff --git a/enclave/core/sgx/globals.c b/enclave/core/sgx/globals.c
-index 8e2a907a5..44270d7f2 100644
+index 8e2a907a5..43549613d 100644
 --- a/enclave/core/sgx/globals.c
 +++ b/enclave/core/sgx/globals.c
-@@ -305,3 +305,15 @@ const oe_enclave_module_info_t* oe_get_module_info(void)
+@@ -299,9 +299,23 @@ uint64_t oe_get_num_pages(void)
+ **
+ **==============================================================================
+ */
+-OE_EXPORT const volatile oe_enclave_module_info_t _module_info;
++
++OE_EXPORT const volatile oe_enclave_module_info_t
++    _module_info[OE_ENCLAVE_MODULE_INFO_COUNT];
+ 
+ const oe_enclave_module_info_t* oe_get_module_info(void)
  {
      return (const oe_enclave_module_info_t*)&_module_info;
  }
@@ -880,7 +947,7 @@ index eed0c4dcf..7a0908a23 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index ba8c398be..f6296ed23 100644
+index ba8c398be..9f961b4ac 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -87,9 +87,6 @@ static void _initialize_enclave_host_impl(void)
@@ -1033,15 +1100,16 @@ index ba8c398be..f6296ed23 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      size_t loaded_enclave_pages_size = 0;
-@@ -902,6 +970,7 @@ oe_result_t oe_sgx_build_enclave(
+@@ -902,6 +970,8 @@ oe_result_t oe_sgx_build_enclave(
      uint64_t vaddr = 0;
      oe_sgx_enclave_properties_t props;
      size_t extra_data_size = 0;
++    oe_enclave_elf_image_t* payload_image = NULL;
 +    uint64_t payload_data_offset = 0;
  
      /* Reject invalid parameters */
      if (!context || !path || !enclave)
-@@ -923,7 +992,7 @@ oe_result_t oe_sgx_build_enclave(
+@@ -923,7 +993,7 @@ oe_result_t oe_sgx_build_enclave(
          OE_RAISE(OE_FAILURE);
  
      /* Load the elf object */
@@ -1050,23 +1118,26 @@ index ba8c398be..f6296ed23 100644
          OE_RAISE(OE_FAILURE);
  
      // If the **properties** parameter is non-null, use those properties.
-@@ -947,6 +1016,47 @@ oe_result_t oe_sgx_build_enclave(
+@@ -947,6 +1017,51 @@ oe_result_t oe_sgx_build_enclave(
              sizeof(props));
      }
  
 +    // EDG: load payload image
++    payload_image = oeimage.submodules[0];
 +    if (payload_path)
 +    {
-+        oe_enclave_elf_image_t* const submod = oeimage.submodule;
-+
 +        // use props from payload
 +        if (properties)
 +            memcpy(
-+                submod->image_base + submod->oeinfo_rva, &props, sizeof(props));
++                payload_image->image_base + payload_image->oeinfo_rva,
++                &props,
++                sizeof(props));
 +        else
 +        {
 +            memcpy(
-+                &props, submod->image_base + submod->oeinfo_rva, sizeof(props));
++                &props,
++                payload_image->image_base + payload_image->oeinfo_rva,
++                sizeof(props));
 +            memcpy(
 +                oeimage.elf.image_base + oeimage.elf.oeinfo_rva,
 +                &props,
@@ -1074,7 +1145,8 @@ index ba8c398be..f6296ed23 100644
 +        }
 +
 +        ert_sgx_enclave_properties_t* const props_payload =
-+            (ert_sgx_enclave_properties_t*)(submod->image_base + submod->oeinfo_rva);
++            (ert_sgx_enclave_properties_t*)(payload_image->image_base +
++                                            payload_image->oeinfo_rva);
 +
 +        // Clear the hash when taking the measure
 +        memset(
@@ -1088,28 +1160,27 @@ index ba8c398be..f6296ed23 100644
 +            props_payload->payload_data_offset,
 +            props_payload->payload_data_size,
 +            &payload_data_end));
-+        if (payload_data_end > submod->elf.size)
++        if (payload_data_end > payload_image->elf.size)
 +            OE_RAISE(OE_OUT_OF_BOUNDS);
 +
 +        payload_data_offset = props_payload->payload_data_offset;
-+        submod->payload_data_size = props_payload->payload_data_size;
++        payload_image->payload_data_size = props_payload->payload_data_size;
 +    }
 +
      /* Validate the enclave prop_override structure */
      OE_CHECK(oe_sgx_validate_enclave_properties(&props, NULL));
  
-@@ -992,7 +1102,9 @@ oe_result_t oe_sgx_build_enclave(
+@@ -992,7 +1107,8 @@ oe_result_t oe_sgx_build_enclave(
  
      /* Calculate the size of this enclave in memory */
      OE_CHECK(_calculate_enclave_size(
 -        image_size,
-+        image_size +
-+            oe_round_up_to_page_size(
-+                oeimage.submodule ? oeimage.submodule->payload_data_size : 0),
++        image_size + oe_round_up_to_page_size(
++                         payload_image ? payload_image->payload_data_size : 0),
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -1113,6 +1225,22 @@ oe_result_t oe_sgx_build_enclave(
+@@ -1113,6 +1229,22 @@ oe_result_t oe_sgx_build_enclave(
          &vaddr));
  #endif
  
@@ -1120,19 +1191,19 @@ index ba8c398be..f6296ed23 100644
 +    if (payload_data_offset)
 +    {
 +        const uint8_t* const data =
-+            (uint8_t*)oeimage.submodule->elf.data + payload_data_offset;
++            (uint8_t*)payload_image->elf.data + payload_data_offset;
 +        OE_CHECK(_add_readonly_pages(
 +            context,
 +            enclave_addr,
 +            &vaddr,
 +            data,
-+            oeimage.submodule->payload_data_size));
++            payload_image->payload_data_size));
 +    }
 +
      /* Add data pages */
      OE_CHECK(_add_data_pages(
          context,
-@@ -1341,8 +1469,21 @@ oe_result_t oe_create_enclave(
+@@ -1341,8 +1473,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
  
@@ -1156,7 +1227,7 @@ index ba8c398be..f6296ed23 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1437,6 +1578,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1437,6 +1582,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      if (!enclave || enclave->magic != ENCLAVE_MAGIC)
          OE_RAISE(OE_INVALID_PARAMETER);
  
@@ -1224,10 +1295,163 @@ index 4ec690dd7..2f5e827b8 100644
  done:
      return result;
 diff --git a/host/sgx/loadelf.c b/host/sgx/loadelf.c
-index b4b9eac9d..db87cf8c6 100644
+index b4b9eac9d..5286b382d 100644
 --- a/host/sgx/loadelf.c
 +++ b/host/sgx/loadelf.c
-@@ -945,6 +945,11 @@ done:
+@@ -62,8 +62,9 @@ static oe_result_t _unload_image(oe_enclave_image_t* image)
+     if (image)
+     {
+         _unload_elf_image(&image->elf);
+-        if (image->submodule)
+-            _unload_elf_image(image->submodule);
++        for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++            if (image->submodules[i])
++                _unload_elf_image(image->submodules[i]);
+         memset(image, 0, sizeof(*image));
+     }
+     return OE_OK;
+@@ -502,9 +503,10 @@ static oe_result_t _calculate_size(
+      * zero-padded relocation data. */
+     OE_CHECK(oe_safe_add_sizet(
+         image->elf.image_size, image->elf.reloc_size, image_size));
+-    if (image->submodule)
+-        OE_CHECK(oe_safe_add_sizet(
+-            *image_size, image->submodule->image_size, image_size));
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++        if (image->submodules[i])
++            OE_CHECK(oe_safe_add_sizet(
++                *image_size, image->submodules[i]->image_size, image_size));
+ 
+     result = OE_OK;
+ 
+@@ -701,16 +703,19 @@ static oe_result_t _add_pages(
+     assert(vaddr && (*vaddr == 0));
+ 
+     size_t image_size = image->elf.image_size;
+-    if (image->submodule)
+-        OE_CHECK(oe_safe_add_sizet(
+-            image_size, image->submodule->image_size, &image_size));
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++        if (image->submodules[i])
++            OE_CHECK(oe_safe_add_sizet(
++                image_size, image->submodules[i]->image_size, &image_size));
+     assert((image_size & (OE_PAGE_SIZE - 1)) == 0);
+     assert(enclave->size > image_size);
+ 
+     /* Add the program segments first */
+     OE_CHECK(_add_segment_pages(context, enclave, &image->elf, vaddr));
+-    if (image->submodule)
+-        OE_CHECK(_add_segment_pages(context, enclave, image->submodule, vaddr));
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++        if (image->submodules[i])
++            OE_CHECK(_add_segment_pages(
++                context, enclave, image->submodules[i], vaddr));
+ 
+     /* The base image points to the merged (base + module), zero-padded
+      * relocation data after the patching step. */
+@@ -769,12 +774,13 @@ done:
+ 
+ static oe_result_t _link_elf_image(
+     oe_enclave_elf_image_t* image,
+-    oe_enclave_elf_image_t* dependency)
++    oe_enclave_elf_image_t** dependencies,
++    int dependencies_count)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+ 
+     assert(image);
+-    assert(dependency);
++    assert(dependencies);
+ 
+     elf64_rela_t* relocs = NULL;
+     uint64_t nrelocs = 0;
+@@ -827,20 +833,26 @@ static oe_result_t _link_elf_image(
+                     (int64_t)symbol_definition.st_value,
+                     &p->r_addend));
+                 OE_CHECK(oe_safe_add_s64(p->r_addend, addend, &p->r_addend));
++                continue;
+             }
+             /* Find the definition of the symbol in the dependent image */
+-            else if (
+-                elf64_find_dynamic_symbol_by_name(
+-                    &dependency->elf, name, &symbol_definition) == 0 &&
+-                symbol_definition.st_shndx != SHN_UNDEF)
+-            {
+-                OE_CHECK(oe_safe_add_s64(
+-                    (int64_t)dependency->image_rva,
+-                    (int64_t)symbol_definition.st_value,
+-                    &p->r_addend));
+-                OE_CHECK(oe_safe_add_s64(p->r_addend, addend, &p->r_addend));
+-            }
+-            else
++            int dep_index = 0;
++            for (; dep_index < dependencies_count; ++dep_index)
++                if (elf64_find_dynamic_symbol_by_name(
++                        &dependencies[dep_index]->elf,
++                        name,
++                        &symbol_definition) == 0 &&
++                    symbol_definition.st_shndx != SHN_UNDEF)
++                {
++                    OE_CHECK(oe_safe_add_s64(
++                        (int64_t)dependencies[dep_index]->image_rva,
++                        (int64_t)symbol_definition.st_value,
++                        &p->r_addend));
++                    OE_CHECK(
++                        oe_safe_add_s64(p->r_addend, addend, &p->r_addend));
++                    break;
++                }
++            if (dep_index == dependencies_count)
+             {
+                 if ((symbol->st_info >> 4) != STB_WEAK)
+                 {
+@@ -898,7 +910,7 @@ done:
+ 
+ static oe_result_t _merge_and_pad_relocations(
+     oe_enclave_elf_image_t* image,
+-    oe_enclave_elf_image_t* module_image)
++    oe_enclave_elf_image_t** module_images)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+ 
+@@ -908,9 +920,10 @@ static oe_result_t _merge_and_pad_relocations(
+     size_t reloc_size = 0;
+ 
+     reloc_size = image->reloc_size;
+-    if (module_image)
+-        OE_CHECK(
+-            oe_safe_add_u64(reloc_size, module_image->reloc_size, &reloc_size));
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++        if (module_images[i])
++            OE_CHECK(oe_safe_add_u64(
++                reloc_size, module_images[i]->reloc_size, &reloc_size));
+ 
+     reloc_size = oe_round_up_to_page_size(reloc_size);
+     reloc_data = oe_memalign(OE_PAGE_SIZE, reloc_size);
+@@ -922,13 +935,21 @@ static oe_result_t _merge_and_pad_relocations(
+         OE_CHECK(oe_memcpy_s(
+             reloc_data, reloc_size, image->reloc_data, image->reloc_size));
+ 
+-    if (module_image && module_image->reloc_data && module_image->reloc_size)
++    size_t offset = image->reloc_size;
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++    {
++        const oe_enclave_elf_image_t* const module_image = module_images[i];
++        if (!(module_image && module_image->reloc_data &&
++              module_image->reloc_size))
++            continue;
+         OE_CHECK(_append_data_to_buffer(
+             reloc_data,
+             reloc_size,
+-            image->reloc_size,
++            offset,
+             module_image->reloc_data,
+             module_image->reloc_size));
++        OE_CHECK(oe_safe_add_sizet(offset, module_image->reloc_size, &offset));
++    }
+ 
+     /* Free the original relocation data and point to the padded one */
+     if (image->reloc_data)
+@@ -945,9 +966,14 @@ done:
      return result;
  }
  
@@ -1238,8 +1462,62 @@ index b4b9eac9d..db87cf8c6 100644
 +
  static oe_result_t _patch_elf_image(
      oe_enclave_elf_image_t* image,
-     oe_enclave_elf_image_t* module_image,
-@@ -1066,6 +1071,34 @@ static oe_result_t _patch_elf_image(
+-    oe_enclave_elf_image_t* module_image,
++    oe_enclave_elf_image_t** module_images,
+     size_t enclave_size,
+     size_t tls_page_count,
+     size_t extra_data_size)
+@@ -963,8 +989,6 @@ static oe_result_t _patch_elf_image(
+ 
+     assert((image->image_size & (OE_PAGE_SIZE - 1)) == 0);
+     assert((image->reloc_size & (OE_PAGE_SIZE - 1)) == 0);
+-    if (module_image)
+-        assert((module_image->image_size & (OE_PAGE_SIZE - 1)) == 0);
+     assert((enclave_size & (OE_PAGE_SIZE - 1)) == 0);
+ 
+     oeprops->image_info.enclave_size = enclave_size;
+@@ -978,11 +1002,12 @@ static oe_result_t _patch_elf_image(
+ 
+     /* reloc right after image */
+     oeprops->image_info.reloc_rva = image->image_size;
+-    if (module_image)
+-        OE_CHECK(oe_safe_add_u64(
+-            oeprops->image_info.reloc_rva,
+-            module_image->image_size,
+-            &oeprops->image_info.reloc_rva));
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++        if (module_images[i])
++            OE_CHECK(oe_safe_add_u64(
++                oeprops->image_info.reloc_rva,
++                module_images[i]->image_size,
++                &oeprops->image_info.reloc_rva));
+     /* Note that the image->reloc_size now holds the merged (base + module),
+      * zero-padded relocation data. */
+     oeprops->image_info.reloc_size = image->reloc_size;
+@@ -1022,8 +1047,12 @@ static oe_result_t _patch_elf_image(
+         "_td_from_tcs_offset",
+         (tls_page_count + OE_SGX_TCS_CONTROL_PAGES) * OE_PAGE_SIZE);
+ 
+-    if (module_image)
++    for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
+     {
++        const oe_enclave_elf_image_t* const module_image = module_images[i];
++        if (!module_image)
++            continue;
++
+         /* Update the _module_info global struct that is required by the enclave
+          * to perform the init/fini functions of the module. Note that the
+          * struct, defined as a global variable in the enclave image, is
+@@ -1037,7 +1066,7 @@ static oe_result_t _patch_elf_image(
+             (uint64_t)image->image_base,
+             module_info_rva_offset,
+             &module_info_rva_address));
+-        module_info = (oe_enclave_module_info_t*)(module_info_rva_address);
++        module_info = (oe_enclave_module_info_t*)(module_info_rva_address) + i;
+         if (!module_info)
+             OE_RAISE_MSG(
+                 OE_INVALID_IMAGE,
+@@ -1066,6 +1095,34 @@ static oe_result_t _patch_elf_image(
                  &module_info->fini_array_rva));
              module_info->fini_array_size = fini_section.sh_size;
          }
@@ -1274,21 +1552,98 @@ index b4b9eac9d..db87cf8c6 100644
      }
  
      /* Clear the hash when taking the measure */
-@@ -1431,8 +1464,12 @@ done:
+@@ -1180,17 +1237,24 @@ static oe_result_t _patch_relocations(oe_enclave_image_t* image)
+ {
+     oe_result_t result = OE_UNEXPECTED;
+ 
+-    if (image->submodule)
++    if (image->submodules[0])
+     {
+-        OE_CHECK(_link_elf_image(&image->elf, image->submodule));
+-        OE_CHECK(_link_elf_image(image->submodule, &image->elf));
+-        /* Add relocation records for the dynamic section to conform
+-         * the behavior of ld.so */
+-        OE_CHECK(_add_dynamic_section_relocations(image->submodule));
++        OE_CHECK(_link_elf_image(
++            &image->elf, image->submodules, OE_ENCLAVE_IMAGE_SUBMODULE_COUNT));
++        oe_enclave_elf_image_t* deps = &image->elf;
++        for (int i = 0; i < OE_ENCLAVE_IMAGE_SUBMODULE_COUNT; ++i)
++            if (image->submodules[i])
++            {
++                OE_CHECK(_link_elf_image(image->submodules[i], &deps, 1));
++                /* Add relocation records for the dynamic section to conform
++                 * the behavior of ld.so */
++                OE_CHECK(
++                    _add_dynamic_section_relocations(image->submodules[i]));
++            }
+     }
+     /* Merge the relocation data from both base and module (if any) images and
+      * apply zero-paddings (to the next page size) */
+-    OE_CHECK(_merge_and_pad_relocations(&image->elf, image->submodule));
++    OE_CHECK(_merge_and_pad_relocations(&image->elf, image->submodules));
+ 
+     result = OE_OK;
+ done:
+@@ -1208,7 +1272,7 @@ static oe_result_t _patch(
+     OE_CHECK(image->get_tls_page_count(image, &tls_page_count));
+     OE_CHECK(_patch_elf_image(
+         &image->elf,
+-        image->submodule,
++        image->submodules,
+         enclave_size,
+         tls_page_count,
+         extra_data_size));
+@@ -1227,7 +1291,7 @@ static oe_result_t _get_debug_modules(
+     oe_debug_module_t* debug_module = NULL;
+     uint64_t debug_module_base_address = 0;
+     *modules = NULL;
+-    if (image->submodule)
++    if (image->submodules[0])
+     {
+         debug_module = (oe_debug_module_t*)calloc(sizeof(*debug_module), 1);
+         if (!debug_module)
+@@ -1237,17 +1301,17 @@ static oe_result_t _get_debug_modules(
+         debug_module->version = 1;
+         debug_module->next = NULL;
+ 
+-        debug_module->path = strdup(image->submodule->path);
++        debug_module->path = strdup(image->submodules[0]->path);
+         if (!debug_module->path)
+             OE_RAISE(OE_OUT_OF_MEMORY);
+         debug_module->path_length = strlen(debug_module->path);
+ 
+         OE_CHECK(oe_safe_add_u64(
+             enclave->start_address,
+-            image->submodule->image_rva,
++            image->submodules[0]->image_rva,
+             &debug_module_base_address));
+         debug_module->base_address = (void*)(debug_module_base_address);
+-        debug_module->size = image->submodule->image_size;
++        debug_module->size = image->submodules[0]->image_size;
+ 
+         debug_module->enclave = enclave->debug_enclave;
+         *modules = debug_module;
+@@ -1431,7 +1495,9 @@ done:
  
  static oe_result_t _load_dependent_image(
      const char* enclave_path,
 -    oe_enclave_image_t* image)
 +    oe_enclave_image_t* image,
++    int module_index,
 +    const char* payload_path)
  {
-+    if (payload_path == (void*)1)
-+        return OE_OK;
-+
      oe_result_t result = OE_UNEXPECTED;
      char* module_path = NULL;
-     oe_enclave_elf_image_t* module_image = NULL;
-@@ -1451,13 +1488,16 @@ static oe_result_t _load_dependent_image(
+@@ -1443,7 +1509,7 @@ static oe_result_t _load_dependent_image(
+      * under the same directory as the enclave binary.
+      */
+     OE_CHECK(_find_dependent_image(enclave_path, image, &module_path));
+-    if (module_path)
++    if (module_path && !payload_path)
+     {
+         if (access(module_path, F_OK) != 0)
+             OE_RAISE_MSG(
+@@ -1451,16 +1517,27 @@ static oe_result_t _load_dependent_image(
                  "Failed to locate the module. Please place the module under "
                  "the same directory as the enclave binary.",
                  NULL);
@@ -1305,9 +1660,22 @@ index b4b9eac9d..db87cf8c6 100644
 -        OE_CHECK(_load_elf_image(module_path, module_image));
 +        OE_CHECK(_load_elf_image(payload_path, module_image));
          /* Update the RVA for the module */
-         module_image->image_rva = image->elf.image_size;
-         image->submodule = module_image;
-@@ -1492,7 +1532,8 @@ done:
+-        module_image->image_rva = image->elf.image_size;
+-        image->submodule = module_image;
++        if (module_index == 0)
++            module_image->image_rva = image->elf.image_size;
++        else
++        {
++            const oe_enclave_elf_image_t* const prev =
++                image->submodules[module_index - 1];
++            OE_CHECK(oe_safe_add_u64(
++                prev->image_rva, prev->image_size, &module_image->image_rva));
++        }
++        image->submodules[module_index] = module_image;
+         module_image = NULL;
+     }
+ 
+@@ -1492,7 +1569,8 @@ done:
  
  oe_result_t oe_load_elf_enclave_image(
      const char* path,
@@ -1317,12 +1685,17 @@ index b4b9eac9d..db87cf8c6 100644
  {
      oe_result_t result = OE_UNEXPECTED;
  
-@@ -1502,7 +1543,7 @@ oe_result_t oe_load_elf_enclave_image(
+@@ -1502,7 +1580,12 @@ oe_result_t oe_load_elf_enclave_image(
      OE_CHECK(_load_primary_image(path, &image->elf));
  
      /* Load the dependent image into memory */
 -    OE_CHECK(_load_dependent_image(path, image));
-+    OE_CHECK(_load_dependent_image(path, image, payload_path));
++    if (payload_path != (void*)1)
++    {
++        OE_CHECK(_load_dependent_image(path, image, 0, payload_path));
++        if (payload_path)
++            OE_CHECK(_load_dependent_image(path, image, 1, NULL));
++    }
  
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
@@ -1553,14 +1926,15 @@ index d0f279ec5..cf32117c2 100644
   * Terminate an enclave and reclaims its resources.
   *
 diff --git a/include/openenclave/internal/globals.h b/include/openenclave/internal/globals.h
-index 0e94f7237..75e73cb57 100644
+index 0e94f7237..56af423f5 100644
 --- a/include/openenclave/internal/globals.h
 +++ b/include/openenclave/internal/globals.h
-@@ -43,6 +43,10 @@ const void* __oe_get_eeid(void);
+@@ -43,6 +43,11 @@ const void* __oe_get_eeid(void);
  
  const oe_enclave_module_info_t* oe_get_module_info(void);
  
 +// EDG
++#define OE_ENCLAVE_MODULE_INFO_COUNT 2
 +uint64_t oe_get_num_tcs(void);
 +size_t oe_get_num_stack_pages(void);
 +
@@ -1568,7 +1942,7 @@ index 0e94f7237..75e73cb57 100644
  
  #endif /* _OE_GLOBALS_H */
 diff --git a/include/openenclave/internal/load.h b/include/openenclave/internal/load.h
-index e8f320492..5ac6b0d80 100644
+index e8f320492..642e76f5e 100644
 --- a/include/openenclave/internal/load.h
 +++ b/include/openenclave/internal/load.h
 @@ -80,6 +80,9 @@ struct _oe_enclave_elf_image
@@ -1581,7 +1955,25 @@ index e8f320492..5ac6b0d80 100644
  };
  
  typedef enum _oe_image_type
-@@ -135,11 +138,15 @@ struct _oe_enclave_image
+@@ -88,6 +91,8 @@ typedef enum _oe_image_type
+     OE_IMAGE_TYPE_ELF,
+ } oe_image_type;
+ 
++#define OE_ENCLAVE_IMAGE_SUBMODULE_COUNT 2
++
+ struct _oe_enclave_image
+ {
+     oe_image_type type;
+@@ -98,7 +103,7 @@ struct _oe_enclave_image
+ 
+     /* Pointer to the dependent image for the enclave
+      * Only up to one such .so dependecy is currently allowed */
+-    oe_enclave_elf_image_t* submodule;
++    oe_enclave_elf_image_t* submodules[OE_ENCLAVE_IMAGE_SUBMODULE_COUNT];
+ 
+     /* Image type specific callbacks to handle enclave loading */
+     oe_result_t (
+@@ -135,11 +140,15 @@ struct _oe_enclave_image
      oe_result_t (*unload)(oe_enclave_image_t* image);
  };
  
