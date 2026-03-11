@@ -3774,6 +3774,20 @@ index eadb7df54..8afd34e2b 100644
        add_subdirectory(openssl_unsupported)
      endif ()
    endif ()
+diff --git a/tests/config_id/host/host.c b/tests/config_id/host/host.c
+index 598ead6c9..fc30d6126 100644
+--- a/tests/config_id/host/host.c
++++ b/tests/config_id/host/host.c
+@@ -54,7 +54,8 @@ int main(int argc, const char* argv[])
+             1,
+             &enclave);
+         OE_TEST(result == OE_OK);
+-        if (oe_sgx_has_quote_provider())
++        if (oe_sgx_has_quote_provider() &&
++            (flags & OE_ENCLAVE_FLAG_SIMULATE) == 0)
+         {
+             enclave_test_config_id(enclave, &result);
+             OE_TEST(result == OE_OK);
 diff --git a/tests/debugger/non_debug/CMakeLists.txt b/tests/debugger/non_debug/CMakeLists.txt
 index 26364240b..ecdb261fb 100644
 --- a/tests/debugger/non_debug/CMakeLists.txt
@@ -4761,7 +4775,7 @@ index 02cbca9fe..c7a003142 100644
    message(
      FATAL_ERROR "Unsupported crypto library ${DEFAULT_TEST_ENCLAVE_CRYPTO_LIB}."
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
-index b52ce1d24..397975850 100644
+index b52ce1d24..7ff6308b5 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
 +++ b/tests/tools/oesign/test-enclave/host/host.c
 @@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
@@ -4773,6 +4787,16 @@ index b52ce1d24..397975850 100644
      {
          oe_put_err("oe_load_enclave_image(): result=%u", result);
      }
+@@ -89,7 +89,8 @@ int main(int argc, const char* argv[])
+     /* check_kss_extended_ids currently assumes the quote provider is available.
+      * Skip if there is no quote provider for now.
+      */
+-    if (is_kss_supported && oe_sgx_has_quote_provider())
++    if (is_kss_supported && oe_sgx_has_quote_provider() &&
++        (flags & OE_ENCLAVE_FLAG_SIMULATE) == 0)
+     {
+         result = check_kss_extended_ids(
+             enclave,
 diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
 index 8aab80c4d..4e1f379da 100644
 --- a/tools/CMakeLists.txt
