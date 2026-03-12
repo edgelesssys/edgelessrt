@@ -43,6 +43,8 @@ long __syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
             return (long)ert_mmap((void*)x1, x2, x3, x4, x5, x6);
         case OE_SYS_munmap:
             return ert_munmap((void*)x1, x2);
+        case OE_SYS_madvise:
+            return ert_madvise((void*)x1, x2, x3);
     }
 
     // Try hook

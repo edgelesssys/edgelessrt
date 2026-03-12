@@ -89,7 +89,6 @@ long ert_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
                     reinterpret_cast<cpu_set_t*>(x3));
 
             case SYS_mprotect:
-            case SYS_madvise:
             case SYS_mlock:
             case SYS_munlock:
             case SYS_mlockall:

@@ -14,3 +14,5 @@ void* ert_mmap(
     off_t offset);
 
 int ert_munmap(void* addr, size_t length);
+
+int ert_madvise(void* addr, size_t length, int advice);
