@@ -2,6 +2,7 @@
 #include <openenclave/internal/tests.h>
 #include <sys/mman.h>
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
 #include <cstring>
 #include "test_t.h"
@@ -54,6 +55,25 @@ void test_ecall()
     _test_filled(p, OE_PAGE_SIZE, 2);
     _test_filled(p + OE_PAGE_SIZE, OE_PAGE_SIZE, 0);
     _test_filled(p + 2 * OE_PAGE_SIZE, OE_PAGE_SIZE, 2);
+
+    // test madvise
+    OE_TEST(madvise(nullptr, 0, MADV_NORMAL) == 0);
+    OE_TEST(madvise(p, 0, MADV_NORMAL) == 0);
+    _test_filled(p, OE_PAGE_SIZE, 2);
+    OE_TEST(madvise(p, 1, MADV_NORMAL) == 0);
+    _test_filled(p, OE_PAGE_SIZE, 2);
+    OE_TEST(madvise(p, 0, MADV_DONTNEED) == 0);
+    _test_filled(p, OE_PAGE_SIZE, 2);
+    OE_TEST(madvise(p, 1, MADV_DONTNEED) == 0);
+    _test_filled(p, OE_PAGE_SIZE, 0);
+
+    // test madvise invalid args
+    OE_TEST(madvise(p + 1, 0, MADV_NORMAL) == -1);
+    OE_TEST(errno == EINVAL);
+    OE_TEST(madvise(p + 1, 1, MADV_NORMAL) == -1);
+    OE_TEST(errno == EINVAL);
+    OE_TEST(madvise(nullptr, 1, MADV_DONTNEED) == -1);
+    OE_TEST(errno == ENOMEM);
 
     // mmap did not overwrite heap allocation. (Ensures that malloc uses mmap
     // internally instead of directly using the enclave heap memory.)

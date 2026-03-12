@@ -19,6 +19,8 @@ malloc calls mmap to reserve enclave heap space.
 #include <string.h>
 #include "../common/bitset.h"
 
+#define MADV_DONTNEED 4
+
 static oe_spinlock_t _lock = OE_SPINLOCK_INITIALIZER;
 static void* _bitset;
 static void* _base;
@@ -132,6 +134,28 @@ int ert_munmap(void* addr, size_t length)
         (uintptr_t)addr % OE_PAGE_SIZE == 0)
     {
         ert_bitset_reset_range(_bitset, _to_pos(addr), length / OE_PAGE_SIZE);
+        result = 0;
+    }
+
+    oe_spin_unlock(&_lock);
+
+    return result;
+}
+
+int ert_madvise(void* addr, size_t length, int advice)
+{
+    if ((uintptr_t)addr % OE_PAGE_SIZE)
+        return -EINVAL;
+    if (!length || advice != MADV_DONTNEED)
+        return 0;
+    int result = -ENOMEM;
+    length = oe_round_up_to_page_size(length);
+
+    oe_spin_lock(&_lock);
+
+    if (_length_in_range(length) && _addr_in_range(addr, length))
+    {
+        memset(addr, 0, length);
         result = 0;
     }
 
