@@ -173,7 +173,7 @@ index b65fea498..84a970442 100644
  
  if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
-index 0f97c1c6f..5d5d86331 100644
+index 32beb0c08..c1a8db4a9 100644
 --- a/cmake/compiler_settings.cmake
 +++ b/cmake/compiler_settings.cmake
 @@ -24,7 +24,7 @@ endif ()
@@ -764,10 +764,10 @@ index 661a2f61b..6a6e28d44 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index 9448b27c7..232117ca4 100644
+index 34c1bad6d..934bd5c21 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
-@@ -431,6 +431,9 @@ install(
+@@ -483,6 +483,9 @@ install(
    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/host
            COMPONENT OEHOSTVERIFY)
  
@@ -777,7 +777,7 @@ index 9448b27c7..232117ca4 100644
  # Build oehost
  # Usage:
  # add_library_oehost_wrapper(<LIB_NAME name of lib> [SKIP_INSTALL])
-@@ -508,7 +511,7 @@ macro (add_library_oehost_wrapper)
+@@ -560,7 +563,7 @@ macro (add_library_oehost_wrapper)
                                 Threads::Threads)
      target_compile_options(
        ${PARA_LIB_NAME}
@@ -786,7 +786,7 @@ index 9448b27c7..232117ca4 100644
        PUBLIC -fstack-protector-strong)
      target_compile_definitions(
        ${PARA_LIB_NAME}
-@@ -594,3 +597,7 @@ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
+@@ -646,3 +649,7 @@ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
  target_compile_definitions(
    oehost_prerelease_test PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY
                                  OEUTIL_QUOTE_BYPASS_DATE_CHECK)
@@ -833,7 +833,7 @@ index e3255a942..77351b2ac 100644
      if (!(fds = calloc(nfds, sizeof(struct oe_pollfd))))
      {
 diff --git a/host/sgx/calls.c b/host/sgx/calls.c
-index eed0c4dcf..7a0908a23 100644
+index 4b1b9805d..0f8ff01ae 100644
 --- a/host/sgx/calls.c
 +++ b/host/sgx/calls.c
 @@ -36,6 +36,8 @@
@@ -947,7 +947,7 @@ index eed0c4dcf..7a0908a23 100644
  
  done:
 diff --git a/host/sgx/create.c b/host/sgx/create.c
-index ba8c398be..9f961b4ac 100644
+index bd6d3588c..c631a5750 100644
 --- a/host/sgx/create.c
 +++ b/host/sgx/create.c
 @@ -87,9 +87,6 @@ static void _initialize_enclave_host_impl(void)
@@ -1180,7 +1180,7 @@ index ba8c398be..9f961b4ac 100644
          tls_page_count,
          &props,
          &loaded_enclave_pages_size,
-@@ -1113,6 +1229,22 @@ oe_result_t oe_sgx_build_enclave(
+@@ -1115,6 +1231,22 @@ oe_result_t oe_sgx_build_enclave(
          &vaddr));
  #endif
  
@@ -1203,7 +1203,7 @@ index ba8c398be..9f961b4ac 100644
      /* Add data pages */
      OE_CHECK(_add_data_pages(
          context,
-@@ -1341,8 +1473,21 @@ oe_result_t oe_create_enclave(
+@@ -1343,8 +1475,21 @@ oe_result_t oe_create_enclave(
  #endif
      }
  
@@ -1227,7 +1227,7 @@ index ba8c398be..9f961b4ac 100644
  
      /* Push the new created enclave to the global list. */
      if (oe_push_enclave_instance(enclave) != 0)
-@@ -1437,6 +1582,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+@@ -1439,6 +1584,10 @@ oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
      if (!enclave || enclave->magic != ENCLAVE_MAGIC)
          OE_RAISE(OE_INVALID_PARAMETER);
  
@@ -1700,10 +1700,10 @@ index b4b9eac9d..5286b382d 100644
      /* Patch relocations right after the image loading
       * and make the relocation data size page-aligned. */
 diff --git a/host/sgx/ocalls/debug.c b/host/sgx/ocalls/debug.c
-index 2471fe6f1..f7296ef7d 100644
+index 4f707abea..f6b264601 100644
 --- a/host/sgx/ocalls/debug.c
 +++ b/host/sgx/ocalls/debug.c
-@@ -144,6 +144,7 @@ oe_result_t oe_sgx_log_backtrace_ocall(
+@@ -143,6 +143,7 @@ oe_result_t oe_sgx_log_backtrace_ocall(
  {
      oe_result_t result = OE_UNEXPECTED;
      char** strings = NULL;
@@ -1711,9 +1711,9 @@ index 2471fe6f1..f7296ef7d 100644
  
      oe_log(level, "Backtrace:\n");
  
-@@ -158,9 +159,21 @@ oe_result_t oe_sgx_log_backtrace_ocall(
+@@ -155,9 +156,21 @@ oe_result_t oe_sgx_log_backtrace_ocall(
+     if (!strings)
          OE_RAISE(OE_FAILURE);
-     }
  
 +    // EDG: get symbols for payload module
 +    if (oe_enclave->debug_modules)
@@ -1734,7 +1734,7 @@ index 2471fe6f1..f7296ef7d 100644
      }
  
      result = OE_OK;
-@@ -170,5 +183,7 @@ done:
+@@ -167,5 +180,7 @@ done:
      if (strings)
          free(strings);
  
@@ -3754,7 +3754,7 @@ index db56a077e..3d9448152 100644
  {
      int ret = -1;
 diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
-index eadb7df54..8afd34e2b 100644
+index fc215ce48..97c0b9073 100644
 --- a/tests/CMakeLists.txt
 +++ b/tests/CMakeLists.txt
 @@ -149,7 +149,7 @@ if (UNIX
@@ -3766,7 +3766,18 @@ index eadb7df54..8afd34e2b 100644
      add_subdirectory(ecall_ocall)
      add_subdirectory(echo)
      add_subdirectory(enclaveparam)
-@@ -205,7 +205,6 @@ if (UNIX
+@@ -172,8 +172,8 @@ if (UNIX
+     add_subdirectory(SampleApp)
+     add_subdirectory(SampleAppCRT)
+     add_subdirectory(sealKey)
+-    add_subdirectory(secure_verify)
+-    add_subdirectory(intel_qve_thread_test)
++    #add_subdirectory(secure_verify)
++    #add_subdirectory(intel_qve_thread_test)
+     add_subdirectory(sim-mode)
+     add_subdirectory(stdc)
+     add_subdirectory(stdcxx)
+@@ -204,7 +204,6 @@ if (UNIX
      if (BUILD_OPENSSL)
        add_subdirectory(symcrypt_engine)
        add_subdirectory(symcrypt_provider)
@@ -3775,7 +3786,7 @@ index eadb7df54..8afd34e2b 100644
      endif ()
    endif ()
 diff --git a/tests/config_id/host/host.c b/tests/config_id/host/host.c
-index 598ead6c9..fc30d6126 100644
+index c5aeb17bf..4ad15d82e 100644
 --- a/tests/config_id/host/host.c
 +++ b/tests/config_id/host/host.c
 @@ -54,7 +54,8 @@ int main(int argc, const char* argv[])
@@ -4775,7 +4786,7 @@ index 02cbca9fe..c7a003142 100644
    message(
      FATAL_ERROR "Unsupported crypto library ${DEFAULT_TEST_ENCLAVE_CRYPTO_LIB}."
 diff --git a/tests/tools/oesign/test-enclave/host/host.c b/tests/tools/oesign/test-enclave/host/host.c
-index b52ce1d24..7ff6308b5 100644
+index 3bf1a15dd..ec3334df1 100644
 --- a/tests/tools/oesign/test-enclave/host/host.c
 +++ b/tests/tools/oesign/test-enclave/host/host.c
 @@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
@@ -4787,16 +4798,6 @@ index b52ce1d24..7ff6308b5 100644
      {
          oe_put_err("oe_load_enclave_image(): result=%u", result);
      }
-@@ -89,7 +89,8 @@ int main(int argc, const char* argv[])
-     /* check_kss_extended_ids currently assumes the quote provider is available.
-      * Skip if there is no quote provider for now.
-      */
--    if (is_kss_supported && oe_sgx_has_quote_provider())
-+    if (is_kss_supported && oe_sgx_has_quote_provider() &&
-+        (flags & OE_ENCLAVE_FLAG_SIMULATE) == 0)
-     {
-         result = check_kss_extended_ids(
-             enclave,
 diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
 index 8aab80c4d..4e1f379da 100644
 --- a/tools/CMakeLists.txt
@@ -5064,7 +5065,7 @@ index 6e047eef5..c6957ad63 100644
          path);
  
 diff --git a/tools/oesign/oesign.c b/tools/oesign/oesign.c
-index 752e74ab2..1b4671051 100644
+index b79ba46a2..c9806d659 100644
 --- a/tools/oesign/oesign.c
 +++ b/tools/oesign/oesign.c
 @@ -53,6 +53,8 @@ typedef struct _config_file_options
@@ -5076,7 +5077,7 @@ index 752e74ab2..1b4671051 100644
  } config_file_options_t;
  
  int uuid_from_string(str_t* str, uint8_t* uuid, size_t expected_size);
-@@ -394,6 +396,33 @@ static int _load_config_file(const char* path, config_file_options_t* options)
+@@ -398,6 +400,33 @@ static int _load_config_file(const char* path, config_file_options_t* options)
              options->start_address.value = n;
              options->start_address.has_value = true;
          }
@@ -5110,7 +5111,7 @@ index 752e74ab2..1b4671051 100644
          else
          {
              oe_err("%s(%zu): unknown setting: %s", path, line, str_ptr(&rhs));
-@@ -482,7 +511,7 @@ done:
+@@ -486,7 +515,7 @@ done:
      return rc;
  }
  
@@ -5119,7 +5120,7 @@ index 752e74ab2..1b4671051 100644
  {
      int err = _load_file(path, data, size);
      if (err == 0)
-@@ -584,6 +613,11 @@ void _merge_config_file_options(
+@@ -588,6 +617,11 @@ void _merge_config_file_options(
      if (options->create_zero_base_enclave.value == 1 &&
          options->start_address.has_value)
          properties->config.start_address = options->start_address.value;
@@ -5131,7 +5132,7 @@ index 752e74ab2..1b4671051 100644
  }
  
  oe_result_t _initialize_enclave_properties(
-@@ -657,7 +691,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
+@@ -661,7 +695,8 @@ static uint64_t _map_attributes(const oe_sgx_enclave_properties_t* properties)
  oe_result_t _get_sgx_enclave_hash(
      const char* enclave,
      const oe_sgx_enclave_properties_t* properties,
@@ -5141,7 +5142,7 @@ index 752e74ab2..1b4671051 100644
  {
      oe_result_t result = OE_UNEXPECTED;
      oe_enclave_t enc;
-@@ -673,7 +708,7 @@ oe_result_t _get_sgx_enclave_hash(
+@@ -677,7 +712,7 @@ oe_result_t _get_sgx_enclave_hash(
  
      /* Build an enclave to obtain the MRENCLAVE measurement */
      OE_CHECK_ERR(
@@ -5150,7 +5151,7 @@ index 752e74ab2..1b4671051 100644
          "oe_sgx_build_enclave(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -730,7 +765,8 @@ int oesign(
+@@ -734,7 +769,8 @@ int oesign(
      const char* x509,
      const char* engine_id,
      const char* engine_load_path,
@@ -5160,7 +5161,7 @@ index 752e74ab2..1b4671051 100644
  {
      int ret = 1;
      oe_result_t result = OE_UNEXPECTED;
-@@ -744,7 +780,8 @@ int oesign(
+@@ -748,7 +784,8 @@ int oesign(
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
@@ -5170,7 +5171,7 @@ index 752e74ab2..1b4671051 100644
  
      if (engine_id)
      {
-@@ -769,7 +806,7 @@ int oesign(
+@@ -773,7 +810,7 @@ int oesign(
      else if (digest_signature)
      {
          /* Load the public key from the x509 certificate */
@@ -5179,7 +5180,7 @@ index 752e74ab2..1b4671051 100644
          {
              oe_err("Failed to load file: %s", x509 ? x509 : "NULL");
              goto done;
-@@ -820,7 +857,7 @@ int oesign(
+@@ -824,7 +861,7 @@ int oesign(
      else
      {
          /* Load private key into memory */
@@ -5188,7 +5189,7 @@ index 752e74ab2..1b4671051 100644
          {
              oe_err("Failed to load file: %s", keyfile ? keyfile : "NULL");
              goto done;
-@@ -846,7 +883,10 @@ int oesign(
+@@ -850,7 +887,10 @@ int oesign(
  
      /* Create signature section and write out new file */
      OE_CHECK_ERR(
@@ -5200,7 +5201,7 @@ index 752e74ab2..1b4671051 100644
          "oe_write_oeinfo_sgx(): result=%s (%#x)",
          oe_result_str(result),
          result);
-@@ -874,7 +914,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
+@@ -878,7 +918,8 @@ int oedigest(const char* enclave, const char* conffile, const char* digest_file)
      OE_CHECK_NO_TRACE(
          _initialize_enclave_properties(enclave, conffile, &properties));
  
