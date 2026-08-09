@@ -133,7 +133,7 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b65fea498..84a970442 100644
+index daf411eed..b83cb0cbb 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -252,11 +252,12 @@ set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
@@ -161,7 +161,7 @@ index b65fea498..84a970442 100644
  endif ()
  
  # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
-@@ -491,9 +493,9 @@ add_subdirectory(tools)
+@@ -508,9 +510,9 @@ add_subdirectory(tools)
  if (BUILD_ENCLAVES)
    add_subdirectory(enclave)
    add_subdirectory(3rdparty)
@@ -199,10 +199,10 @@ index 32beb0c08..c1a8db4a9 100644
        message(WARNING "Spectre 1 mitigation NOT supported.")
      endif ()
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
-index 82bac32c3..337156f61 100644
+index 6462b22e8..f03299ed2 100644
 --- a/common/sgx/tcbinfo.c
 +++ b/common/sgx/tcbinfo.c
-@@ -788,6 +788,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
+@@ -802,6 +802,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
          if (*itr < end && **itr == ']')
              break;
          OE_CHECK(_read(',', itr, end));
@@ -211,7 +211,7 @@ index 82bac32c3..337156f61 100644
      }
  
      OE_CHECK(_read(']', itr, end));
-@@ -1722,26 +1724,41 @@ oe_result_t oe_parse_qe_identity_info_json(
+@@ -1789,26 +1791,41 @@ oe_result_t oe_parse_qe_identity_info_json(
      itr = _skip_ws(itr, end);
      OE_CHECK(_read('{', &itr, end));
  
@@ -260,7 +260,7 @@ index 82bac32c3..337156f61 100644
  
      if (itr == end)
 diff --git a/common/sgx/tcbinfo.h b/common/sgx/tcbinfo.h
-index ae1508d45..38e6b62b7 100644
+index cc23fedf7..3804f4c0b 100644
 --- a/common/sgx/tcbinfo.h
 +++ b/common/sgx/tcbinfo.h
 @@ -89,6 +89,9 @@ typedef struct _oe_tcb_info_tcb_level
