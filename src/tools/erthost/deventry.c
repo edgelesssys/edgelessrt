@@ -12,6 +12,11 @@ int main(int argc, char* argv[], char* envp[]);
 
 int emain(void)
 {
+    // emain must not be called more than once
+    static int already_called;
+    if (__atomic_exchange_n(&already_called, 1, __ATOMIC_SEQ_CST))
+        abort();
+
     oe_printf("[deventry] running in development mode\n");
 
     const int argc = ert_get_argc();

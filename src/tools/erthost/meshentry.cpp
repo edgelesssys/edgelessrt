@@ -5,6 +5,7 @@
 #include <openenclave/internal/trace.h>
 #include <sys/mount.h>
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -21,6 +22,11 @@ extern "C" char** environ;
 
 int emain()
 {
+    // emain must not be called more than once
+    static atomic<bool> already_called;
+    if (already_called.exchange(true))
+        abort();
+
     if (oe_load_module_host_epoll() != OE_OK ||
         oe_load_module_host_file_system() != OE_OK ||
         oe_load_module_host_resolver() != OE_OK ||
