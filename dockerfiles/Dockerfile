@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.5.3 AS build
+FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.5.4 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.5.3
+ARG erttag=v0.5.4
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && mkdir build
 
