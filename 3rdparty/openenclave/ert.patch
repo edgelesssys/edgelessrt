@@ -53,7 +53,7 @@ index 510668721..b17909b5b 100644
  #define fprintf _dlmalloc_stats_fprintf
  #define NO_MALLOC_STATS 1
 diff --git a/3rdparty/mbedtls/CMakeLists.txt b/3rdparty/mbedtls/CMakeLists.txt
-index de75189b7..fa02e4014 100644
+index 605aca1e6..b1681997d 100644
 --- a/3rdparty/mbedtls/CMakeLists.txt
 +++ b/3rdparty/mbedtls/CMakeLists.txt
 @@ -30,7 +30,7 @@ endif ()
@@ -133,10 +133,10 @@ index 7bd130f2d..2a58c37e8 100644
  // Sockets are dispatched via the following macros.
  #ifndef SYSCALL_USE_SOCKETCALL
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index daf411eed..b83cb0cbb 100644
+index fbe1ef974..c44dc6307 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -252,11 +252,12 @@ set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
+@@ -256,11 +256,12 @@ set(DEFAULT_TEST_ENCLAVE_CRYPTO_LIB
  string(TOLOWER "${DEFAULT_TEST_ENCLAVE_CRYPTO_LIB}"
                 DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER)
  if ((NOT DEFAULT_TEST_ENCLAVE_CRYPTO_LIB_LOWER STREQUAL "mbedtls")
@@ -151,7 +151,7 @@ index daf411eed..b83cb0cbb 100644
      AND (NOT BUILD_OPENSSL))
    message(
      FATAL_ERROR
-@@ -359,7 +360,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
+@@ -363,7 +364,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                              VERSION_LESS "7.1")
    set(COMPILER_SUPPORTS_SNMALLOC off)
  else ()
@@ -173,7 +173,7 @@ index daf411eed..b83cb0cbb 100644
  
  if (OE_SGX)
 diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
-index 32beb0c08..c1a8db4a9 100644
+index b2aa7592e..e0aed6661 100644
 --- a/cmake/compiler_settings.cmake
 +++ b/cmake/compiler_settings.cmake
 @@ -24,7 +24,7 @@ endif ()
@@ -199,10 +199,10 @@ index 32beb0c08..c1a8db4a9 100644
        message(WARNING "Spectre 1 mitigation NOT supported.")
      endif ()
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
-index 6462b22e8..f03299ed2 100644
+index 171a13d8a..04851f22e 100644
 --- a/common/sgx/tcbinfo.c
 +++ b/common/sgx/tcbinfo.c
-@@ -802,6 +802,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
+@@ -736,6 +736,8 @@ static oe_result_t _read_tcb_info_tcb_level_v1(
          if (*itr < end && **itr == ']')
              break;
          OE_CHECK(_read(',', itr, end));
@@ -211,7 +211,7 @@ index 6462b22e8..f03299ed2 100644
      }
  
      OE_CHECK(_read(']', itr, end));
-@@ -1789,26 +1791,41 @@ oe_result_t oe_parse_qe_identity_info_json(
+@@ -2169,26 +2171,41 @@ oe_result_t oe_parse_qe_identity_info_json(
      itr = _skip_ws(itr, end);
      OE_CHECK(_read('{', &itr, end));
  
@@ -260,10 +260,10 @@ index 6462b22e8..f03299ed2 100644
  
      if (itr == end)
 diff --git a/common/sgx/tcbinfo.h b/common/sgx/tcbinfo.h
-index cc23fedf7..3804f4c0b 100644
+index 7d39d27db..1ab97097f 100644
 --- a/common/sgx/tcbinfo.h
 +++ b/common/sgx/tcbinfo.h
-@@ -89,6 +89,9 @@ typedef struct _oe_tcb_info_tcb_level
+@@ -119,6 +119,9 @@ typedef struct _oe_tcb_info_tcb_level
  
      //! Total size of all the advisoryIDs.
      size_t advisory_ids_size;
@@ -764,7 +764,7 @@ index 661a2f61b..6a6e28d44 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index 34c1bad6d..934bd5c21 100644
+index 13a8d23c3..310f5e6ca 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
 @@ -483,6 +483,9 @@ install(
@@ -786,7 +786,7 @@ index 34c1bad6d..934bd5c21 100644
        PUBLIC -fstack-protector-strong)
      target_compile_definitions(
        ${PARA_LIB_NAME}
-@@ -646,3 +649,7 @@ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
+@@ -641,3 +644,7 @@ add_library_oehost_wrapper(LIB_NAME oehost_prerelease_test SKIP_INSTALL)
  target_compile_definitions(
    oehost_prerelease_test PUBLIC OEUTIL_TCB_ALLOW_ANY_ROOT_KEY
                                  OEUTIL_QUOTE_BYPASS_DATE_CHECK)
@@ -3820,28 +3820,22 @@ index 26364240b..ecdb261fb 100644
 -  PROPERTIES PASS_REGULAR_EXPRESSION "The enclave is not debuggable"
 -             FAIL_REGULAR_EXPRESSION "This should not be hit")
 diff --git a/tests/host_verify/CMakeLists.txt b/tests/host_verify/CMakeLists.txt
-index 93a2584f4..16e5cbae2 100644
+index 3e6c56e76..f9ec03274 100644
 --- a/tests/host_verify/CMakeLists.txt
 +++ b/tests/host_verify/CMakeLists.txt
-@@ -9,5 +9,3 @@ add_test(
- 
- # The test binary will dump the "tcb_status" claims for TD relaunch quote
- # Expected to see tcb_status: 07000000
--set_tests_properties(tests/host_verify PROPERTIES PASS_REGULAR_EXPRESSION
--                                                  "tcb_status: 07000000")
+@@ -14,7 +14,3 @@ add_test(
+ # expression must also require the marker that main() prints only after every
+ # check has run. Without it, an OE_TEST abort occurring after the TD relaunch
+ # quote is verified would still be reported as a pass.
+-set_tests_properties(
+-  tests/host_verify
+-  PROPERTIES PASS_REGULAR_EXPRESSION
+-             "tcb_status: 07000000(.|\n)*host_verify: all tests passed")
 diff --git a/tests/host_verify/host/host.cpp b/tests/host_verify/host/host.cpp
-index 5847b6091..f8d4a6fe9 100644
+index 726fba634..90a02c8cc 100644
 --- a/tests/host_verify/host/host.cpp
 +++ b/tests/host_verify/host/host.cpp
-@@ -47,7 +47,6 @@
- #define TDX_QUOTE_RELAUNCH_ENDORSEMENTS_FILENAME "tdx_endorsement.bin"
- 
- static const oe_uuid_t _sgx_ecdsa_uuid = {OE_FORMAT_UUID_SGX_ECDSA};
--static const oe_uuid_t _tdx_quote_uuid = {OE_FORMAT_UUID_TDX_QUOTE_ECDSA};
- 
- oe_result_t enclave_identity_verifier(oe_identity_t* identity, void* arg)
- {
-@@ -404,9 +403,6 @@ int main()
+@@ -521,9 +521,6 @@ int main()
              &_sgx_ecdsa_uuid, EVIDENCE_FILENAME, NULL, NULL, false);
      }
  
@@ -3851,7 +3845,7 @@ index 5847b6091..f8d4a6fe9 100644
      // These files are checked in and should always exist.
      if (_validate_file(CERT_EC_BAD_FILENAME, true))
          _verify_cert(CERT_EC_BAD_FILENAME, false);
-@@ -417,40 +413,5 @@ int main()
+@@ -534,48 +531,7 @@ int main()
      if (_validate_file(REPORT_BAD_FILENAME, true))
          _verify_report(REPORT_BAD_FILENAME, NULL, false);
  
@@ -3890,8 +3884,17 @@ index 5847b6091..f8d4a6fe9 100644
 -            false);
 -    }
 -
-     return 0;
- }
+-    // Service-TD initial platform TCB evaluation test
+-    if (_validate_file(TDX_QUOTE_SERVTD_FILENAME, true) &&
+-        _validate_file(TDX_QUOTE_SERVTD_ENDORSEMENTS_FILENAME, true))
+-    {
+-        _verify_servtd_init_tcb(
+-            TDX_QUOTE_SERVTD_FILENAME, TDX_QUOTE_SERVTD_ENDORSEMENTS_FILENAME);
+-    }
++    (void)_verify_servtd_init_tcb;
+ 
+     // Marker required by the test's PASS_REGULAR_EXPRESSION. It is only
+     // reached when no OE_TEST above aborted the process.
 diff --git a/tests/invalid_image/main.cpp b/tests/invalid_image/main.cpp
 index c32f0d0f8..57ba0486c 100644
 --- a/tests/invalid_image/main.cpp
