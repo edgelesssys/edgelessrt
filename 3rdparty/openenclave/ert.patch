@@ -4146,6 +4146,19 @@ index 90d0d7e2e..9f10d1e9e 100644
  add_enclave_dependencies(module_loading_enc module_loading_common module)
  if (UNIX)
    enclave_link_libraries(module_loading_enc module_loading_common module)
+diff --git a/tests/oeedger8r/enc/CMakeLists.txt b/tests/oeedger8r/enc/CMakeLists.txt
+index 46b3ee678..18fabd29c 100644
+--- a/tests/oeedger8r/enc/CMakeLists.txt
++++ b/tests/oeedger8r/enc/CMakeLists.txt
+@@ -65,7 +65,7 @@ set_source_files_properties(
+ set_source_files_properties(testpointer.cpp PROPERTIES COMPILE_FLAGS
+                                                        "-Wno-unused-parameter")
+ if (CMAKE_CXX_COMPILER_ID MATCHES Clang AND CMAKE_CXX_COMPILER_VERSION
+-                                              VERSION_GREATER_EQUAL 12)
++                                              VERSION_GREATER_EQUAL 18)
+   set_source_files_properties(testforeign.cpp PROPERTIES COMPILE_FLAGS
+                                                          "-Wno-vla-cxx-extension")
+ endif ()
 diff --git a/tests/props/host/host.c b/tests/props/host/host.c
 index 6d95d6943..abfb269b9 100644
 --- a/tests/props/host/host.c
