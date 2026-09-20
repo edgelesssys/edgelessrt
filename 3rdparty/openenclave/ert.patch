@@ -764,9 +764,18 @@ index 661a2f61b..6a6e28d44 100644
  
      OE_CHECK(oe_find_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
-index 13a8d23c3..310f5e6ca 100644
+index 13a8d23c3..973f3ecfa 100644
 --- a/host/CMakeLists.txt
 +++ b/host/CMakeLists.txt
+@@ -269,7 +269,7 @@ if (OE_SGX)
+     # Download the sgx.h from Linux github repository. Currently use v5.13 tag.
+     file(
+       DOWNLOAD
+-      https://raw.githubusercontent.com/torvalds/linux/v5.13/arch/x86/include/uapi/asm/sgx.h
++      file://${ERTROOT}/3rdparty/openenclave/sgx.h
+       ${CMAKE_CURRENT_BINARY_DIR}/sgx.h
+       EXPECTED_HASH
+         SHA256=4764b8ce858579d99f1b66bb1e5f04ba149a38aea15649fff19f65f8d9113fd0)
 @@ -483,6 +483,9 @@ install(
    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/openenclave/host
            COMPONENT OEHOSTVERIFY)
