@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.5.4 AS build
+FROM ghcr.io/edgelesssys/edgelessrt/build-base:v0.5.5 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get install -y --no-install-recommends \
   ninja-build \
   wget
 
-ARG erttag=v0.5.4
+ARG erttag=v0.5.5
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && mkdir build
 
@@ -26,7 +26,7 @@ FROM scratch AS export
 COPY --from=build /build/edgelessrt_*_amd64_ubuntu-22.04.deb /
 
 
-FROM ubuntu:jammy-20260810 AS release_deploy
+FROM ubuntu:jammy-20260930 AS release_deploy
 LABEL description="Containerized SGX for release"
 
 ARG PSW_VERSION=2.30.101.1-jammy1
