@@ -199,10 +199,10 @@ index b2aa7592e..e0aed6661 100644
        message(WARNING "Spectre 1 mitigation NOT supported.")
      endif ()
 diff --git a/common/sgx/tcbinfo.c b/common/sgx/tcbinfo.c
-index 171a13d8a..04851f22e 100644
+index 171a13d8a..dc6decb56 100644
 --- a/common/sgx/tcbinfo.c
 +++ b/common/sgx/tcbinfo.c
-@@ -736,6 +736,8 @@ static oe_result_t _read_tcb_info_tcb_level_v1(
+@@ -872,6 +872,8 @@ static oe_result_t _read_tcb_info_tcb_level_v2_or_v3(
          if (*itr < end && **itr == ']')
              break;
          OE_CHECK(_read(',', itr, end));
