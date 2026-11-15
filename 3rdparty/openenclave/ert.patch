@@ -274,7 +274,7 @@ index 7d39d27db..1ab97097f 100644
  
  #define OE_SGX_FMSPC_SIZE 6
 diff --git a/common/sgx/verifier.c b/common/sgx/verifier.c
-index ae4e42357..65a83a983 100644
+index 579bb68b2..c03a21545 100644
 --- a/common/sgx/verifier.c
 +++ b/common/sgx/verifier.c
 @@ -552,6 +552,14 @@ static oe_result_t _fill_with_known_claims(
@@ -742,7 +742,7 @@ index c8685b44d..86fe91b46 100644
      return result;
  }
 diff --git a/enclave/sgx/report.c b/enclave/sgx/report.c
-index 661a2f61b..6a6e28d44 100644
+index 0265681f5..12aba1cda 100644
 --- a/enclave/sgx/report.c
 +++ b/enclave/sgx/report.c
 @@ -18,6 +18,7 @@
@@ -762,7 +762,7 @@ index 661a2f61b..6a6e28d44 100644
 +
      OE_CHECK(oe_attester_initialize());
  
-     OE_CHECK(oe_find_attester_plugin(format_id, &attester));
+     OE_CHECK(oe_acquire_attester_plugin(format_id, &attester));
 diff --git a/host/CMakeLists.txt b/host/CMakeLists.txt
 index 13a8d23c3..973f3ecfa 100644
 --- a/host/CMakeLists.txt
@@ -3794,6 +3794,33 @@ index fc215ce48..97c0b9073 100644
        add_subdirectory(openssl_unsupported)
      endif ()
    endif ()
+diff --git a/tests/attestation_plugin/CMakeLists.txt b/tests/attestation_plugin/CMakeLists.txt
+index 5660f0f06..4603b0d33 100644
+--- a/tests/attestation_plugin/CMakeLists.txt
++++ b/tests/attestation_plugin/CMakeLists.txt
+@@ -11,6 +11,8 @@ add_enclave_test(tests/attestation_plugin_lifetime plugin_lifetime_host
+                  plugin_mbedtls_enc)
+ set_enclave_tests_properties(tests/attestation_plugin_lifetime PROPERTIES
+                              TIMEOUT 120)
++set_enclave_tests_properties(tests/attestation_plugin_lifetime PROPERTIES
++                             SKIP_RETURN_CODE 2)
+ 
+ add_enclave_test(tests/attestation_plugin_mbedtls plugin_host
+                  plugin_mbedtls_enc)
+diff --git a/tests/attestation_plugin/host/lifetime.cpp b/tests/attestation_plugin/host/lifetime.cpp
+index 18adb8d29..7aa4e5909 100644
+--- a/tests/attestation_plugin/host/lifetime.cpp
++++ b/tests/attestation_plugin/host/lifetime.cpp
+@@ -247,6 +247,9 @@ int main(int argc, const char* argv[])
+         return 0;
+     }
+ 
++    if ((oe_get_create_flags() & OE_ENCLAVE_FLAG_SIMULATE) != 0)
++        return 2;
++
+     oe_enclave_t* enclave = nullptr;
+     OE_TEST(
+         oe_create_plugin_enclave(
 diff --git a/tests/config_id/host/host.c b/tests/config_id/host/host.c
 index c5aeb17bf..4ad15d82e 100644
 --- a/tests/config_id/host/host.c
@@ -4181,8 +4208,22 @@ index 6d95d6943..abfb269b9 100644
          OE_RAISE(OE_FAILURE);
  
      /* Load the SGX enclave properties */
+diff --git a/tests/sealKey/enc/enc.cpp b/tests/sealKey/enc/enc.cpp
+index 7e8e106a0..dc0c14aa7 100644
+--- a/tests/sealKey/enc/enc.cpp
++++ b/tests/sealKey/enc/enc.cpp
+@@ -537,7 +537,8 @@ void TestSealPolicy();
+ 
+ int test_seal_key(int in)
+ {
+-    TestSealPolicy();
++    if (in != -2)
++        TestSealPolicy();
+ 
+     if (TestOEGetPrivilegeKeys() && TestOEGetRegularKeys() &&
+         TestOEGetSealKey() && TestAsymKey())
 diff --git a/tests/sealKey/host/host.cpp b/tests/sealKey/host/host.cpp
-index 10286da24..db9188cf7 100644
+index 10286da24..8dd091d65 100644
 --- a/tests/sealKey/host/host.cpp
 +++ b/tests/sealKey/host/host.cpp
 @@ -156,11 +156,6 @@ int main(int argc, const char* argv[])
@@ -4197,6 +4238,15 @@ index 10286da24..db9188cf7 100644
  
      printf("=== This program is used to test enclave seal key functions.\n");
  
+@@ -173,6 +168,8 @@ int main(int argc, const char* argv[])
+     }
+ 
+     int retval = -1;
++    if ((flags & OE_ENCLAVE_FLAG_SIMULATE) != 0)
++        retval = -2;
+     result = test_seal_key(enclave, &retval, retval);
+     OE_TEST(result == OE_OK);
+     OE_TEST(retval == 0);
 diff --git a/tests/stack_overflow_exception/enc/enc.c b/tests/stack_overflow_exception/enc/enc.c
 index aef0e74b9..a0606fa31 100644
 --- a/tests/stack_overflow_exception/enc/enc.c
